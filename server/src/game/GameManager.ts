@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { GameState, GameConfig, PlayerInfo, GamePhase, GameAction, GameUtils } from '@civ-game/shared';
 import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import { config } from '../config/config';
 
 export interface GameRoom {
@@ -119,7 +120,7 @@ export class GameManager {
         return;
       }
 
-      if (gameRoom.gameState.phase !== GamePhase.LOBBY) {
+      if (gameRoom.gameState.phase !== GamePhase.SETUP && gameRoom.gameState.phase !== GamePhase.SETUP) {
         socket.emit('error', { message: 'Game already started' });
         return;
       }
@@ -134,8 +135,8 @@ export class GameManager {
       const colors = GameUtils.getCivilizationColors();
       const civs = GameUtils.getCivilizationNames();
       
-      const usedColors = Array.from(gameRoom.gameState.players).map(p => p.color);
-      const usedCivs = Array.from(gameRoom.gameState.players).map(p => p.civilization);
+      const usedColors = Array.from(gameRoom.gameState.players).map((p: any) => p.color);
+      const usedCivs = Array.from(gameRoom.gameState.players).map((p: any) => p.civilization);
       
       const availableColor = colors.find(c => !usedColors.includes(c)) || colors[gameRoom.players.size % colors.length];
       const availableCiv = civs.find(c => !usedCivs.includes(c)) || civs[gameRoom.players.size % civs.length];
@@ -202,9 +203,10 @@ export class GameManager {
         return;
       }
 
-      // Only first player can start the game
+      // Only first player can start the game  
       const firstPlayer = gameRoom.gameState.players[0];
-      if (firstPlayer.id !== playerId) {
+      const firstPlayerId = (firstPlayer as any).id || (firstPlayer as any).userId;
+      if (firstPlayerId !== playerId) {
         socket.emit('error', { message: 'Only game creator can start the game' });
         return;
       }
@@ -259,7 +261,7 @@ export class GameManager {
         return;
       }
 
-      if (gameRoom.gameState.phase !== GamePhase.ACTIVE) {
+      if (gameRoom.gameState.phase !== 'PLAYER_TURN' && gameRoom.gameState.phase !== 'active') {
         socket.emit('error', { message: 'Game is not active' });
         return;
       }
@@ -270,7 +272,7 @@ export class GameManager {
         return;
       }
 
-      // Execute action
+      // Execute action using new GameEngine
       const success = gameRoom.gameState.executeAction(data);
       
       if (success) {
@@ -283,18 +285,30 @@ export class GameManager {
           this.startTurnTimer(gameId);
         }
 
-        // Broadcast game state update
+        // Broadcast game state update with additional action info
         this.io.to(gameId).emit('game_updated', {
           action: data,
-          gameState: gameRoom.gameState.serialize()
+          gameState: gameRoom.gameState.serialize(),
+          message: `Player ${data.playerId} executed ${data.type}`,
+          timestamp: new Date()
+        });
+
+        // Send action acknowledgment to the player
+        socket.emit('action_acknowledged', {
+          action: data.type,
+          success: true,
+          message: `${data.type} completed successfully`
         });
 
         // Check for game end
-        if (gameRoom.gameState.phase === GamePhase.ENDED) {
+        if (gameRoom.gameState.phase === 'END_GAME') {
           this.handleGameEnd(gameId);
         }
       } else {
-        socket.emit('action_failed', { action: data, reason: 'Action validation failed' });
+        socket.emit('action_failed', { 
+          action: data, 
+          reason: 'Action validation failed - check console for details' 
+        });
       }
     } catch (error) {
       console.error('Error handling game action:', error);
@@ -415,18 +429,20 @@ export class GameManager {
 
     // Calculate final scores
     for (const player of gameRoom.gameState.players) {
-      player.score = GameUtils.calculateScore(player);
+      if ('score' in player) {
+        player.score = GameUtils.calculateScore(player);
+      }
     }
 
     // Determine winner
-    const winner = gameRoom.gameState.players.reduce((prev, current) => 
+    const winner = gameRoom.gameState.players.reduce((prev: any, current: any) => 
       (current.score > prev.score) ? current : prev
     );
 
     // Notify players
     this.io.to(gameId).emit('game_ended', {
       winner,
-      finalScores: gameRoom.gameState.players.map(p => ({
+      finalScores: gameRoom.gameState.players.map((p: any) => ({
         playerId: p.id,
         playerName: p.name,
         score: p.score
@@ -434,7 +450,7 @@ export class GameManager {
       gameState: gameRoom.gameState.serialize()
     });
 
-    console.log(`Game ${gameId} ended. Winner: ${winner.name}`);
+    console.log(`Game ${gameId} ended. Winner: ${(winner as any).name || (winner as any).username || winner.id}`);
   }
 
   private validateGameConfig(config: GameConfig): boolean {
@@ -491,9 +507,143 @@ export class GameManager {
     return Array.from(this.games.entries()).map(([id, room]) => ({
       id,
       playerCount: room.players.size,
-      phase: room.gameState.phase,
+      phase: room.gameState.phase as any,
       createdAt: room.gameState.createdAt
     }));
+  }
+
+  public cleanupTestGames(): string[] {
+    const removedGameIds: string[] = [];
+    const testPatterns = ['test', 'perf', 'performance', 'load', 'benchmark', 'demo', 'sample'];
+    
+    for (const [gameId, gameRoom] of this.games) {
+      const lowerGameId = gameId.toLowerCase();
+      const isTestGame = testPatterns.some(pattern => lowerGameId.includes(pattern));
+      
+      if (isTestGame) {
+        console.log(`Removing test game: ${gameId}`);
+        
+        // Clear turn timer
+        if (gameRoom.turnTimer) {
+          clearTimeout(gameRoom.turnTimer);
+        }
+        
+        // Notify players about game removal
+        this.io.to(gameId).emit('game_removed', {
+          gameId,
+          reason: 'Test game cleanup'
+        });
+        
+        // Remove player mappings
+        for (const playerId of gameRoom.players.keys()) {
+          this.playerToGame.delete(playerId);
+          // Find and remove socket mapping
+          for (const [socketId, pId] of this.socketToPlayer) {
+            if (pId === playerId) {
+              this.socketToPlayer.delete(socketId);
+              break;
+            }
+          }
+        }
+        
+        // Remove game
+        this.games.delete(gameId);
+        removedGameIds.push(gameId);
+      }
+    }
+    
+    console.log(`Cleaned up ${removedGameIds.length} test games`);
+    return removedGameIds;
+  }
+
+  public cleanupOldGames(olderThanHours: number): string[] {
+    const removedGameIds: string[] = [];
+    const cutoffTime = new Date(Date.now() - (olderThanHours * 60 * 60 * 1000));
+    
+    for (const [gameId, gameRoom] of this.games) {
+      if (gameRoom.gameState.createdAt < cutoffTime) {
+        console.log(`Removing old game: ${gameId} (created: ${gameRoom.gameState.createdAt})`);
+        
+        // Clear turn timer
+        if (gameRoom.turnTimer) {
+          clearTimeout(gameRoom.turnTimer);
+        }
+        
+        // Notify players about game removal
+        this.io.to(gameId).emit('game_removed', {
+          gameId,
+          reason: `Game cleanup - older than ${olderThanHours} hours`
+        });
+        
+        // Remove player mappings
+        for (const playerId of gameRoom.players.keys()) {
+          this.playerToGame.delete(playerId);
+          // Find and remove socket mapping
+          for (const [socketId, pId] of this.socketToPlayer) {
+            if (pId === playerId) {
+              this.socketToPlayer.delete(socketId);
+              break;
+            }
+          }
+        }
+        
+        // Remove game
+        this.games.delete(gameId);
+        removedGameIds.push(gameId);
+      }
+    }
+    
+    console.log(`Cleaned up ${removedGameIds.length} old games (older than ${olderThanHours} hours)`);
+    return removedGameIds;
+  }
+
+  public getFilteredGameList(options: {
+    page?: number;
+    limit?: number;
+    filter?: 'all' | 'active' | 'waiting' | 'ended';
+    hideTestGames?: boolean;
+  } = {}): {
+    games: Array<{ id: string; playerCount: number; phase: GamePhase; createdAt: Date; name?: string }>;
+    totalGames: number;
+    hasMore: boolean;
+  } {
+    const { page = 1, limit = 10, filter = 'all', hideTestGames = false } = options;
+    
+    let games = this.getGameList();
+    
+    // Filter out test games if requested
+    if (hideTestGames) {
+      const testPatterns = ['test', 'perf', 'performance', 'load', 'benchmark', 'demo', 'sample'];
+      games = games.filter(game => {
+        const lowerGameId = game.id.toLowerCase();
+        return !testPatterns.some(pattern => lowerGameId.includes(pattern));
+      });
+    }
+    
+    // Apply status filter
+    if (filter !== 'all') {
+      games = games.filter(game => {
+        switch (filter) {
+          case 'active': return game.phase === GamePhase.ACTIVE;
+          case 'waiting': return game.phase === GamePhase.LOBBY;
+          case 'ended': return game.phase === GamePhase.ENDED;
+          default: return true;
+        }
+      });
+    }
+    
+    // Sort by creation date (newest first)
+    games.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedGames = games.slice(startIndex, endIndex);
+    
+    return {
+      games: paginatedGames,
+      totalGames: games.length,
+      hasMore: endIndex < games.length
+    };
   }
 
   public shutdown(): void {

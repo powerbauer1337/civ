@@ -96,12 +96,8 @@ export enum VictoryType {
   SCORE = 'score'
 }
 
-export enum GamePhase {
-  LOBBY = 'lobby',
-  ACTIVE = 'active',
-  PAUSED = 'paused',
-  ENDED = 'ended'
-}
+// GamePhase enum moved to index.ts to avoid conflicts
+// Using unified enum: SETUP, PLAYER_TURN, BETWEEN_TURNS, END_GAME
 
 export interface GameAction {
   type: string;

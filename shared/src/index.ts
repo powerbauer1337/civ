@@ -1,11 +1,9 @@
-// Types
-export * from './types/GameTypes';
+// Shared package barrel exports
+export * from './types';
+export * from './utils';
+export * from './constants';
+export * from './validation';
 
-// Core Engine Classes
-export { GameState } from './engine/GameState';
-export { HexGrid, HexTile } from './engine/HexGrid';
-export { Unit, UnitStats, CombatResult } from './engine/Unit';
-export { City, BuildingInfo } from './engine/City';
-
-// Utility functions
-export * from './utils/GameUtils';
+// Ensure critical types are available
+export { PlayerInfo } from './types/GameTypes';
+export { PlayerState, GameState, GamePhase, GameAction, GameActionType } from './types/index';

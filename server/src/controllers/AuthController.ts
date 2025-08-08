@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { config } from '../config/config';
-import { GameUtils } from '@civ-game/shared';
+import { GameUtils } from '../shared-types';
 
 interface User {
   id: string;
@@ -89,7 +89,7 @@ export class AuthController {
       const token = jwt.sign(
         { userId: user.id, username: user.username },
         config.JWT_SECRET,
-        { expiresIn: config.JWT_EXPIRES_IN }
+        { expiresIn: String(config.JWT_EXPIRES_IN) }
       );
 
       // Return success response
@@ -141,11 +141,11 @@ export class AuthController {
       user.lastLogin = new Date();
       this.users.set(user.id, user);
 
-      // Generate JWT
+      // For integration testing, use simple JWT creation
       const token = jwt.sign(
         { userId: user.id, username: user.username },
         config.JWT_SECRET,
-        { expiresIn: config.JWT_EXPIRES_IN }
+        { expiresIn: String(config.JWT_EXPIRES_IN) }
       );
 
       res.json({

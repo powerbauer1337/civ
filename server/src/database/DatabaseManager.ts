@@ -1,7 +1,7 @@
 import { Client } from 'pg';
 import Redis from 'redis';
 import { config } from '../config/config';
-import { GameState } from '@civ-game/shared';
+import { GameState } from '../shared-types';
 
 export class DatabaseManager {
   private pgClient: Client;

@@ -1,0 +1,12 @@
+{
+  "currentKeyId": "key_1754625679109_3d73d1db",
+  "keys": {
+    "key_1754625679109_3d73d1db": {
+      "secret": "bcf8f6591d9b937c2f320e79a951eaf30da635f7b5e3d94a0f7abfc75a657da5e3fd4cb2c82753a264f17a64d0e99cce3d9cd32dc6e81c03aaa24c94cbd05570",
+      "createdAt": "2025-08-08T04:01:19.109Z",
+      "algorithm": "HS256",
+      "active": true
+    }
+  },
+  "updatedAt": "2025-08-08T04:01:19.109Z"
+}

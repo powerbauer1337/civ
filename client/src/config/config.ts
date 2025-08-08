@@ -11,14 +11,14 @@ export const config = {
   API_BASE_URL: import.meta.env.VITE_API_BASE_URL || (
     isProduction 
       ? 'https://civ-game-api.herokuapp.com'  // Replace with your backend URL
-      : 'http://localhost:3001'
+      : 'http://localhost:4002'
   ),
   
   // WebSocket Configuration
   SOCKET_URL: import.meta.env.VITE_SOCKET_URL || (
     isProduction 
       ? 'https://civ-game-api.herokuapp.com'  // Replace with your backend URL
-      : 'http://localhost:3001'
+      : 'http://localhost:4002'
   ),
   
   // Game Configuration
