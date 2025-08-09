@@ -134,4 +134,7 @@ export const useWebSocket = (
   }
 }
 
+// Alias for backward compatibility
+export const useSocket = useWebSocket;
+
 export default useWebSocket
