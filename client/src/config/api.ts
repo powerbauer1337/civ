@@ -1,9 +1,9 @@
 // API Configuration for Civilization Game Client
 
 // Environment-based API configuration
-const isDevelopment = process.env.NODE_ENV === 'development'
-const baseURL = process.env.VITE_API_BASE_URL || 'http://localhost:4002'
-const socketURL = process.env.VITE_SOCKET_URL || 'http://localhost:4002'
+const isDevelopment = import.meta.env.MODE === 'development'
+const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4002'
+const socketURL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:4002'
 
 export const apiConfig = {
   baseURL,
@@ -29,7 +29,7 @@ export const apiConfig = {
   
   // WebSocket configuration
   websocket: {
-    transports: ['websocket'] as const,
+    transports: ['websocket'],
     timeout: 5000,
     forceNew: false,
     reconnection: true,

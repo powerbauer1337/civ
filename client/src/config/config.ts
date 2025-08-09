@@ -44,10 +44,10 @@ export const config = {
 
 // Validate required environment variables in production
 if (isProduction) {
-  const requiredEnvVars = []
+  const requiredEnvVars: string[] = []
   
   for (const envVar of requiredEnvVars) {
-    if (!import.meta.env[envVar]) {
+    if (!import.meta.env[envVar as keyof ImportMetaEnv]) {
       console.warn(`Missing required environment variable: ${envVar}`)
     }
   }

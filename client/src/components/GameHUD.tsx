@@ -6,8 +6,7 @@ import {
   Button,
   Chip,
   IconButton,
-  Tooltip,
-  LinearProgress
+  Tooltip
 } from '@mui/material'
 import {
   Menu as MenuIcon,
@@ -28,7 +27,7 @@ const GameHUD: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth)
 
   const currentPlayer = gameState?.players.find(p => p.id === user?.id)
-  const activePlayer = gameState?.players[gameState.currentPlayer]
+  const activePlayer = gameState?.players?.find(p => p.id === gameState?.currentPlayer)
 
   const handleEndTurn = () => {
     if (currentPlayerTurn) {

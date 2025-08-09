@@ -1,7 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { GameState, GameAction, PlayerInfo, PlayerState, GamePhase } from '@civ-game/shared'
 
-interface GameSliceState {
+export interface GameSliceState {
   currentGameId: string | null
   gameState: GameState | null
   isInGame: boolean
@@ -11,6 +11,20 @@ interface GameSliceState {
   playerList: PlayerState[]  // Use PlayerState for consistency
   gameHistory: GameAction[]
   currentPlayerTurn: boolean
+  currentPlayer: string | null
+  playerId: string | null
+  settings: {
+    soundEnabled: boolean
+    musicEnabled: boolean
+    notificationsEnabled: boolean
+    gameSpeed: number
+    isPaused: boolean
+    isFullscreen: boolean
+    darkMode: boolean
+    graphics: 'low' | 'medium' | 'high'
+    autoSave: boolean
+    language: string
+  }
 }
 
 const initialState: GameSliceState = {
@@ -22,7 +36,21 @@ const initialState: GameSliceState = {
   connectionStatus: 'disconnected',
   playerList: [],
   gameHistory: [],
-  currentPlayerTurn: false
+  currentPlayerTurn: false,
+  currentPlayer: null,
+  playerId: null,
+  settings: {
+    soundEnabled: true,
+    musicEnabled: true,
+    notificationsEnabled: true,
+    gameSpeed: 1,
+    isPaused: false,
+    isFullscreen: false,
+    darkMode: false,
+    graphics: 'medium',
+    autoSave: true,
+    language: 'en'
+  }
 }
 
 const gameSlice = createSlice({
@@ -102,7 +130,7 @@ const gameSlice = createSlice({
       state.gameHistory = []
     },
 
-    gameEnded: (state, action: PayloadAction<{ winner: PlayerInfo; finalScores: any[] }>) => {
+    gameEnded: (state, _action: PayloadAction<{ winner: PlayerInfo; finalScores: any[] }>) => {
       if (state.gameState) {
         state.gameState.phase = GamePhase.END_GAME
       }
@@ -121,13 +149,13 @@ const gameSlice = createSlice({
     },
 
     // Game actions for UI feedback
-    unitMoved: (state, action: PayloadAction<{ unitId: string; newPosition: any }>) => {
+    unitMoved: (_state, action: PayloadAction<{ unitId: string; newPosition: any }>) => {
       // Update unit position in local state for immediate feedback
       // Skip unit updates for now - needs proper implementation
       console.log('Unit moved:', action.payload);
     },
 
-    unitAttacked: (state, action: PayloadAction<{ attackerId: string; defenderId: string; result: any }>) => {
+    unitAttacked: (_state, action: PayloadAction<{ attackerId: string; defenderId: string; result: any }>) => {
       // Handle combat result in local state
       console.log('Combat result:', action.payload.result)
     },
@@ -158,9 +186,43 @@ const gameSlice = createSlice({
     },
 
     // Technology updates
-    technologyResearched: (state, action: PayloadAction<{ playerId: string; technology: string }>) => {
+    technologyResearched: (_state, action: PayloadAction<{ playerId: string; technology: string }>) => {
       // Skip technology updates for now - needs proper implementation
       console.log('Technology researched:', action.payload);
+    },
+
+    // Settings management
+    togglePause: (state) => {
+      state.settings.isPaused = !state.settings.isPaused
+    },
+
+    setGameSpeed: (state, action: PayloadAction<number>) => {
+      state.settings.gameSpeed = action.payload
+    },
+
+    toggleSound: (state) => {
+      state.settings.soundEnabled = !state.settings.soundEnabled
+    },
+
+    toggleFullscreen: (state) => {
+      state.settings.isFullscreen = !state.settings.isFullscreen
+    },
+
+    toggleDarkMode: (state) => {
+      state.settings.darkMode = !state.settings.darkMode
+    },
+
+    updateSettings: (state, action: PayloadAction<Partial<typeof state.settings>>) => {
+      state.settings = { ...state.settings, ...action.payload }
+    },
+
+    // Player identification
+    setPlayerId: (state, action: PayloadAction<string>) => {
+      state.playerId = action.payload
+    },
+
+    setGameState: (state, action: PayloadAction<GameState>) => {
+      state.gameState = action.payload
     }
   }
 })
@@ -185,7 +247,15 @@ export const {
   cityFounded,
   turnChanged,
   resourcesUpdated,
-  technologyResearched
+  technologyResearched,
+  togglePause,
+  setGameSpeed,
+  toggleSound,
+  toggleFullscreen,
+  toggleDarkMode,
+  updateSettings,
+  setPlayerId,
+  setGameState
 } = gameSlice.actions
 
 export default gameSlice.reducer

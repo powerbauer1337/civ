@@ -113,6 +113,7 @@ export enum DifficultyLevel {
 
 // Game State Types
 export interface GameState {
+  id: string;              // Add id for frontend compatibility
   gameId: string;
   currentPlayer: string;
   turn: number;

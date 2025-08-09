@@ -38,7 +38,7 @@ const HexMap: React.FC<HexMapProps> = ({ gameState, playerId, onTileClick, onUni
   const [hoveredTile, setHoveredTile] = useState<{ x: number; y: number } | null>(null);
   const mapRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [pan] = useState({ x: 0, y: 0 });
   
   // Extract map data from game state
   const mapData = gameState?.board || gameState?.map;
@@ -100,23 +100,6 @@ const HexMap: React.FC<HexMapProps> = ({ gameState, playerId, onTileClick, onUni
     }
   };
 
-  /**
-   * Get color for terrain type
-   */
-  const getTerrainColor = (terrain: string): string => {
-    switch (terrain) {
-      case 'grassland': return '#90EE90';
-      case 'plains': return '#F0E68C';
-      case 'hills': return '#8B4513';
-      case 'mountains': return '#A9A9A9';
-      case 'desert': return '#F4A460';
-      case 'ocean': return '#4682B4';
-      case 'coast': return '#87CEEB';
-      case 'tundra': return '#D3D3D3';
-      case 'snow': return '#FFFAFA';
-      default: return '#90EE90';
-    }
-  };
 
   /**
    * Check if tile should be highlighted (movement range, etc.)

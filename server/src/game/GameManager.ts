@@ -3,12 +3,29 @@ import { GameState, GameConfig, PlayerInfo, GamePhase, GameAction, GameUtils } f
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import { config } from '../config/config';
+import { GameEngine } from './GameEngine';
+
+export interface RoomPlayer {
+  id: string;
+  name: string;
+  isHost: boolean;
+  isReady: boolean;
+  socket?: Socket;
+}
 
 export interface GameRoom {
+  id: string;
+  name: string;
   gameState: GameState;
-  players: Map<string, Socket>; // playerId -> socket
+  game: GameEngine;
+  players: RoomPlayer[];
+  maxPlayers: number;
+  status: 'waiting' | 'in_progress' | 'completed';
+  gameMode: 'singleplayer' | 'multiplayer';
   spectators: Set<Socket>;
   lastActivity: Date;
+  lastSaveId?: number;
+  lastSaveTime?: Date;
   turnTimer?: NodeJS.Timeout;
 }
 
@@ -18,10 +35,12 @@ export class GameManager {
   private playerToGame: Map<string, string>; // playerId -> gameId
   private socketToPlayer: Map<string, string>; // socketId -> playerId
   private cleanupInterval: NodeJS.Timeout;
+  private rooms: Map<string, GameRoom>;
 
   constructor(io: Server) {
     this.io = io;
     this.games = new Map();
+    this.rooms = new Map();
     this.playerToGame = new Map();
     this.socketToPlayer = new Map();
     
@@ -490,6 +509,51 @@ export class GameManager {
   }
 
   // Public methods for external access
+  public getRoom(roomId: string): GameRoom | undefined {
+    return this.rooms.get(roomId) || this.games.get(roomId);
+  }
+
+  public getActiveRooms(): GameRoom[] {
+    return Array.from(this.rooms.values()).filter(room => room.status === 'in_progress');
+  }
+
+  public async createRoom(options: {
+    name: string;
+    maxPlayers: number;
+    gameMode: 'singleplayer' | 'multiplayer';
+    mapSize: { width: number; height: number };
+  }): Promise<GameRoom> {
+    const roomId = uuidv4();
+    const gameConfig: GameConfig = {
+      maxPlayers: options.maxPlayers,
+      mapSize: options.mapSize,
+      turnTimeLimit: 120,
+      fogOfWar: true,
+      difficulty: 'normal',
+      victoryConditions: ['domination', 'science', 'culture'],
+      gameSpeed: 'normal'
+    };
+
+    const gameState = new GameState(gameConfig);
+    const gameEngine = new GameEngine(gameConfig);
+    
+    const room: GameRoom = {
+      id: roomId,
+      name: options.name,
+      gameState,
+      game: gameEngine,
+      players: [],
+      maxPlayers: options.maxPlayers,
+      status: 'waiting',
+      gameMode: options.gameMode,
+      spectators: new Set(),
+      lastActivity: new Date()
+    };
+
+    this.rooms.set(roomId, room);
+    return room;
+  }
+
   public getGameCount(): number {
     return this.games.size;
   }

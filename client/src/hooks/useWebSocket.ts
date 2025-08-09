@@ -114,6 +114,12 @@ export const useWebSocket = (
     }
   }, [state.socket])
   
+  const once = useCallback((event: string, callback: (...args: any[]) => void) => {
+    if (state.socket) {
+      state.socket.once(event, callback)
+    }
+  }, [state.socket])
+  
   useEffect(() => {
     if (autoConnect) {
       connect()
@@ -130,8 +136,12 @@ export const useWebSocket = (
     disconnect,
     emit,
     on,
-    off
+    off,
+    once
   }
 }
+
+// Alias for backward compatibility
+export const useSocket = useWebSocket;
 
 export default useWebSocket

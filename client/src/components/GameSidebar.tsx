@@ -7,7 +7,6 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Divider,
   Tabs,
   Tab,
   Paper,
@@ -17,7 +16,6 @@ import {
 import {
   People as PeopleIcon,
   LocationCity as CityIcon,
-  Group as GroupIcon,
   Science as ScienceIcon,
   Close as CloseIcon
 } from '@mui/icons-material'
@@ -38,7 +36,7 @@ const GameSidebar: React.FC<GameSidebarProps> = ({ open }) => {
     dispatch(toggleSidebar())
   }
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: string) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: string) => {
     dispatch(setCurrentPanel(newValue as any))
   }
 
@@ -110,7 +108,7 @@ const GameSidebar: React.FC<GameSidebarProps> = ({ open }) => {
               Players ({gameState?.players.length})
             </Typography>
             <List>
-              {gameState?.players.map((player, index) => (
+              {gameState?.players.map((player) => (
                 <ListItem 
                   key={player.id}
                   sx={{ 
@@ -141,7 +139,7 @@ const GameSidebar: React.FC<GameSidebarProps> = ({ open }) => {
                       </Typography>
                     }
                   />
-                  {index === gameState.currentPlayer && (
+                  {player.id === gameState.currentPlayer && (
                     <Chip 
                       label="Current" 
                       size="small" 
@@ -159,8 +157,8 @@ const GameSidebar: React.FC<GameSidebarProps> = ({ open }) => {
             <Typography variant="h6" sx={{ color: 'white', mb: 2 }}>
               Your Cities
             </Typography>
-            {gameState?.cities && Array.from(gameState.cities.entries())
-              .filter(([_, city]) => city.ownerId === user?.id)
+            {gameState?.cities && Object.entries(gameState.cities)
+              .filter(([_, city]) => city.playerId === user?.id)
               .map(([cityId, city]) => (
                 <Paper key={cityId} sx={{ p: 2, mb: 2, bgcolor: 'rgba(255, 255, 255, 0.1)' }}>
                   <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 'bold' }}>
@@ -170,16 +168,16 @@ const GameSidebar: React.FC<GameSidebarProps> = ({ open }) => {
                     Population: {city.population}
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                    Buildings: {city.buildings.size}
+                    Buildings: {city.buildings?.length || 0}
                   </Typography>
-                  {city.currentProduction && (
+                  {city.production && (
                     <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                      Producing: {city.currentProduction}
+                      Producing: {city.production.type}
                     </Typography>
                   )}
                 </Paper>
               ))}
-            {(!gameState?.cities || Array.from(gameState.cities.entries()).filter(([_, city]) => city.ownerId === user?.id).length === 0) && (
+            {(!gameState?.cities || Object.entries(gameState.cities).filter(([_, city]) => city.playerId === user?.id).length === 0) && (
               <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center' }}>
                 No cities yet. Found a city with a settler!
               </Typography>
@@ -195,13 +193,13 @@ const GameSidebar: React.FC<GameSidebarProps> = ({ open }) => {
             {currentPlayer && (
               <>
                 <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 2 }}>
-                  Researched: {currentPlayer.technologies.size} technologies
+                  Researched: {currentPlayer.technologies?.length || 0} technologies
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {Array.from(currentPlayer.technologies).map((tech) => (
+                  {currentPlayer.technologies?.map((tech) => (
                     <Chip
-                      key={tech}
-                      label={tech.replace('_', ' ')}
+                      key={tech.techId}
+                      label={tech.techId.replace('_', ' ')}
                       size="small"
                       sx={{
                         bgcolor: 'rgba(33, 150, 243, 0.3)',
@@ -210,7 +208,7 @@ const GameSidebar: React.FC<GameSidebarProps> = ({ open }) => {
                     />
                   ))}
                 </Box>
-                {currentPlayer.technologies.size === 0 && (
+                {(!currentPlayer.technologies || currentPlayer.technologies.length === 0) && (
                   <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center' }}>
                     No technologies researched yet.
                   </Typography>
