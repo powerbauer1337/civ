@@ -35,7 +35,9 @@ var GamePhase;
     GamePhase["PLAYER_TURN"] = "player_turn";
     GamePhase["BETWEEN_TURNS"] = "between_turns";
     GamePhase["END_GAME"] = "end_game";
-    GamePhase["ENDED"] = "ended"; // Add compatibility with client code
+    GamePhase["ENDED"] = "ended";
+    GamePhase["ACTIVE"] = "active";
+    GamePhase["LOBBY"] = "lobby"; // Add compatibility with server code
 })(GamePhase || (exports.GamePhase = GamePhase = {}));
 var TerrainType;
 (function (TerrainType) {
