@@ -5,10 +5,6 @@ import {
   Card,
   CardContent,
   Container,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
   TextField,
   Typography,
   Stack,
@@ -25,10 +21,8 @@ import {
   Computer,
   Person,
   Psychology,
-  Speed,
   Map as MapIcon,
   PlayArrow,
-  Settings,
   SportsEsports
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';

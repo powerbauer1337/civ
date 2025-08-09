@@ -5,8 +5,6 @@ import {
   Paper,
   Typography,
   Button,
-  Card,
-  CardContent,
   Grid,
   Chip,
   List,
@@ -16,15 +14,13 @@ import {
   AppBar,
   Toolbar,
   IconButton,
-  Divider,
   Alert,
   LinearProgress
 } from '@mui/material'
 import {
   ArrowBack as BackIcon,
   Send as SendIcon,
-  People as PeopleIcon,
-  Settings as SettingsIcon
+  People as PeopleIcon
 } from '@mui/icons-material'
 import { io, Socket } from 'socket.io-client'
 import HexMap from '../components/HexMap/HexMap'
@@ -89,7 +85,6 @@ const SimpleGamePage: React.FC = () => {
   
   // Chat and actions
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
-  const [gameActions, setGameActions] = useState<GameAction[]>([])
   const [chatInput, setChatInput] = useState('')
   const [actionLog, setActionLog] = useState<string[]>([])
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null)
@@ -224,7 +219,8 @@ const SimpleGamePage: React.FC = () => {
       payload: actionData.payload,
       timestamp: new Date()
     }
-    setGameActions(prev => [...prev, newAction])
+    // gameActions not currently used in UI, just log it
+    console.log('Game action:', newAction)
   }
 
   const addActionLog = (logEntry: string) => {

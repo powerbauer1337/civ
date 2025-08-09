@@ -130,7 +130,7 @@ const gameSlice = createSlice({
       state.gameHistory = []
     },
 
-    gameEnded: (state, action: PayloadAction<{ winner: PlayerInfo; finalScores: any[] }>) => {
+    gameEnded: (state, _action: PayloadAction<{ winner: PlayerInfo; finalScores: any[] }>) => {
       if (state.gameState) {
         state.gameState.phase = GamePhase.END_GAME
       }
@@ -149,13 +149,13 @@ const gameSlice = createSlice({
     },
 
     // Game actions for UI feedback
-    unitMoved: (state, action: PayloadAction<{ unitId: string; newPosition: any }>) => {
+    unitMoved: (_state, action: PayloadAction<{ unitId: string; newPosition: any }>) => {
       // Update unit position in local state for immediate feedback
       // Skip unit updates for now - needs proper implementation
       console.log('Unit moved:', action.payload);
     },
 
-    unitAttacked: (state, action: PayloadAction<{ attackerId: string; defenderId: string; result: any }>) => {
+    unitAttacked: (_state, action: PayloadAction<{ attackerId: string; defenderId: string; result: any }>) => {
       // Handle combat result in local state
       console.log('Combat result:', action.payload.result)
     },
@@ -186,7 +186,7 @@ const gameSlice = createSlice({
     },
 
     // Technology updates
-    technologyResearched: (state, action: PayloadAction<{ playerId: string; technology: string }>) => {
+    technologyResearched: (_state, action: PayloadAction<{ playerId: string; technology: string }>) => {
       // Skip technology updates for now - needs proper implementation
       console.log('Technology researched:', action.payload);
     },

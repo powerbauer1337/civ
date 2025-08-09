@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { Box, IconButton, Paper, Slider, Typography } from '@mui/material';
 import { 
   ZoomIn, 
@@ -9,7 +9,12 @@ import {
   Visibility,
   VisibilityOff 
 } from '@mui/icons-material';
-import { MapTile, Position, UnitType } from '@civ-game/shared';
+import { MapTile } from '@civ-game/shared';
+
+interface Position {
+  x: number;
+  y: number;
+}
 import HexTile from './HexTile';
 
 interface MobileHexMapProps {
@@ -17,8 +22,6 @@ interface MobileHexMapProps {
   onTileClick?: (position: Position) => void;
   selectedTile?: Position | null;
   highlightedTiles?: Position[];
-  validMoves?: Position[];
-  playerView?: string;
   isMobile?: boolean;
 }
 
@@ -33,8 +36,6 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
   onTileClick,
   selectedTile,
   highlightedTiles = [],
-  validMoves = [],
-  playerView,
   isMobile = false
 }) => {
   // State management
@@ -47,7 +48,6 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
     lastCenter: { x: 0, y: 0 }
   });
   const [showGrid, setShowGrid] = useState(true);
-  const [showLabels, setShowLabels] = useState(false);
   const [interactionMode, setInteractionMode] = useState<'pan' | 'select'>('select');
   
   // Refs
@@ -64,18 +64,6 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
   const MAX_SCALE = 3;
   const DOUBLE_TAP_DELAY = 300;
 
-  // Calculate hex vertices
-  const getHexPoints = useCallback((x: number, y: number): string => {
-    const points: [number, number][] = [];
-    for (let i = 0; i < 6; i++) {
-      const angle = (Math.PI / 3) * i;
-      points.push([
-        x + HEX_SIZE * Math.cos(angle),
-        y + HEX_SIZE * Math.sin(angle)
-      ]);
-    }
-    return points.map(p => p.join(',')).join(' ');
-  }, [HEX_SIZE]);
 
   // Convert grid to pixel coordinates
   const hexToPixel = useCallback((q: number, r: number) => {
@@ -107,6 +95,27 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
     }
   }, [HEX_SIZE]);
 
+  // Zoom controls
+  const handleZoom = useCallback((factor: number) => {
+    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * factor));
+    setScale(newScale);
+  }, [scale]);
+
+  // Tile selection
+  const handleTileSelect = useCallback((clientX: number, clientY: number) => {
+    if (!svgRef.current || !containerRef.current) return;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = (clientX - rect.left - offset.x) / scale;
+    const y = (clientY - rect.top - offset.y) / scale;
+    
+    const hex = pixelToHex(x, y);
+    
+    if (hex.q >= 0 && hex.q < map[0].length && hex.r >= 0 && hex.r < map.length) {
+      onTileClick?.({ x: hex.q, y: hex.r });
+    }
+  }, [offset, scale, pixelToHex, map, onTileClick]);
+
   // Touch event handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touches = Array.from(e.touches);
@@ -136,7 +145,7 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
       const distance = Math.sqrt(dx * dx + dy * dy);
       
       setTouchState({
-        touches,
+        touches: touches as unknown as Touch[],
         lastDistance: distance,
         lastCenter: {
           x: (touches[0].clientX + touches[1].clientX) / 2,
@@ -146,7 +155,7 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
     }
     
     e.preventDefault();
-  }, [interactionMode, offset]);
+  }, [interactionMode, offset, handleZoom]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     const touches = Array.from(e.touches);
@@ -185,7 +194,7 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
       }));
       
       setTouchState({
-        touches,
+        touches: touches as unknown as Touch[],
         lastDistance: distance,
         lastCenter: center
       });
@@ -212,7 +221,7 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
       lastDistance: 0,
       lastCenter: { x: 0, y: 0 }
     });
-  }, [interactionMode, isDragging]);
+  }, [interactionMode, isDragging, handleTileSelect]);
 
   // Mouse event handlers (for desktop)
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -249,27 +258,6 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
       e.preventDefault();
     }
   }, [isMobile, scale]);
-
-  // Tile selection
-  const handleTileSelect = useCallback((clientX: number, clientY: number) => {
-    if (!svgRef.current || !containerRef.current) return;
-    
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = (clientX - rect.left - offset.x) / scale;
-    const y = (clientY - rect.top - offset.y) / scale;
-    
-    const hex = pixelToHex(x, y);
-    
-    if (hex.q >= 0 && hex.q < map[0].length && hex.r >= 0 && hex.r < map.length) {
-      onTileClick?.({ q: hex.q, r: hex.r });
-    }
-  }, [offset, scale, pixelToHex, map, onTileClick]);
-
-  // Zoom controls
-  const handleZoom = useCallback((factor: number) => {
-    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * factor));
-    setScale(newScale);
-  }, [scale]);
 
   const handleResetView = useCallback(() => {
     setScale(1);
@@ -392,23 +380,24 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
             const actualQ = q + visibleTiles.minQ;
             const actualR = r + visibleTiles.minR;
             const { x, y } = hexToPixel(actualQ, actualR);
-            const isSelected = selectedTile?.q === actualQ && selectedTile?.r === actualR;
-            const isHighlighted = highlightedTiles.some(h => h.q === actualQ && h.r === actualR);
-            const isValidMove = validMoves.some(m => m.q === actualQ && m.r === actualR);
+            const isSelected = selectedTile?.x === actualQ && selectedTile?.y === actualR;
+            const isHighlighted = highlightedTiles.some(h => h.x === actualQ && h.y === actualR);
             
             return (
               <g key={`${actualQ}-${actualR}`} transform={`translate(${x}, ${y})`}>
                 <HexTile
-                  tile={tile}
                   x={0}
                   y={0}
                   size={HEX_SIZE}
-                  isSelected={isSelected}
+                  terrain={tile.terrain}
+                  unit={tile.unit}
                   isHighlighted={isHighlighted}
-                  isValidMove={isValidMove}
-                  showGrid={showGrid}
-                  showLabel={showLabels}
-                  onClick={() => onTileClick?.({ q: actualQ, r: actualR })}
+                  isHovered={false}
+                  isSelected={isSelected}
+                  hasResource={!!tile.resources}
+                  onClick={() => onTileClick?.({ x: actualQ, y: actualR })}
+                  onMouseEnter={() => {}}
+                  onMouseLeave={() => {}}
                 />
               </g>
             );

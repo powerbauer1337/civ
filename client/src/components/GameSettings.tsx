@@ -12,7 +12,6 @@ import {
   Slider,
   Switch,
   FormControlLabel,
-  FormGroup,
   FormControl,
   InputLabel,
   Select,
@@ -29,7 +28,6 @@ import {
   VideoSettings,
   Audiotrack,
   Gamepad,
-  Interface,
   Notifications,
   Keyboard,
   Save,
@@ -72,55 +70,53 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open, onClose }) => {
   const [tabValue, setTabValue] = useState(0);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
   
-  // Local state for settings
+  // Local state for settings - using only the properties available in Redux store
   const [localSettings, setLocalSettings] = useState({
     // Graphics
-    graphicsQuality: settings.graphicsQuality || 'high',
-    resolution: settings.resolution || '1920x1080',
-    fullscreen: settings.fullscreen || false,
-    vsync: settings.vsync !== false,
-    antiAliasing: settings.antiAliasing !== false,
-    shadows: settings.shadows !== false,
-    particleEffects: settings.particleEffects !== false,
+    graphics: settings.graphics || 'medium',
+    isFullscreen: settings.isFullscreen || false,
     
     // Audio
-    masterVolume: settings.masterVolume ?? 100,
-    musicVolume: settings.musicVolume ?? 80,
-    sfxVolume: settings.sfxVolume ?? 100,
-    voiceVolume: settings.voiceVolume ?? 90,
     soundEnabled: settings.soundEnabled !== false,
+    musicEnabled: settings.musicEnabled !== false,
     
     // Gameplay
-    difficulty: settings.difficulty || 'normal',
     gameSpeed: settings.gameSpeed || 1,
     autoSave: settings.autoSave !== false,
-    autoSaveInterval: settings.autoSaveInterval || 5,
-    showTutorials: settings.showTutorials !== false,
-    confirmActions: settings.confirmActions !== false,
-    pauseOnFocusLoss: settings.pauseOnFocusLoss !== false,
+    isPaused: settings.isPaused || false,
     
     // Interface
-    uiScale: settings.uiScale || 100,
-    showGrid: settings.showGrid !== false,
-    showResourceIcons: settings.showResourceIcons !== false,
-    showUnitHealth: settings.showUnitHealth !== false,
-    showYields: settings.showYields !== false,
-    minimapPosition: settings.minimapPosition || 'bottom-right',
+    darkMode: settings.darkMode || false,
     language: settings.language || 'en',
     
     // Notifications
-    enableNotifications: settings.enableNotifications !== false,
-    turnNotifications: settings.turnNotifications !== false,
-    combatNotifications: settings.combatNotifications !== false,
-    diplomaticNotifications: settings.diplomaticNotifications !== false,
-    achievementNotifications: settings.achievementNotifications !== false,
+    notificationsEnabled: settings.notificationsEnabled !== false,
     
-    // Controls
-    edgePanning: settings.edgePanning !== false,
-    panSpeed: settings.panSpeed || 5,
-    zoomSpeed: settings.zoomSpeed || 5,
-    invertZoom: settings.invertZoom || false,
-    keyboardShortcuts: settings.keyboardShortcuts !== false
+    // Extended settings (not in Redux, but used in UI for better experience)
+    masterVolume: 100,
+    musicVolume: 80,
+    sfxVolume: 100,
+    voiceVolume: 90,
+    difficulty: 'normal',
+    autoSaveInterval: 5,
+    showTutorials: true,
+    confirmActions: true,
+    pauseOnFocusLoss: true,
+    uiScale: 100,
+    showGrid: true,
+    showResourceIcons: true,
+    showUnitHealth: true,
+    showYields: true,
+    minimapPosition: 'bottom-right',
+    turnNotifications: true,
+    combatNotifications: true,
+    diplomaticNotifications: true,
+    achievementNotifications: true,
+    edgePanning: true,
+    panSpeed: 5,
+    zoomSpeed: 5,
+    invertZoom: false,
+    keyboardShortcuts: true
   });
 
   const handleChange = (setting: string, value: any) => {
@@ -132,28 +128,44 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open, onClose }) => {
   };
 
   const handleSave = () => {
-    dispatch(updateSettings(localSettings));
+    // Extract only the settings that exist in Redux store
+    const reduxSettings = {
+      soundEnabled: localSettings.soundEnabled,
+      musicEnabled: localSettings.musicEnabled,
+      notificationsEnabled: localSettings.notificationsEnabled,
+      gameSpeed: localSettings.gameSpeed,
+      isPaused: localSettings.isPaused,
+      isFullscreen: localSettings.isFullscreen,
+      darkMode: localSettings.darkMode,
+      graphics: localSettings.graphics,
+      autoSave: localSettings.autoSave,
+      language: localSettings.language
+    };
+    dispatch(updateSettings(reduxSettings));
     setUnsavedChanges(false);
     onClose();
   };
 
   const handleReset = () => {
     const defaultSettings = {
-      graphicsQuality: 'high',
-      resolution: '1920x1080',
-      fullscreen: false,
-      vsync: true,
-      antiAliasing: true,
-      shadows: true,
-      particleEffects: true,
+      // Redux store settings
+      graphics: 'medium' as 'low' | 'medium' | 'high',
+      isFullscreen: false,
+      soundEnabled: true,
+      musicEnabled: true,
+      gameSpeed: 1,
+      autoSave: true,
+      isPaused: false,
+      darkMode: false,
+      language: 'en',
+      notificationsEnabled: true,
+      
+      // Extended UI settings
       masterVolume: 100,
       musicVolume: 80,
       sfxVolume: 100,
       voiceVolume: 90,
-      soundEnabled: true,
       difficulty: 'normal',
-      gameSpeed: 1,
-      autoSave: true,
       autoSaveInterval: 5,
       showTutorials: true,
       confirmActions: true,
@@ -164,8 +176,6 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open, onClose }) => {
       showUnitHealth: true,
       showYields: true,
       minimapPosition: 'bottom-right',
-      language: 'en',
-      enableNotifications: true,
       turnNotifications: true,
       combatNotifications: true,
       diplomaticNotifications: true,
@@ -180,23 +190,12 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open, onClose }) => {
     setUnsavedChanges(true);
   };
 
-  const graphicsPresets = {
-    low: { antiAliasing: false, shadows: false, particleEffects: false },
-    medium: { antiAliasing: true, shadows: false, particleEffects: true },
-    high: { antiAliasing: true, shadows: true, particleEffects: true },
-    ultra: { antiAliasing: true, shadows: true, particleEffects: true }
-  };
-
-  const applyGraphicsPreset = (preset: string) => {
-    const presetSettings = graphicsPresets[preset as keyof typeof graphicsPresets];
-    if (presetSettings) {
-      setLocalSettings(prev => ({
-        ...prev,
-        graphicsQuality: preset,
-        ...presetSettings
-      }));
-      setUnsavedChanges(true);
-    }
+  const applyGraphicsPreset = (preset: 'low' | 'medium' | 'high') => {
+    setLocalSettings(prev => ({
+      ...prev,
+      graphics: preset
+    }));
+    setUnsavedChanges(true);
   };
 
   return (
@@ -231,33 +230,17 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open, onClose }) => {
               <FormControl fullWidth>
                 <InputLabel>Graphics Quality Preset</InputLabel>
                 <Select
-                  value={localSettings.graphicsQuality}
-                  onChange={(e) => applyGraphicsPreset(e.target.value)}
+                  value={localSettings.graphics}
+                  onChange={(e) => applyGraphicsPreset(e.target.value as 'low' | 'medium' | 'high')}
                   label="Graphics Quality Preset"
                 >
                   <MenuItem value="low">Low</MenuItem>
                   <MenuItem value="medium">Medium</MenuItem>
                   <MenuItem value="high">High</MenuItem>
-                  <MenuItem value="ultra">Ultra</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>Resolution</InputLabel>
-                <Select
-                  value={localSettings.resolution}
-                  onChange={(e) => handleChange('resolution', e.target.value)}
-                  label="Resolution"
-                >
-                  <MenuItem value="1280x720">1280x720 (HD)</MenuItem>
-                  <MenuItem value="1920x1080">1920x1080 (Full HD)</MenuItem>
-                  <MenuItem value="2560x1440">2560x1440 (2K)</MenuItem>
-                  <MenuItem value="3840x2160">3840x2160 (4K)</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
 
             <Grid item xs={12}>
               <Paper sx={{ p: 2 }}>
@@ -267,55 +250,11 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open, onClose }) => {
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={localSettings.fullscreen}
-                          onChange={(e) => handleChange('fullscreen', e.target.checked)}
+                          checked={localSettings.isFullscreen}
+                          onChange={(e) => handleChange('isFullscreen', e.target.checked)}
                         />
                       }
                       label="Fullscreen"
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={localSettings.vsync}
-                          onChange={(e) => handleChange('vsync', e.target.checked)}
-                        />
-                      }
-                      label="V-Sync"
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={localSettings.antiAliasing}
-                          onChange={(e) => handleChange('antiAliasing', e.target.checked)}
-                        />
-                      }
-                      label="Anti-Aliasing"
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={localSettings.shadows}
-                          onChange={(e) => handleChange('shadows', e.target.checked)}
-                        />
-                      }
-                      label="Shadows"
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={localSettings.particleEffects}
-                          onChange={(e) => handleChange('particleEffects', e.target.checked)}
-                        />
-                      }
-                      label="Particle Effects"
                     />
                   </Grid>
                 </Grid>
@@ -336,6 +275,18 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open, onClose }) => {
                   />
                 }
                 label="Enable Sound"
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={localSettings.musicEnabled}
+                    onChange={(e) => handleChange('musicEnabled', e.target.checked)}
+                  />
+                }
+                label="Enable Music"
               />
             </Grid>
 
@@ -611,8 +562,8 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open, onClose }) => {
               <FormControlLabel
                 control={
                   <Switch
-                    checked={localSettings.enableNotifications}
-                    onChange={(e) => handleChange('enableNotifications', e.target.checked)}
+                    checked={localSettings.notificationsEnabled}
+                    onChange={(e) => handleChange('notificationsEnabled', e.target.checked)}
                   />
                 }
                 label="Enable All Notifications"
@@ -629,7 +580,10 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open, onClose }) => {
                         <Switch
                           checked={localSettings.turnNotifications}
                           onChange={(e) => handleChange('turnNotifications', e.target.checked)}
-                          disabled={!localSettings.enableNotifications}
+                          disabled={!localSettings.notificationsEnabled}
+
+
+
                         />
                       }
                       label="Turn Notifications"
@@ -641,7 +595,8 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open, onClose }) => {
                         <Switch
                           checked={localSettings.combatNotifications}
                           onChange={(e) => handleChange('combatNotifications', e.target.checked)}
-                          disabled={!localSettings.enableNotifications}
+                          disabled={!localSettings.notificationsEnabled}
+
                         />
                       }
                       label="Combat Notifications"
@@ -653,7 +608,7 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open, onClose }) => {
                         <Switch
                           checked={localSettings.diplomaticNotifications}
                           onChange={(e) => handleChange('diplomaticNotifications', e.target.checked)}
-                          disabled={!localSettings.enableNotifications}
+                          disabled={!localSettings.notificationsEnabled}
                         />
                       }
                       label="Diplomatic Notifications"
@@ -665,7 +620,7 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open, onClose }) => {
                         <Switch
                           checked={localSettings.achievementNotifications}
                           onChange={(e) => handleChange('achievementNotifications', e.target.checked)}
-                          disabled={!localSettings.enableNotifications}
+                          disabled={!localSettings.notificationsEnabled}
                         />
                       }
                       label="Achievement Notifications"

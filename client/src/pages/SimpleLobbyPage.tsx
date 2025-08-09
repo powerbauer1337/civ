@@ -17,9 +17,6 @@ import {
   DialogActions,
   AppBar,
   Toolbar,
-  List,
-  ListItem,
-  ListItemText,
   CircularProgress,
   Snackbar,
   Alert,
@@ -65,15 +62,6 @@ interface GameListResponse {
   hasMore: boolean
 }
 
-interface CreateGameRequest {
-  name: string
-  maxPlayers?: number
-}
-
-interface JoinGameRequest {
-  username: string
-  civilization?: string
-}
 
 const SimpleLobbyPage: React.FC = () => {
   const navigate = useNavigate()
@@ -382,7 +370,7 @@ const SimpleLobbyPage: React.FC = () => {
             startIcon={<RefreshIcon />}
             variant="outlined"
             color="inherit"
-            onClick={fetchGames}
+            onClick={() => fetchGames()}
           >
             Refresh
           </Button>

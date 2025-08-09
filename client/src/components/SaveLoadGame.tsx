@@ -23,7 +23,6 @@ import {
   Grid,
   Tooltip,
   Divider,
-  Avatar
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -35,7 +34,6 @@ import {
   SportsEsports,
   People,
   Map as MapIcon,
-  EmojiEvents,
   AutorenewRounded,
   BookmarkBorder,
   Bookmark
@@ -101,12 +99,12 @@ const SaveLoadGame: React.FC<SaveLoadGameProps> = ({
     setLoading(true);
     socket.emit('get_saves', { playerId });
 
-    socket.once('saves_list', (data) => {
+    socket.once('saves_list', (data: any) => {
       setSaves(data.saves);
       setLoading(false);
     });
 
-    socket.once('error', (data) => {
+    socket.once('error', (data: any) => {
       setError(data.message || 'Failed to load saves');
       setLoading(false);
     });
@@ -129,7 +127,7 @@ const SaveLoadGame: React.FC<SaveLoadGameProps> = ({
       gameState
     });
 
-    socket.once('game_saved', (data) => {
+    socket.once('game_saved', (data: any) => {
       setSaving(false);
       setSuccess('Game saved successfully!');
       onGameSaved?.(data.saveId);
@@ -145,7 +143,7 @@ const SaveLoadGame: React.FC<SaveLoadGameProps> = ({
       }, 3000);
     });
 
-    socket.once('save_error', (data) => {
+    socket.once('save_error', (data: any) => {
       setSaving(false);
       setError(data.message || 'Failed to save game');
     });
@@ -166,7 +164,7 @@ const SaveLoadGame: React.FC<SaveLoadGameProps> = ({
       playerId
     });
 
-    socket.once('game_loaded', (data) => {
+    socket.once('game_loaded', (data: any) => {
       setLoading(false);
       dispatch(setGameState(data.gameState));
       onGameLoaded?.(data.gameState);
@@ -177,7 +175,7 @@ const SaveLoadGame: React.FC<SaveLoadGameProps> = ({
       }, 1000);
     });
 
-    socket.once('load_error', (data) => {
+    socket.once('load_error', (data: any) => {
       setLoading(false);
       setError(data.message || 'Failed to load game');
     });
@@ -236,7 +234,7 @@ const SaveLoadGame: React.FC<SaveLoadGameProps> = ({
         </Box>
       </DialogTitle>
 
-      <DialogContent divider>
+      <DialogContent dividers>
         {mode === 'both' && (
           <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ mb: 2 }}>
             <Tab icon={<SaveIcon />} label="Save Game" />
@@ -277,14 +275,16 @@ const SaveLoadGame: React.FC<SaveLoadGameProps> = ({
                       />
                       <Chip
                         icon={<People />}
-                        label={`${Object.keys(gameState.players).length} Players`}
+                        label={`${gameState.players?.length || 0} Players`}
                         size="small"
                       />
-                      <Chip
-                        icon={<MapIcon />}
-                        label={`${gameState.map[0].length}x${gameState.map.length}`}
-                        size="small"
-                      />
+                      {gameState.map && (
+                        <Chip
+                          icon={<MapIcon />}
+                          label={`${gameState.map.width || 0}x${gameState.map.height || 0}`}
+                          size="small"
+                        />
+                      )}
                     </Box>
                   </Grid>
                 )}

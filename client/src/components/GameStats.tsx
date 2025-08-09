@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -26,7 +26,6 @@ import {
   TableRow,
   Card,
   CardContent,
-  Divider,
   CircularProgress,
   useTheme
 } from '@mui/material';
@@ -43,13 +42,10 @@ import {
   Terrain,
   Assessment,
   Star,
-  WorkspacePremium,
-  MilitaryTech,
-  Biotech,
   Castle,
   Flag
 } from '@mui/icons-material';
-import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store/store';
 
@@ -76,7 +72,6 @@ interface GameStatsProps {
 const GameStats: React.FC<GameStatsProps> = ({ open, onClose }) => {
   const theme = useTheme();
   const gameState = useSelector((state: RootState) => state.game.gameState);
-  const currentPlayer = useSelector((state: RootState) => state.game.currentPlayer);
   const [tabValue, setTabValue] = useState(0);
 
   // Mock data for demonstration - replace with actual game data
@@ -189,7 +184,7 @@ const GameStats: React.FC<GameStatsProps> = ({ open, onClose }) => {
         </Box>
       </DialogTitle>
 
-      <DialogContent divider>
+      <DialogContent dividers>
         <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)}>
           <Tab icon={<Assessment />} label="Overview" />
           <Tab icon={<TrendingUp />} label="Graphs" />
