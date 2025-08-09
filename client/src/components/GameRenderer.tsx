@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Box, Typography, Paper } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import { GameState } from '@civ-game/shared'
 import Phaser from 'phaser'
 
@@ -25,7 +25,7 @@ class GameScene extends Phaser.Scene {
     this.cameras.main.setZoom(0.8)
     
     // Add input handling
-    this.input.on('wheel', (pointer: any, gameObjects: any, deltaX: number, deltaY: number) => {
+    this.input.on('wheel', (_pointer: any, _gameObjects: any, _deltaX: number, deltaY: number) => {
       const camera = this.cameras.main
       const zoomFactor = deltaY > 0 ? 0.9 : 1.1
       camera.setZoom(Phaser.Math.Clamp(camera.zoom * zoomFactor, 0.3, 2.0))
@@ -70,7 +70,7 @@ class GameScene extends Phaser.Scene {
         hex.lineStyle(1, 0x000000, 0.3)
         
         // Draw hexagon
-        const points = []
+        const points: number[] = []
         for (let i = 0; i < 6; i++) {
           const angle = (Math.PI / 3) * i
           points.push(x + hexSize * Math.cos(angle))
@@ -170,7 +170,7 @@ const GameRenderer: React.FC<GameRendererProps> = ({ gameState }) => {
         physics: {
           default: 'arcade',
           arcade: {
-            gravity: { y: 0 },
+            gravity: { x: 0, y: 0 },
             debug: false
           }
         }

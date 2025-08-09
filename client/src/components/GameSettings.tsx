@@ -12,12 +12,13 @@ import {
   Slider,
   Switch,
   FormControlLabel,
-  FormControlLabel,
   FormGroup,
+  FormControl,
+  InputLabel,
   Select,
   MenuItem,
   Paper,
-  Box,
+  Grid,
   List,
   ListItem,
   ListItemText,
@@ -30,8 +31,9 @@ import {
   Gamepad,
   Interface,
   Notifications,
-  KeyboardAlt,
-  Save
+  Keyboard,
+  Save,
+  RestoreOutlined
 } from '@mui/icons-material';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store/store';
@@ -206,7 +208,7 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open, onClose }) => {
         </Box>
       </DialogTitle>
 
-      <DialogContent divider>
+      <DialogContent dividers>
         {unsavedChanges && (
           <Alert severity="warning" sx={{ mb: 2 }}>
             You have unsaved changes. Click Save to apply them.
@@ -215,8 +217,8 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open, onClose }) => {
 
         <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)}>
           <Tab icon={<VideoSettings />} label="Graphics" />
-          <Tab icon={<AudioTrack />} label="Audio" />
-          <Tab icon={<Gamepad2 />} label="Gameplay" />
+          <Tab icon={<Audiotrack />} label="Audio" />
+          <Tab icon={<Gamepad />} label="Gameplay" />
           <Tab icon={<Settings />} label="Interface" />
           <Tab icon={<Notifications />} label="Notifications" />
           <Tab icon={<Keyboard />} label="Controls" />
