@@ -12,38 +12,26 @@ import {
   Slider,
   Switch,
   FormControlLabel,
-  FormControl,
-  FormLabel,
-  RadioGroup,
-  Radio,
+  FormControlLabel,
+  FormGroup,
   Select,
   MenuItem,
-  InputLabel,
-  TextField,
-  Grid,
   Paper,
-  Divider,
+  Box,
   List,
   ListItem,
   ListItemText,
-  ListItemSecondaryAction,
-  IconButton,
-  Chip,
-  Alert,
-  Tooltip
+  Alert
 } from '@mui/material';
 import {
   Settings,
   VideoSettings,
-  AudioTrack,
-  Gamepad2,
+  Audiotrack,
+  Gamepad,
+  Interface,
   Notifications,
-  Keyboard,
-  Mouse,
-  RestoreOutlined,
-  Save,
-  Info,
-  Warning
+  KeyboardAlt,
+  Save
 } from '@mui/icons-material';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store/store';

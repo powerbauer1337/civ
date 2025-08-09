@@ -18,7 +18,6 @@ import {
   FormControlLabel,
   Collapse,
   Paper,
-  Button,
   useTheme,
   alpha
 } from '@mui/material';
@@ -36,21 +35,15 @@ import {
   VolumeOff,
   Fullscreen,
   FullscreenExit,
-  Map as MapIcon,
   Timeline,
   EmojiEvents,
   Group,
-  ChatBubble,
-  Notifications,
   BugReport,
-  Info,
   School,
   KeyboardArrowDown,
   KeyboardArrowUp,
-  Speed,
   Brightness4,
   Brightness7,
-  Language,
   Security,
   CloudSync
 } from '@mui/icons-material';
@@ -78,7 +71,7 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
   const dispatch = useDispatch();
   const gameState = useSelector((state: RootState) => state.game.gameState);
   const settings = useSelector((state: RootState) => state.game.settings);
-  const player = useSelector((state: RootState) => state.game.currentPlayer);
+  const currentPlayer = useSelector((state: RootState) => state.game.currentPlayer);
   
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saveLoadOpen, setSaveLoadOpen] = useState(false);
@@ -86,7 +79,7 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
   const [helpOpen, setHelpOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<string[]>([]);
-  const [notifications, setNotifications] = useState(3); // Example notification count
+  const [notifications] = useState(3); // Example notification count
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => 
@@ -100,7 +93,7 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
     setDrawerOpen(!drawerOpen);
   };
 
-  const handleSaveLoad = (mode: 'save' | 'load') => {
+  const handleSaveLoad = (_mode: 'save' | 'load') => {
     setSaveLoadOpen(true);
     setDrawerOpen(false);
   };
@@ -196,10 +189,10 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
                 fontSize: '1.5rem'
               }}
             >
-              {player?.name?.charAt(0) || 'P'}
+              {currentPlayer?.charAt(0) || 'P'}
             </Avatar>
             <Box>
-              <Typography variant="h6">{player?.name || 'Player'}</Typography>
+              <Typography variant="h6">{currentPlayer || 'Player'}</Typography>
               <Box display="flex" gap={0.5}>
                 <Chip
                   size="small"
@@ -212,7 +205,7 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
                 <Chip
                   size="small"
                   icon={<EmojiEvents sx={{ fontSize: 16 }} />}
-                  label={player?.score || 0}
+                  label={gameState?.players?.find(p => p.id === currentPlayer)?.score || 0}
                   sx={{ 
                     backgroundColor: alpha(theme.palette.common.white, 0.2),
                     color: 'white'
@@ -289,14 +282,14 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={settings?.fullscreen || false}
+                      checked={settings?.isFullscreen || false}
                       onChange={() => dispatch(toggleFullscreen())}
                       size="small"
                     />
                   }
                   label={
                     <Box display="flex" alignItems="center" gap={0.5}>
-                      {settings?.fullscreen ? <FullscreenExit fontSize="small" /> : <Fullscreen fontSize="small" />}
+                      {settings?.isFullscreen ? <FullscreenExit fontSize="small" /> : <Fullscreen fontSize="small" />}
                       <Typography variant="body2">Fullscreen</Typography>
                     </Box>
                   }
