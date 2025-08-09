@@ -29,6 +29,8 @@
     "rate-limiter-flexible": "^3.0.0",
     "redis": "^4.6.0",
     "socket.io": "^4.7.0",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
     "uuid": "^11.1.0",
     "zod": "^3.22.0"
   },
