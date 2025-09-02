@@ -6,7 +6,8 @@ import * as zlib from 'zlib';
 import { promisify } from 'util';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
-import { GameState, PlayerInfo, GameAction } from '@civ-game/shared';
+import { PlayerInfo } from '@civ-game/shared';
+import { GameState, GameAction } from '../shared-types';
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
@@ -111,7 +112,7 @@ export class GamePersistence {
       const compressedState = await this.compressData(options.gameState);
       const compressedMap = options.mapData ? 
         await this.compressData(options.mapData) : 
-        await this.compressData(options.gameState.map);
+        await this.compressData(options.gameState.board);
 
       const saveResult = await this.db.run(
         `INSERT INTO game_saves (
@@ -120,8 +121,8 @@ export class GamePersistence {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           options.gameId,
-          options.saveName || `Turn ${options.gameState.turn}`,
-          options.gameState.turn,
+          options.saveName || `Turn ${options.gameState.currentTurn}`,
+          options.gameState.currentTurn,
           options.saveType,
           compressedState,
           compressedMap,
@@ -133,7 +134,7 @@ export class GamePersistence {
       // Update game last activity
       await this.db.run(
         'UPDATE games SET last_activity = CURRENT_TIMESTAMP, turn_count = ? WHERE id = ?',
-        [options.gameState.turn, options.gameId]
+        [options.gameState.currentTurn, options.gameId]
       );
 
       // Cleanup old auto-saves (keep last 5)
@@ -183,8 +184,8 @@ export class GamePersistence {
       const mapData = await this.decompressData(save.map_data);
 
       // Merge map data if stored separately
-      if (mapData && !gameState.map) {
-        gameState.map = mapData;
+      if (mapData && !gameState.board) {
+        gameState.board = mapData;
       }
 
       return gameState;
@@ -216,8 +217,8 @@ export class GamePersistence {
           gameState.id,
           `Game ${new Date().toLocaleDateString()}`,
           hostPlayerId,
-          gameState.map[0].length,
-          gameState.map.length,
+          gameState.board.width,
+          gameState.board.height,
           gameState.config.maxPlayers,
           gameMode,
           difficulty || null,
@@ -229,7 +230,21 @@ export class GamePersistence {
 
       // Add participants
       for (const [playerId, player] of Object.entries(gameState.players)) {
-        await this.addGameParticipant(gameState.id, playerId, player);
+        // Convert Player to PlayerInfo
+        const playerInfo: PlayerInfo = {
+          id: player.id,
+          name: player.username,
+          color: player.color,
+          civilization: player.civilization,
+          resources: {
+            ...player.resources,
+            culture: 0 // Add missing culture resource
+          },
+          technologies: new Set(), // Initialize empty for now
+          isActive: true,
+          score: 0
+        };
+        await this.addGameParticipant(gameState.id, playerId, playerInfo);
       }
     } catch (error) {
       console.error('Failed to create game record:', error);
@@ -293,7 +308,7 @@ export class GamePersistence {
     }
 
     // Also insert immediately for important actions
-    if (action.type === 'END_TURN' || action.type === 'FOUND_CITY') {
+    if (action.type === 'end_turn' || action.type === 'found_city') {
       await this.db.run(
         `INSERT INTO game_actions (
           game_id, turn_number, action_index, player_id,
@@ -335,7 +350,7 @@ export class GamePersistence {
         .map(([key, value]) => `${this.camelToSnake(key)} = ${this.camelToSnake(key)} + ?`)
         .join(', ');
       
-      const values = Object.values(stats);
+      const values: (string | number)[] = Object.values(stats);
       values.push(playerId, gameId);
 
       await this.db.run(

@@ -1,13 +1,13 @@
 import { 
-  GameState, 
-  GameAction, 
-  GameActionType,
   Position, 
   UnitType, 
   TerrainType,
+  TerrainFeature,
   TechnologyType,
-  BuildingType
+  BuildingType,
+  GameActionType
 } from '@civ-game/shared';
+import { GameState, GameAction } from '../shared-types';
 import { HexMap } from './HexMap';
 import { GameEngine } from './GameEngine';
 
@@ -106,7 +106,7 @@ export class AIPlayer {
     const actions: GameAction[] = [];
     const player = gameState.players[this.playerId];
     
-    if (!player || gameState.currentPlayer !== this.playerId) {
+    if (!player || gameState.currentPlayer.toString() !== this.playerId) {
       return actions;
     }
 
@@ -157,7 +157,7 @@ export class AIPlayer {
     
     // Always end turn
     actions.push({
-      type: ActionType.EndTurn,
+      type: GameActionType.END_TURN,
       playerId: this.playerId,
       data: {}
     });
@@ -174,24 +174,24 @@ export class AIPlayer {
     // Update known enemy positions
     this.knownEnemyPositions.clear();
     
-    gameState.map.forEach((row, r) => {
+    gameState.board.tiles.forEach((row, r) => {
       row.forEach((tile, q) => {
         const tileKey = `${q},${r}`;
         
         // Mark explored tiles
-        if (this.canSeeTile(gameState, { q, r })) {
+        if (this.canSeeTile(gameState, { x: q, y: r })) {
           this.exploredTiles.add(tileKey);
           
           // Track enemy units and cities
           if (tile.unit && tile.unit.owner !== this.playerId) {
             const enemyPositions = this.knownEnemyPositions.get(tile.unit.owner) || [];
-            enemyPositions.push({ q, r });
+            enemyPositions.push({ x: q, y: r });
             this.knownEnemyPositions.set(tile.unit.owner, enemyPositions);
           }
           
           if (tile.city && tile.city.owner !== this.playerId) {
             const enemyPositions = this.knownEnemyPositions.get(tile.city.owner) || [];
-            enemyPositions.push({ q, r });
+            enemyPositions.push({ x: q, y: r });
             this.knownEnemyPositions.set(tile.city.owner, enemyPositions);
           }
         }
@@ -212,12 +212,12 @@ export class AIPlayer {
     }
     
     // Explore if early game
-    if (gameState.turn < 20 && this.exploredTiles.size < 100) {
+    if (gameState.currentTurn < 20 && this.exploredTiles.size < 100) {
       return 'explore';
     }
     
     // Expand if we have settlers and good locations
-    const hasSettler = player.units.some(u => u.type === UnitType.Settler);
+    const hasSettler = player.units.some(u => u.type === UnitType.SETTLER);
     if (hasSettler && player.cities.length < 3) {
       return 'expand';
     }
@@ -228,7 +228,7 @@ export class AIPlayer {
     }
     
     // Default to balanced approach
-    return gameState.turn < 50 ? 'expand' : 'defend';
+    return gameState.currentTurn < 50 ? 'expand' : 'defend';
   }
 
   /**
@@ -238,16 +238,16 @@ export class AIPlayer {
     const decisions: AIDecision[] = [];
     
     switch (unit.type) {
-      case UnitType.Settler:
+      case UnitType.SETTLER:
         decisions.push(...this.getSettlerDecisions(gameState, unit));
         break;
-      case UnitType.Warrior:
+      case UnitType.WARRIOR:
         decisions.push(...this.getWarriorDecisions(gameState, unit));
         break;
-      case UnitType.Scout:
+      case UnitType.SCOUT:
         decisions.push(...this.getScoutDecisions(gameState, unit));
         break;
-      case UnitType.Worker:
+      case UnitType.WORKER:
         decisions.push(...this.getWorkerDecisions(gameState, unit));
         break;
     }
@@ -266,11 +266,11 @@ export class AIPlayer {
       const bestTarget = targets[0];
       
       // Check if at target location
-      if (unit.position.q === bestTarget.position.q && unit.position.r === bestTarget.position.r) {
+      if (unit.position.x === bestTarget.position.x && unit.position.y === bestTarget.position.y) {
         // Found city
         decisions.push({
           action: {
-            type: ActionType.FoundCity,
+            type: GameActionType.FOUND_CITY,
             playerId: this.playerId,
             data: {
               position: unit.position,
@@ -286,7 +286,7 @@ export class AIPlayer {
         if (path && path.length > 0) {
           decisions.push({
             action: {
-              type: ActionType.MoveUnit,
+              type: GameActionType.MOVE_UNIT,
               playerId: this.playerId,
               data: {
                 from: unit.position,
@@ -311,13 +311,13 @@ export class AIPlayer {
     const threats = this.assessThreats(gameState);
     
     // Check for adjacent enemies to attack
-    const neighbors = this.hexMap.getNeighbors(unit.position.q, unit.position.r);
+    const neighbors = this.hexMap.getNeighbors(unit.position.x, unit.position.y);
     for (const neighbor of neighbors) {
-      const tile = gameState.map[neighbor.r]?.[neighbor.q];
+      const tile = gameState.board[neighbor.y]?.[neighbor.x];
       if (tile?.unit && tile.unit.owner !== this.playerId) {
         decisions.push({
           action: {
-            type: ActionType.Attack,
+            type: GameActionType.ATTACK_UNIT,
             playerId: this.playerId,
             data: {
               attacker: unit.position,
@@ -325,7 +325,7 @@ export class AIPlayer {
             }
           },
           priority: this.personality === AIPersonality.Aggressive ? 9 : 7,
-          reasoning: `Attack enemy unit at ${neighbor.q},${neighbor.r}`
+          reasoning: `Attack enemy unit at ${neighbor.x},${neighbor.y}`
         });
       }
     }
@@ -338,7 +338,7 @@ export class AIPlayer {
       if (path && path.length > 0) {
         decisions.push({
           action: {
-            type: ActionType.MoveUnit,
+            type: GameActionType.MOVE_UNIT,
             playerId: this.playerId,
             data: {
               from: unit.position,
@@ -359,7 +359,7 @@ export class AIPlayer {
         if (path && path.length > 0) {
           decisions.push({
             action: {
-              type: ActionType.MoveUnit,
+              type: GameActionType.MOVE_UNIT,
               playerId: this.playerId,
               data: {
                 from: unit.position,
@@ -394,7 +394,7 @@ export class AIPlayer {
         
         decisions.push({
           action: {
-            type: ActionType.MoveUnit,
+            type: GameActionType.MOVE_UNIT,
             playerId: this.playerId,
             data: {
               from: unit.position,
@@ -419,21 +419,21 @@ export class AIPlayer {
     
     // Find tiles near cities that need improvement
     player.cities.forEach(city => {
-      const nearbyTiles = this.hexMap.getTilesInRange(city.position.q, city.position.r, 2);
+      const nearbyTiles = this.hexMap.getTilesInRange(city.position.x, city.position.y, 2);
       
       nearbyTiles.forEach(tilePos => {
-        const tile = gameState.map[tilePos.r]?.[tilePos.q];
-        if (tile && !tile.improvement && tile.terrain !== TerrainType.Ocean) {
-          const distance = this.hexMap.getDistance(
-            unit.position.q, unit.position.r,
-            tilePos.q, tilePos.r
+        const tile = gameState.board[tilePos.y]?.[tilePos.x];
+        if (tile && !tile.improvement && tile.terrain !== TerrainType.OCEAN) {
+          const distance = this.hexMap.calculateDistance(
+            unit.position.x, unit.position.y,
+            tilePos.x, tilePos.y
           );
           
           if (distance === 0) {
             // Build improvement
             decisions.push({
               action: {
-                type: ActionType.BuildImprovement,
+                type: GameActionType.BUILD_IMPROVEMENT,
                 playerId: this.playerId,
                 data: {
                   position: unit.position,
@@ -449,7 +449,7 @@ export class AIPlayer {
             if (path && path.length > 0) {
               decisions.push({
                 action: {
-                  type: ActionType.MoveUnit,
+                  type: GameActionType.MOVE_UNIT,
                   playerId: this.playerId,
                   data: {
                     from: unit.position,
@@ -482,29 +482,29 @@ export class AIPlayer {
       
       // Production based on strategy and personality
       if (this.currentStrategy === 'defend' || player.units.length < 3) {
-        productionChoice = { type: 'unit', item: UnitType.Warrior };
+        productionChoice = { type: 'unit', item: UnitType.WARRIOR };
         priority = 8;
       } else if (this.currentStrategy === 'expand' && player.cities.length < 4) {
-        productionChoice = { type: 'unit', item: UnitType.Settler };
+        productionChoice = { type: 'unit', item: UnitType.SETTLER };
         priority = 9;
-      } else if (this.currentStrategy === 'explore' && !player.units.some(u => u.type === UnitType.Scout)) {
-        productionChoice = { type: 'unit', item: UnitType.Scout };
+      } else if (this.currentStrategy === 'explore' && !player.units.some(u => u.type === UnitType.SCOUT)) {
+        productionChoice = { type: 'unit', item: UnitType.SCOUT };
         priority = 7;
       } else if (this.personality === AIPersonality.Economic) {
-        productionChoice = { type: 'building', item: BuildingType.Granary };
+        productionChoice = { type: 'building', item: BuildingType.GRANARY };
         priority = 6;
       } else if (this.personality === AIPersonality.Scientific) {
-        productionChoice = { type: 'building', item: BuildingType.Library };
+        productionChoice = { type: 'building', item: BuildingType.LIBRARY };
         priority = 6;
       } else {
         // Default to warrior
-        productionChoice = { type: 'unit', item: UnitType.Warrior };
+        productionChoice = { type: 'unit', item: UnitType.WARRIOR };
         priority = 5;
       }
       
       decisions.push({
         action: {
-          type: ActionType.SetProduction,
+          type: GameActionType.CHANGE_PRODUCTION,
           playerId: this.playerId,
           data: {
             cityId: city.id,
@@ -535,16 +535,16 @@ export class AIPlayer {
         let chosenTech = availableTechs[0];
         
         if (this.personality === AIPersonality.Scientific) {
-          chosenTech = availableTechs.find(t => t === TechnologyType.Writing) || availableTechs[0];
+          chosenTech = availableTechs[0]; // Use first available tech
         } else if (this.personality === AIPersonality.Economic) {
-          chosenTech = availableTechs.find(t => t === TechnologyType.Agriculture) || availableTechs[0];
+          chosenTech = availableTechs[0]; // Use first available tech
         } else if (this.personality === AIPersonality.Aggressive) {
-          chosenTech = availableTechs.find(t => t === TechnologyType.BronzeWorking) || availableTechs[0];
+          chosenTech = availableTechs[0]; // Use first available tech
         }
         
         decisions.push({
           action: {
-            type: ActionType.Research,
+            type: GameActionType.RESEARCH_TECHNOLOGY,
             playerId: this.playerId,
             data: {
               technology: chosenTech
@@ -567,12 +567,12 @@ export class AIPlayer {
     
     // Check if any unit can see this tile
     for (const unit of player.units) {
-      const distance = this.hexMap.getDistance(
-        unit.position.q, unit.position.r,
-        position.q, position.r
+      const distance = this.hexMap.calculateDistance(
+        unit.position.x, unit.position.y,
+        position.x, position.y
       );
       
-      const visionRange = unit.type === UnitType.Scout ? 3 + visionBonus : 2 + visionBonus;
+      const visionRange = unit.type === UnitType.SCOUT ? 3 + visionBonus : 2 + visionBonus;
       if (distance <= visionRange) {
         return true;
       }
@@ -580,9 +580,9 @@ export class AIPlayer {
     
     // Check if any city can see this tile
     for (const city of player.cities) {
-      const distance = this.hexMap.getDistance(
-        city.position.q, city.position.r,
-        position.q, position.r
+      const distance = this.hexMap.calculateDistance(
+        city.position.x, city.position.y,
+        position.x, position.y
       );
       
       if (distance <= 2 + visionBonus) {
@@ -605,9 +605,9 @@ export class AIPlayer {
         
         // Distance to cities (highest priority)
         player.cities.forEach(city => {
-          const distance = this.hexMap.getDistance(
-            city.position.q, city.position.r,
-            pos.q, pos.r
+          const distance = this.hexMap.calculateDistance(
+            city.position.x, city.position.y,
+            pos.x, pos.y
           );
           minDistance = Math.min(minDistance, distance);
           
@@ -618,17 +618,17 @@ export class AIPlayer {
         
         // Distance to units
         player.units.forEach(unit => {
-          const distance = this.hexMap.getDistance(
-            unit.position.q, unit.position.r,
-            pos.q, pos.r
+          const distance = this.hexMap.calculateDistance(
+            unit.position.x, unit.position.y,
+            pos.x, pos.y
           );
           
-          if (distance <= 2 && unit.type === UnitType.Settler) {
+          if (distance <= 2 && unit.type === UnitType.SETTLER) {
             threatLevel = Math.max(threatLevel, 8);
           }
         });
         
-        const tile = gameState.map[pos.r][pos.q];
+        const tile = gameState.board[pos.y][pos.x];
         threats.push({
           position: pos,
           threatLevel,
@@ -646,18 +646,18 @@ export class AIPlayer {
     const player = gameState.players[this.playerId];
     
     // Scan map for good city locations
-    gameState.map.forEach((row, r) => {
+    gameState.board.forEach((row, r) => {
       row.forEach((tile, q) => {
-        if (this.isValidCityLocation(gameState, { q, r })) {
-          const score = this.evaluateCityLocation(gameState, { q, r });
-          const nearestCity = this.findNearestCity(gameState, { q, r });
+        if (this.isValidCityLocation(gameState, { x: q, y: r })) {
+          const score = this.evaluateCityLocation(gameState, { x: q, y: r });
+          const nearestCity = this.findNearestCity(gameState, { x: q, y: r });
           const distance = nearestCity ? 
-            this.hexMap.getDistance(nearestCity.position.q, nearestCity.position.r, q, r) : 0;
+            this.hexMap.calculateDistance(nearestCity.position.x, nearestCity.position.y, q, r) : 0;
           
           targets.push({
-            position: { q, r },
+            position: { x: q, y: r },
             score,
-            resources: this.findNearbyResources(gameState, { q, r }),
+            resources: this.findNearbyResources(gameState, { x: q, y: r }),
             distance
           });
         }
@@ -668,19 +668,19 @@ export class AIPlayer {
   }
 
   private isValidCityLocation(gameState: GameState, position: Position): boolean {
-    const tile = gameState.map[position.r][position.q];
+    const tile = gameState.board[position.y][position.x];
     
     // Can't build on water or existing cities
-    if (tile.terrain === TerrainType.Ocean || tile.city) {
+    if (tile.terrain === TerrainType.OCEAN || tile.city) {
       return false;
     }
     
     // Check minimum distance from other cities
     const player = gameState.players[this.playerId];
     for (const city of player.cities) {
-      const distance = this.hexMap.getDistance(
-        city.position.q, city.position.r,
-        position.q, position.r
+      const distance = this.hexMap.calculateDistance(
+        city.position.x, city.position.y,
+        position.x, position.y
       );
       if (distance < 4) {
         return false;
@@ -694,19 +694,19 @@ export class AIPlayer {
     let score = 0;
     
     // Check surrounding tiles
-    const nearbyTiles = this.hexMap.getTilesInRange(position.q, position.r, 2);
+    const nearbyTiles = this.hexMap.getTilesInRange(position.x, position.y, 2);
     
     nearbyTiles.forEach(tilePos => {
-      const tile = gameState.map[tilePos.r]?.[tilePos.q];
+      const tile = gameState.board[tilePos.y]?.[tilePos.x];
       if (tile) {
         // Score based on terrain
         switch (tile.terrain) {
-          case TerrainType.Grassland: score += 3; break;
-          case TerrainType.Plains: score += 2; break;
-          case TerrainType.Hills: score += 1; break;
-          case TerrainType.Forest: score += 2; break;
-          case TerrainType.Desert: score -= 1; break;
-          case TerrainType.Tundra: score -= 2; break;
+          case TerrainType.GRASSLAND: score += 3; break;
+          case TerrainType.PLAINS: score += 2; break;
+          case TerrainType.HILLS: score += 1; break;
+          case TerrainFeature.FOREST: score += 2; break;
+          case TerrainType.DESERT: score -= 1; break;
+          case TerrainType.TUNDRA: score -= 2; break;
         }
         
         // Bonus for resources
@@ -726,10 +726,10 @@ export class AIPlayer {
 
   private findNearbyResources(gameState: GameState, position: Position): string[] {
     const resources: string[] = [];
-    const nearbyTiles = this.hexMap.getTilesInRange(position.q, position.r, 2);
+    const nearbyTiles = this.hexMap.getTilesInRange(position.x, position.y, 2);
     
     nearbyTiles.forEach(tilePos => {
-      const tile = gameState.map[tilePos.r]?.[tilePos.q];
+      const tile = gameState.board[tilePos.y]?.[tilePos.x];
       if (tile?.resource) {
         resources.push(tile.resource);
       }
@@ -744,9 +744,9 @@ export class AIPlayer {
     let minDistance = Infinity;
     
     player.cities.forEach(city => {
-      const distance = this.hexMap.getDistance(
-        city.position.q, city.position.r,
-        position.q, position.r
+      const distance = this.hexMap.calculateDistance(
+        city.position.x, city.position.y,
+        position.x, position.y
       );
       if (distance < minDistance) {
         minDistance = distance;
@@ -761,14 +761,14 @@ export class AIPlayer {
     let nearestTile: Position | null = null;
     let minDistance = Infinity;
     
-    gameState.map.forEach((row, r) => {
+    gameState.board.forEach((row, r) => {
       row.forEach((tile, q) => {
         const tileKey = `${q},${r}`;
-        if (!this.exploredTiles.has(tileKey) && tile.terrain !== TerrainType.Ocean) {
-          const distance = this.hexMap.getDistance(position.q, position.r, q, r);
+        if (!this.exploredTiles.has(tileKey) && tile.terrain !== TerrainType.OCEAN) {
+          const distance = this.hexMap.calculateDistance(position.x, position.y, q, r);
           if (distance < minDistance) {
             minDistance = distance;
-            nearestTile = { q, r };
+            nearestTile = { x: q, y: r };
           }
         }
       });
@@ -781,20 +781,20 @@ export class AIPlayer {
     // Simple pathfinding - just move toward target
     // In production, use A* or similar algorithm
     const path: Position[] = [];
-    const dx = to.q - from.q;
-    const dr = to.r - from.r;
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
     
     let next: Position = { ...from };
     
-    if (Math.abs(dx) > Math.abs(dr)) {
-      next.q += Math.sign(dx);
+    if (Math.abs(dx) > Math.abs(dy)) {
+      next.x += Math.sign(dx);
     } else {
-      next.r += Math.sign(dr);
+      next.y += Math.sign(dy);
     }
     
     // Check if move is valid
-    const tile = gameState.map[next.r]?.[next.q];
-    if (tile && tile.terrain !== TerrainType.Ocean && !tile.unit) {
+    const tile = gameState.board[next.y]?.[next.x];
+    if (tile && tile.terrain !== TerrainType.OCEAN && !tile.unit) {
       path.push(next);
     }
     
@@ -807,10 +807,10 @@ export class AIPlayer {
     }
     
     switch (tile.terrain) {
-      case TerrainType.Grassland:
-      case TerrainType.Plains:
+      case TerrainType.GRASSLAND:
+      case TerrainType.PLAINS:
         return 'farm';
-      case TerrainType.Hills:
+      case TerrainType.HILLS:
         return 'mine';
       default:
         return 'road';

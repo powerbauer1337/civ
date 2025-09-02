@@ -7,6 +7,7 @@ import { config } from './config/config';
 
 // Import new modular components
 import GameService from './services/GameService';
+import { GameManager } from './game/GameManager';
 import { GameController } from './controllers/GameController';
 import { PlayerController } from './controllers/PlayerController';
 import { SocketHandler } from './websocket/SocketHandler';
@@ -30,7 +31,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Initialize services
 const gameService = new GameService();
-const gameController = new GameController(gameService);
+const gameManager = new GameManager(io);
+const gameController = new GameController(gameManager);
 const playerController = new PlayerController(gameService);
 
 // Initialize WebSocket handling
@@ -83,13 +85,8 @@ app.get('/api', (req, res) => {
   });
 });
 
-// Game routes
-app.get('/api/games', gameController.getAllGames);
-app.post('/api/games', gameController.createGame);
-app.get('/api/games/stats', gameController.getStats);
-app.get('/api/games/:id', gameController.getGame);
-app.post('/api/games/:id/join', gameController.joinGame);
-app.delete('/api/games/:id', gameController.deleteGame);
+// Game routes - use the router
+app.use('/api/games', gameController.router);
 
 // Player routes
 app.get('/api/players', playerController.getAllPlayers);

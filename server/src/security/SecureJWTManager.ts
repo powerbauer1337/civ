@@ -236,7 +236,7 @@ export class SecureJWTManager {
 
     const tokenOptions: jwt.SignOptions = {
       algorithm: keyInfo.algorithm as jwt.Algorithm,
-      expiresIn: validatedOptions.expiresIn,
+      expiresIn: validatedOptions.expiresIn as string | number,
       issuer: validatedOptions.issuer,
       audience: validatedOptions.audience,
       jwtid: jwtId,
@@ -261,12 +261,13 @@ export class SecureJWTManager {
   async verify(token: string, options: jwt.VerifyOptions = {}): Promise<JWTPayload> {
     // Check blacklist first
     const decoded = jwt.decode(token, { complete: true });
-    if (!decoded || typeof decoded === 'string' || !decoded.payload.jti) {
+    if (!decoded || typeof decoded === 'string' || typeof decoded.payload === 'string' || !decoded.payload.jti) {
       throw new Error('Invalid token format');
     }
 
-    if (this.blacklist.has(decoded.payload.jti)) {
-      const entry = this.blacklist.get(decoded.payload.jti)!;
+    const payload = decoded.payload as JWTPayload;
+    if (this.blacklist.has(payload.jti!)) {
+      const entry = this.blacklist.get(payload.jti!)!;
       throw new Error(`Token has been blacklisted: ${entry.reason}`);
     }
 
@@ -297,7 +298,7 @@ export class SecureJWTManager {
         userId: validatedPayload.userId 
       });
       
-      return validatedPayload;
+      return validatedPayload as JWTPayload;
     } catch (error) {
       console.warn('JWT verification failed', { 
         error: (error as Error).message, 
@@ -312,21 +313,22 @@ export class SecureJWTManager {
    */
   async blacklistToken(token: string, reason: string = 'User logout'): Promise<void> {
     const decoded = jwt.decode(token, { complete: true });
-    if (!decoded || typeof decoded === 'string' || !decoded.payload.jti || !decoded.payload.exp) {
+    if (!decoded || typeof decoded === 'string' || typeof decoded.payload === 'string' || !decoded.payload.jti || !decoded.payload.exp) {
       throw new Error('Invalid token format for blacklisting');
     }
 
+    const payload = decoded.payload as JWTPayload;
     const entry: TokenBlacklistEntry = {
-      jti: decoded.payload.jti,
-      exp: decoded.payload.exp,
+      jti: payload.jti!,
+      exp: payload.exp!,
       reason,
       timestamp: new Date().toISOString()
     };
 
-    this.blacklist.set(decoded.payload.jti, entry);
+    this.blacklist.set(payload.jti!, entry);
     await this.saveBlacklist();
     
-    console.log('Token blacklisted', { jti: decoded.payload.jti, reason });
+    console.log('Token blacklisted', { jti: payload.jti, reason });
     
     // Clean up if blacklist gets too large
     if (this.blacklist.size > 10000) {
@@ -496,12 +498,13 @@ export class SecureJWTManager {
       throw new Error('Invalid token format');
     }
 
-    const isBlacklisted = decoded.payload.jti ? this.blacklist.has(decoded.payload.jti) : false;
+    const payload = decoded.payload as JWTPayload;
+    const isBlacklisted = payload.jti ? this.blacklist.has(payload.jti) : false;
     const keyExists = decoded.header.kid ? this.keys.has(decoded.header.kid) : false;
 
     return {
       header: decoded.header,
-      payload: decoded.payload,
+      payload: payload,
       isBlacklisted,
       keyExists
     };

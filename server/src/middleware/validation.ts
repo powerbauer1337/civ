@@ -125,7 +125,7 @@ export function validateRequest<T extends z.ZodTypeAny>(schema: T) {
         const errorMessages = error.errors.map(err => ({
           field: err.path.join('.'),
           message: err.message,
-          received: err.received
+          code: err.code
         }));
 
         return res.status(400).json({
@@ -153,7 +153,6 @@ export class AdvancedRateLimiter {
   constructor() {
     // Authentication endpoints - stricter limits
     this.authLimiter = new RateLimiterMemory({
-      keyAlias: 'ip',
       points: 5, // Number of requests
       duration: 300, // Per 5 minutes
       blockDuration: 900, // Block for 15 minutes
@@ -161,7 +160,6 @@ export class AdvancedRateLimiter {
 
     // General API endpoints
     this.apiLimiter = new RateLimiterMemory({
-      keyAlias: 'ip',
       points: config.RATE_LIMIT_MAX_REQUESTS,
       duration: config.RATE_LIMIT_WINDOW_MS / 1000,
       blockDuration: 300, // Block for 5 minutes
@@ -169,7 +167,6 @@ export class AdvancedRateLimiter {
 
     // Strict rate limiting for sensitive endpoints
     this.strictLimiter = new RateLimiterMemory({
-      keyAlias: 'ip',
       points: 2, // Only 2 requests
       duration: 600, // Per 10 minutes
       blockDuration: 1800, // Block for 30 minutes
