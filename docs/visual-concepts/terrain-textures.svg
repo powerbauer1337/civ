@@ -1,0 +1,158 @@
+<svg width="800" height="600" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Grassland Pattern -->
+    <pattern id="grassland" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <rect width="40" height="40" fill="#7cb342"/>
+      <circle cx="10" cy="10" r="2" fill="#8bc34a" opacity="0.6"/>
+      <circle cx="30" cy="15" r="1.5" fill="#9ccc65" opacity="0.8"/>
+      <circle cx="20" cy="30" r="1" fill="#689f38" opacity="0.4"/>
+    </pattern>
+    
+    <!-- Plains Pattern -->
+    <pattern id="plains" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <rect width="40" height="40" fill="#8bc34a"/>
+      <path d="M5,20 Q15,15 25,20 Q35,25 40,20" stroke="#9ccc65" stroke-width="1" fill="none" opacity="0.7"/>
+      <path d="M0,30 Q10,25 20,30 Q30,35 40,30" stroke="#aed581" stroke-width="1" fill="none" opacity="0.5"/>
+    </pattern>
+    
+    <!-- Hills Pattern -->
+    <pattern id="hills" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <rect width="40" height="40" fill="#795548"/>
+      <path d="M0,30 Q10,20 20,30 Q30,20 40,30 L40,40 L0,40 Z" fill="#8d6e63" opacity="0.8"/>
+      <path d="M0,35 Q15,25 30,35 Q35,30 40,35 L40,40 L0,40 Z" fill="#6d4c41" opacity="0.6"/>
+    </pattern>
+    
+    <!-- Mountains Pattern -->
+    <pattern id="mountains" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <rect width="40" height="40" fill="#5d4037"/>
+      <path d="M0,40 L10,15 L20,25 L30,10 L40,20 L40,40 Z" fill="#6d4c41"/>
+      <path d="M0,40 L8,20 L15,30 L25,15 L35,25 L40,15 L40,40 Z" fill="#4e2c24" opacity="0.7"/>
+      <circle cx="30" cy="12" r="2" fill="#fff" opacity="0.8"/>
+    </pattern>
+    
+    <!-- Desert Pattern -->
+    <pattern id="desert" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <rect width="40" height="40" fill="#ffb74d"/>
+      <circle cx="8" cy="12" r="1" fill="#ffc107" opacity="0.6"/>
+      <circle cx="25" cy="8" r="1.5" fill="#ff9800" opacity="0.4"/>
+      <circle cx="15" cy="25" r="1" fill="#ffa726" opacity="0.5"/>
+      <circle cx="32" cy="30" r="1.2" fill="#ffcc02" opacity="0.3"/>
+      <path d="M5,35 Q15,32 25,35" stroke="#ff8f00" stroke-width="0.5" fill="none" opacity="0.4"/>
+    </pattern>
+    
+    <!-- Ocean Pattern -->
+    <pattern id="ocean" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <rect width="40" height="40" fill="#1976d2"/>
+      <path d="M0,20 Q10,15 20,20 Q30,25 40,20" stroke="#2196f3" stroke-width="1.5" fill="none" opacity="0.8"/>
+      <path d="M0,30 Q15,25 30,30 Q35,32 40,30" stroke="#42a5f5" stroke-width="1" fill="none" opacity="0.6"/>
+      <circle cx="12" cy="18" r="1" fill="#64b5f6" opacity="0.4"/>
+      <circle cx="28" cy="22" r="0.8" fill="#90caf9" opacity="0.3"/>
+    </path>
+    
+    <!-- Resource Patterns -->
+    <g id="goldMine">
+      <circle r="6" fill="#ffd700" stroke="#ffb300" stroke-width="1"/>
+      <text text-anchor="middle" dy="0.3em" font-size="8" fill="#b8860b">⚱</text>
+    </g>
+    
+    <g id="ironDeposit">
+      <rect x="-5" y="-5" width="10" height="10" fill="#607d8b" stroke="#455a64" stroke-width="1" rx="1"/>
+      <text text-anchor="middle" dy="0.3em" font-size="8" fill="#cfd8dc">⚒</text>
+    </g>
+    
+    <g id="wheatField">
+      <circle r="6" fill="#ffeb3b" stroke="#fbc02d" stroke-width="1"/>
+      <text text-anchor="middle" dy="0.3em" font-size="8" fill="#f57f17">🌾</text>
+    </g>
+  </defs>
+  
+  <!-- Title -->
+  <text x="400" y="30" text-anchor="middle" font-size="24" font-weight="bold" fill="#333">Enhanced Terrain Textures</text>
+  
+  <!-- Terrain Samples -->
+  <!-- Row 1 -->
+  <g transform="translate(100, 80)">
+    <polygon points="0,30 26,15 52,30 26,60" fill="url(#grassland)" stroke="#555" stroke-width="2"/>
+    <text x="26" y="90" text-anchor="middle" font-size="12" fill="#333">Grassland</text>
+  </g>
+  
+  <g transform="translate(200, 80)">
+    <polygon points="0,30 26,15 52,30 26,60" fill="url(#plains)" stroke="#555" stroke-width="2"/>
+    <text x="26" y="90" text-anchor="middle" font-size="12" fill="#333">Plains</text>
+  </g>
+  
+  <g transform="translate(300, 80)">
+    <polygon points="0,30 26,15 52,30 26,60" fill="url(#hills)" stroke="#555" stroke-width="2"/>
+    <text x="26" y="90" text-anchor="middle" font-size="12" fill="#333">Hills</text>
+  </g>
+  
+  <!-- Row 2 -->
+  <g transform="translate(100, 200)">
+    <polygon points="0,30 26,15 52,30 26,60" fill="url(#mountains)" stroke="#555" stroke-width="2"/>
+    <text x="26" y="90" text-anchor="middle" font-size="12" fill="#333">Mountains</text>
+  </g>
+  
+  <g transform="translate(200, 200)">
+    <polygon points="0,30 26,15 52,30 26,60" fill="url(#desert)" stroke="#555" stroke-width="2"/>
+    <text x="26" y="90" text-anchor="middle" font-size="12" fill="#333">Desert</text>
+  </g>
+  
+  <g transform="translate(300, 200)">
+    <polygon points="0,30 26,15 52,30 26,60" fill="url(#ocean)" stroke="#555" stroke-width="2"/>
+    <text x="26" y="90" text-anchor="middle" font-size="12" fill="#333">Ocean</text>
+  </g>
+  
+  <!-- Resource Examples -->
+  <text x="500" y="120" font-size="18" font-weight="bold" fill="#333">Strategic Resources</text>
+  
+  <g transform="translate(500, 150)">
+    <polygon points="0,30 26,15 52,30 26,60" fill="url(#grassland)" stroke="#555" stroke-width="2"/>
+    <use href="#goldMine" transform="translate(26, 30)"/>
+    <text x="26" y="90" text-anchor="middle" font-size="12" fill="#333">Gold Mine</text>
+  </g>
+  
+  <g transform="translate(580, 150)">
+    <polygon points="0,30 26,15 52,30 26,60" fill="url(#hills)" stroke="#555" stroke-width="2"/>
+    <use href="#ironDeposit" transform="translate(26, 30)"/>
+    <text x="26" y="90" text-anchor="middle" font-size="12" fill="#333">Iron Deposit</text>
+  </g>
+  
+  <g transform="translate(660, 150)">
+    <polygon points="0,30 26,15 52,30 26,60" fill="url(#plains)" stroke="#555" stroke-width="2"/>
+    <use href="#wheatField" transform="translate(26, 30)"/>
+    <text x="26" y="90" text-anchor="middle" font-size="12" fill="#333">Wheat Field</text>
+  </g>
+  
+  <!-- Enhanced Features -->
+  <text x="400" y="350" text-anchor="middle" font-size="18" font-weight="bold" fill="#333">Enhanced Visual Features</text>
+  
+  <g transform="translate(250, 380)">
+    <!-- Highlighted tile with glow effect -->
+    <defs>
+      <filter id="glow">
+        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+        <feMerge>
+          <feMergeNode in="coloredBlur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    <polygon points="0,30 26,15 52,30 26,60" fill="url(#grassland)" stroke="#ffd700" stroke-width="3" filter="url(#glow)"/>
+    <text x="26" y="90" text-anchor="middle" font-size="12" fill="#333">Selected Tile</text>
+  </g>
+  
+  <g transform="translate(350, 380)">
+    <!-- Movement range indicator -->
+    <polygon points="0,30 26,15 52,30 26,60" fill="url(#plains)" stroke="#4a90e2" stroke-width="2" stroke-dasharray="5,3" opacity="0.8"/>
+    <text x="26" y="90" text-anchor="middle" font-size="12" fill="#333">Movement Range</text>
+  </g>
+  
+  <g transform="translate(450, 380)">
+    <!-- Attack range indicator -->
+    <polygon points="0,30 26,15 52,30 26,60" fill="url(#hills)" stroke="#f44336" stroke-width="2" stroke-dasharray="3,2" opacity="0.7"/>
+    <text x="26" y="90" text-anchor="middle" font-size="12" fill="#333">Attack Range</text>
+  </g>
+  
+  <!-- Footer -->
+  <text x="400" y="550" text-anchor="middle" font-size="14" fill="#666">Modern hex tile visualization with enhanced textures, patterns, and interactive states</text>
+</svg>

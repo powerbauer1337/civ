@@ -1,7 +1,7 @@
 import { 
   GameState, 
   GameAction, 
-  ActionType,
+  GameActionType,
   Position, 
   UnitType, 
   TerrainType,

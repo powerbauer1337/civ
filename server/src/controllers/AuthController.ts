@@ -89,7 +89,7 @@ export class AuthController {
       const token = jwt.sign(
         { userId: user.id, username: user.username },
         config.JWT_SECRET,
-        { expiresIn: String(config.JWT_EXPIRES_IN) }
+        { expiresIn: config.JWT_EXPIRES_IN }
       );
 
       // Return success response
@@ -145,7 +145,7 @@ export class AuthController {
       const token = jwt.sign(
         { userId: user.id, username: user.username },
         config.JWT_SECRET,
-        { expiresIn: String(config.JWT_EXPIRES_IN) }
+        { expiresIn: config.JWT_EXPIRES_IN }
       );
 
       res.json({

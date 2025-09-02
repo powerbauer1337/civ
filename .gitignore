@@ -126,3 +126,9 @@ Thumbs.db
 
 # Package-lock files (optional - uncomment if using yarn)
 # package-lock.json
+# Claude Code IDE generated directories
+.claude/
+.clode/
+.claude-snapshots/
+.claude-checkpoints/
+.worktrees/
