@@ -1,5 +1,6 @@
 import { Server, Socket } from 'socket.io';
-import { GameState, GameConfig, PlayerInfo, GamePhase, GameAction, GameUtils } from '@civ-game/shared';
+import { GameConfig, PlayerInfo, GamePhase, GameAction, GameUtils } from '@civ-game/shared';
+import { GameState } from '../shared-types';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import { config } from '../config/config';

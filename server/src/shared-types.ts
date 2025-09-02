@@ -231,9 +231,9 @@ export interface PlayerInfo {
 export interface GameAction {
   type: string;
   playerId: string;
-  payload: any;
-  timestamp: number;
-  actionId: string;
+  data: any;  // Changed from payload to data to match database expectations
+  timestamp?: number;
+  actionId?: string;
 }
 
 export class GameUtils {

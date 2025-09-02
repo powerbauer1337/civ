@@ -1,8 +1,9 @@
 import { Router, Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { config } from '../config/config';
 import { GameUtils } from '../shared-types';
+import type { StringValue } from 'ms';
 
 interface User {
   id: string;
@@ -86,10 +87,11 @@ export class AuthController {
       this.users.set(user.id, user);
 
       // Generate JWT
+      const options: SignOptions = { expiresIn: config.JWT_EXPIRES_IN as StringValue };
       const token = jwt.sign(
         { userId: user.id, username: user.username },
         config.JWT_SECRET,
-        { expiresIn: config.JWT_EXPIRES_IN }
+        options
       );
 
       // Return success response
@@ -142,10 +144,11 @@ export class AuthController {
       this.users.set(user.id, user);
 
       // For integration testing, use simple JWT creation
+      const options: SignOptions = { expiresIn: config.JWT_EXPIRES_IN as StringValue };
       const token = jwt.sign(
         { userId: user.id, username: user.username },
         config.JWT_SECRET,
-        { expiresIn: config.JWT_EXPIRES_IN }
+        options
       );
 
       res.json({
