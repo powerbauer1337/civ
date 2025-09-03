@@ -1,34 +1,13 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import SimpleLobbyPage from './pages/SimpleLobbyPage';
 import SimpleGamePage from './pages/SimpleGamePage';
-
-const theme = createTheme({
-  palette: {
-    mode: 'dark',
-    primary: {
-      main: '#1976d2'
-    },
-    secondary: {
-      main: '#dc004e'
-    },
-    success: {
-      main: '#2e7d32'
-    },
-    background: {
-      default: '#121212',
-      paper: '#1e1e1e'
-    }
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif'
-  }
-});
+import { civilizationTheme } from './theme/CivilizationTheme';
 
 function SimpleApp() {
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={civilizationTheme}>
       <CssBaseline />
       <Router>
         <Routes>
