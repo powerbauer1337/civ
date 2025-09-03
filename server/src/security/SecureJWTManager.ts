@@ -234,15 +234,14 @@ export class SecureJWTManager {
       jti: jwtId
     };
 
-    const tokenOptions: jwt.SignOptions = {
-      algorithm: keyInfo.algorithm as jwt.Algorithm,
-      expiresIn: validatedOptions.expiresIn as string,
+    const tokenOptions = {
+      algorithm: keyInfo.algorithm,
+      expiresIn: '1h',
       issuer: validatedOptions.issuer,
       audience: validatedOptions.audience,
       jwtid: jwtId,
-      keyid: this.currentKeyId,
-      ...validatedOptions
-    };
+      keyid: this.currentKeyId
+    } as jwt.SignOptions;
 
     const token = jwt.sign(tokenPayload, keyInfo.secret, tokenOptions);
 

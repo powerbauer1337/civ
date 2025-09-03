@@ -35,7 +35,7 @@ export class HexMap implements GameMap {
     return {
       x,
       y,
-      terrain: TerrainType.GRASSLAND,
+      terrain: TerrainType.GRASSLAND as any,
       features: [],
       resources: null,
       improvement: null,
@@ -81,27 +81,27 @@ export class HexMap implements GameMap {
 
         // Coastal areas
         if (distanceFromCenter > this.width * 0.4) {
-          tile.terrain = random() < 0.7 ? TerrainType.OCEAN : TerrainType.COAST;
+          tile.terrain = (random() < 0.7 ? TerrainType.OCEAN : TerrainType.COAST) as any;
         }
         // Mountain ranges (using noise)
         else if (noise > 0.7) {
-          tile.terrain = TerrainType.MOUNTAINS;
+          tile.terrain = TerrainType.MOUNTAINS as any;
         }
         // Hills
         else if (noise > 0.5) {
-          tile.terrain = TerrainType.HILLS;
+          tile.terrain = TerrainType.HILLS as any;
         }
         // Desert regions
         else if (noise < -0.4 && random() < 0.3) {
-          tile.terrain = TerrainType.DESERT;
+          tile.terrain = TerrainType.DESERT as any;
         }
         // Plains
         else if (noise < 0 && random() < 0.4) {
-          tile.terrain = 'plains';
+          tile.terrain = TerrainType.PLAINS as any;
         }
         // Default grassland (fertile areas)
         else {
-          tile.terrain = 'grassland';
+          tile.terrain = TerrainType.GRASSLAND as any;
         }
       }
     }

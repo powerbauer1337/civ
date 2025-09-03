@@ -34,20 +34,20 @@ export class SaveLoadHandlers {
         }
 
         // Verify player is in the game
-        const isPlayerInGame = room.players.some(p => p.id === playerId);
+        const isPlayerInGame = room.players.has(playerId);
         if (!isPlayerInGame) {
           socket.emit('save_error', { message: 'Player not in this game' });
           return;
         }
 
         // Save the game state
-        const saveId = await this.gamePersistence.saveGame(
+        const saveId = await this.gamePersistence.saveGame({
           gameId,
           playerId,
           saveName,
-          gameState || room.game.getState(),
-          saveType || 'manual'
-        );
+          gameState: gameState || room.gameState,
+          saveType: (saveType as 'auto' | 'manual' | 'checkpoint') || 'manual'
+        });
 
         // Update the room's last save info
         room.lastSaveId = saveId;
@@ -63,7 +63,7 @@ export class SaveLoadHandlers {
           saveId,
           saveName,
           playerId,
-          playerName: room.players.find(p => p.id === playerId)?.name
+          playerName: room.gameState.players.find((p: any) => p.id === playerId)?.username || 'Unknown Player'
         });
 
         console.info(`Game saved: ${gameId} by player ${playerId}`);
@@ -86,51 +86,51 @@ export class SaveLoadHandlers {
         }
 
         // Load the game state from database
-        const savedGame = await this.gamePersistence.loadGame(saveId);
+        const savedGame = await this.gamePersistence.loadGame({ saveId, playerId });
         if (!savedGame) {
           socket.emit('load_error', { message: 'Save not found' });
           return;
         }
 
-        // Verify player has access to this save
-        const playerSaves = await this.gamePersistence.getPlayerSaves(playerId);
-        const hasAccess = playerSaves.some(save => save.id === saveId);
-        if (!hasAccess) {
+        // Get save metadata
+        const playerSaves = await this.gamePersistence.getSavedGames(playerId);
+        const saveMetadata = playerSaves.find(save => save.id === saveId);
+        if (!saveMetadata) {
           socket.emit('load_error', { message: 'Access denied to this save' });
           return;
         }
 
         // Check if game room exists
-        let room = this.gameManager.getRoom(savedGame.gameId);
+        let room = this.gameManager.getRoom(saveMetadata.game_id);
 
         if (!room) {
           // Create a new room for the loaded game
           room = await this.gameManager.createRoom({
-            name: `Loaded: ${savedGame.saveName}`,
-            maxPlayers: Object.keys(savedGame.gameState.players).length,
-            gameMode: savedGame.gameMode || 'multiplayer',
+            name: `Loaded: ${saveMetadata.save_name}`,
+            maxPlayers: Object.keys(savedGame.players).length,
+            gameMode: saveMetadata.game_mode || 'multiplayer',
             mapSize: {
-              width: savedGame.gameState.map[0].length,
-              height: savedGame.gameState.map.length
+              width: savedGame.board[0].length,
+              height: savedGame.board.length
             }
           });
 
           // Restore the game state
-          room.game.setState(savedGame.gameState);
+          room.gameState = savedGame;
           room.status = 'in_progress';
           room.lastSaveId = saveId;
         } else {
           // Update existing room's game state
-          room.game.setState(savedGame.gameState);
+          room.gameState = savedGame;
           room.lastSaveId = saveId;
         }
 
         // Join the player to the room
-        socket.join(savedGame.gameId);
+        socket.join(saveMetadata.game_id);
 
         socket.emit('game_loaded', {
-          gameState: savedGame.gameState,
-          gameId: savedGame.gameId,
+          gameState: savedGame,
+          gameId: saveMetadata.game_id,
           roomInfo: {
             id: room.id,
             name: room.name,
@@ -140,12 +140,12 @@ export class SaveLoadHandlers {
         });
 
         // Notify other players
-        socket.to(savedGame.gameId).emit('game_state_restored', {
-          gameState: savedGame.gameState,
+        socket.to(saveMetadata.game_id).emit('game_state_restored', {
+          gameState: savedGame,
           loadedBy: playerId
         });
 
-        console.info(`Game loaded: ${savedGame.gameId} by player ${playerId}`);
+        console.info(`Game loaded: ${saveMetadata.game_id} by player ${playerId}`);
       } catch (error) {
         console.error('Error loading game:', error);
         socket.emit('load_error', {
@@ -164,7 +164,7 @@ export class SaveLoadHandlers {
           return;
         }
 
-        const saves = await this.gamePersistence.getPlayerSaves(playerId);
+        const saves = await this.gamePersistence.getSavedGames(playerId);
 
         // Format saves for frontend
         const formattedSaves = saves.map(save => ({
@@ -201,7 +201,7 @@ export class SaveLoadHandlers {
         }
 
         // Verify player owns this save
-        const playerSaves = await this.gamePersistence.getPlayerSaves(playerId);
+        const playerSaves = await this.gamePersistence.getSavedGames(playerId);
         const ownsSave = playerSaves.some(save => save.id === saveId);
 
         if (!ownsSave) {
@@ -209,7 +209,7 @@ export class SaveLoadHandlers {
           return;
         }
 
-        await this.gamePersistence.deleteSave(saveId);
+        await this.gamePersistence.deleteSave(saveId, playerId);
         socket.emit('save_deleted', { saveId });
 
         console.info(`Save deleted: ${saveId} by player ${playerId}`);
@@ -246,16 +246,16 @@ export class SaveLoadHandlers {
         }
 
         // Perform auto-save
-        const gameState = room.game.getState();
-        const hostPlayer = room.players[0]; // Use host player for auto-saves
+        const gameState = room.gameState;
+        const hostPlayerId = Array.from(room.players.keys())[0]; // Use first player for auto-saves
 
-        const saveId = await this.gamePersistence.saveGame(
+        const saveId = await this.gamePersistence.saveGame({
           gameId,
-          hostPlayer.id,
-          `Auto-save Turn ${gameState.turn}`,
+          playerId: hostPlayerId,
+          saveName: `Auto-save Turn ${gameState.currentTurn}`,
           gameState,
-          'auto'
-        );
+          saveType: 'auto'
+        });
 
         room.lastSaveId = saveId;
         room.lastSaveTime = now;
@@ -263,7 +263,7 @@ export class SaveLoadHandlers {
         // Notify all players
         socket.to(gameId).emit('autosave_complete', {
           saveId,
-          turnNumber: gameState.turn
+          turnNumber: gameState.currentTurn
         });
 
         console.info(`Auto-save completed for game: ${gameId}`);
@@ -298,7 +298,7 @@ export class SaveLoadHandlers {
       try {
         const { limit = 10, offset = 0 } = data;
 
-        const leaderboard = await this.gamePersistence.getLeaderboard(limit, offset);
+        const leaderboard = await this.gamePersistence.getLeaderboard();
 
         socket.emit('leaderboard', { leaderboard });
       } catch (error) {
@@ -328,22 +328,22 @@ export class SaveLoadHandlers {
           const timeSinceLastSave = now.getTime() - lastSave.getTime();
 
           if (timeSinceLastSave >= AUTO_SAVE_INTERVAL) {
-            const gameState = room.game.getState();
-            const hostPlayer = room.players[0];
+            const gameState = room.gameState;
+            const hostPlayerId = Array.from(room.players.keys())[0];
 
-            if (hostPlayer) {
-              const saveId = await this.gamePersistence.saveGame(
-                room.id,
-                hostPlayer.id,
-                `Auto-save Turn ${gameState.turn}`,
+            if (hostPlayerId) {
+              const saveId = await this.gamePersistence.saveGame({
+                gameId: room.id,
+                playerId: hostPlayerId,
+                saveName: `Auto-save Turn ${gameState.currentTurn}`,
                 gameState,
-                'auto'
-              );
+                saveType: 'auto'
+              });
 
               room.lastSaveId = saveId;
               room.lastSaveTime = now;
 
-              console.info(`Auto-saved game ${room.id} at turn ${gameState.turn}`);
+              console.info(`Auto-saved game ${room.id} at turn ${gameState.currentTurn}`);
             }
           }
         }

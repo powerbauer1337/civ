@@ -6,6 +6,7 @@ import {
   ActionType,
   GameActionType,
   Position,
+  HexCoordinate,
   UnitType,
   GameUtils,
   VictoryType
@@ -271,7 +272,7 @@ export class GameManagerAI {
         }
       } else {
         socket.emit('action_failed', {
-          error: result.error || 'Action failed',
+          error: (result as any).message || 'Action failed',
           action: action
         });
       }
@@ -338,7 +339,7 @@ export class GameManagerAI {
 
       // Process each AI action
       for (const action of actions) {
-        if (gameRoom.gameState.currentPlayer !== aiPlayerId) {
+        if (gameRoom.gameState.currentPlayer !== Number(aiPlayerId)) {
           break; // Turn changed, stop processing
         }
 
@@ -398,41 +399,39 @@ export class GameManagerAI {
 
       // Place settler
       const settlerPos = startPos;
-      gameState.board[settlerPos.r][settlerPos.q].unit = {
+      gameState.board[(settlerPos as unknown as HexCoordinate).r][(settlerPos as unknown as HexCoordinate).q].unit = {
         type: UnitType.SETTLER,
         owner: playerId,
-        moves: 2,
         maxMoves: 2
       };
 
       player.units.push({
         id: uuidv4(),
         type: UnitType.SETTLER,
-        position: { x: settlerPos.q, y: settlerPos.r },
-        moves: 2,
-        maxMoves: 2,
-        health: 100
-      });
+        position: { x: (settlerPos as unknown as HexCoordinate).q, y: (settlerPos as unknown as HexCoordinate).r },
+        health: 100,
+        owner: playerId,
+        movement: 2
+      } as any);
 
       // Place warrior nearby
       const neighbors = this.getValidNeighbors(gameState.board, startPos);
       if (neighbors.length > 0) {
         const warriorPos = neighbors[0];
-        gameState.board[warriorPos.r][warriorPos.q].unit = {
+        gameState.board[(warriorPos as HexCoordinate).r][(warriorPos as HexCoordinate).q].unit = {
           type: UnitType.WARRIOR,
           owner: playerId,
-          moves: 1,
           maxMoves: 1
         };
 
         player.units.push({
           id: uuidv4(),
           type: UnitType.WARRIOR,
-          position: { x: warriorPos.q, y: warriorPos.r },
-          moves: 1,
-          maxMoves: 1,
-          health: 100
-        });
+          position: { x: (warriorPos as unknown as HexCoordinate).q, y: (warriorPos as unknown as HexCoordinate).r },
+          health: 100,
+          owner: playerId,
+          movement: 1
+        } as any);
       }
     });
   }
@@ -458,7 +457,7 @@ export class GameManagerAI {
       // Find nearest valid land tile
       const validPos = this.findNearestLandTile(map, x, y);
       if (validPos) {
-        positions.push(validPos);
+        positions.push({ x: validPos.q, y: validPos.r });
       }
     }
 
@@ -468,9 +467,9 @@ export class GameManagerAI {
   /**
    * Find nearest land tile from a position
    */
-  private findNearestLandTile(map: any[][], x: number, y: number): Position | null {
+  private findNearestLandTile(map: any[][], x: number, y: number): HexCoordinate | null {
     const visited = new Set<string>();
-    const queue: Position[] = [{ q: x, r: y }];
+    const queue: HexCoordinate[] = [{ q: x, r: y, s: -x - y }];
 
     while (queue.length > 0) {
       const pos = queue.shift()!;
@@ -487,10 +486,10 @@ export class GameManagerAI {
 
         // Add neighbors
         const neighbors = [
-          { q: pos.q + 1, r: pos.r },
-          { q: pos.q - 1, r: pos.r },
-          { q: pos.q, r: pos.r + 1 },
-          { q: pos.q, r: pos.r - 1 }
+          { q: pos.q + 1, r: pos.r, s: pos.s - 1 },
+          { q: pos.q - 1, r: pos.r, s: pos.s + 1 },
+          { q: pos.q, r: pos.r + 1, s: pos.s - 1 },
+          { q: pos.q, r: pos.r - 1, s: pos.s + 1 }
         ];
 
         neighbors.forEach(n => {
@@ -507,8 +506,8 @@ export class GameManagerAI {
   /**
    * Get valid neighbor positions
    */
-  private getValidNeighbors(map: any[][], pos: Position): Position[] {
-    const neighbors: Position[] = [];
+  private getValidNeighbors(map: any[][], pos: Position): HexCoordinate[] {
+    const neighbors: HexCoordinate[] = [];
     const directions = [
       { q: 1, r: 0 }, { q: -1, r: 0 },
       { q: 0, r: 1 }, { q: 0, r: -1 },
@@ -516,7 +515,7 @@ export class GameManagerAI {
     ];
 
     directions.forEach(dir => {
-      const newPos = { q: pos.q + dir.q, r: pos.r + dir.r };
+      const newPos = { q: (pos as unknown as HexCoordinate).q + dir.q, r: (pos as unknown as HexCoordinate).r + dir.r, s: -(((pos as unknown as HexCoordinate).q + dir.q) + ((pos as unknown as HexCoordinate).r + dir.r)) };
       if (newPos.r >= 0 && newPos.r < map.length &&
           newPos.q >= 0 && newPos.q < map[0].length) {
         const tile = map[newPos.r][newPos.q];
@@ -573,7 +572,7 @@ export class GameManagerAI {
           id,
           {
             ...player,
-            technologies: Array.from(player.technologies || [])
+            technologies: Array.from((player as any).technologies || [])
           }
         ])
       )

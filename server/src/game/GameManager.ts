@@ -329,7 +329,7 @@ export class GameManager {
         });
 
         // Check for game end
-        if (gameRoom.gameState.phase === GamePhase.ENDED) {
+        if (gameRoom.gameState.phase === (GamePhase.ENDED as any)) {
           this.handleGameEnd(gameId);
         }
       } else {
