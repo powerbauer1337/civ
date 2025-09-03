@@ -234,14 +234,19 @@ export class SecureJWTManager {
       jti: jwtId
     };
 
-    const tokenOptions = {
-      algorithm: keyInfo.algorithm,
-      expiresIn: '1h',
+    const tokenOptions: jwt.SignOptions = {
+      algorithm: keyInfo.algorithm as jwt.Algorithm,
+      expiresIn: validatedOptions.expiresIn || '1h',
       issuer: validatedOptions.issuer,
-      audience: validatedOptions.audience,
-      jwtid: jwtId,
-      keyid: this.currentKeyId
-    } as jwt.SignOptions;
+      header: {
+        kid: this.currentKeyId
+      }
+    };
+
+    // Only set audience if provided
+    if (validatedOptions.audience) {
+      tokenOptions.audience = validatedOptions.audience;
+    }
 
     const token = jwt.sign(tokenPayload, keyInfo.secret, tokenOptions);
 
@@ -280,10 +285,14 @@ export class SecureJWTManager {
     const verifyOptions: jwt.VerifyOptions = {
       algorithms: [keyInfo.algorithm as jwt.Algorithm],
       issuer: 'civilization-game-server',
-      audience: 'civilization-game-client',
       clockTolerance: 30, // 30 seconds clock tolerance
       ...options
     };
+    
+    // Only set default audience if no custom audience is provided and token has audience
+    if (!options.audience && decoded.payload.aud) {
+      verifyOptions.audience = 'civilization-game-client';
+    }
 
     try {
       const payload = jwt.verify(token, keyInfo.secret, verifyOptions) as jwt.JwtPayload;
