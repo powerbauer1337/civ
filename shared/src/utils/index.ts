@@ -129,10 +129,13 @@ export const isValidPassword = (password: string): boolean => {
 
 // Game utilities
 export const calculateScore = (resources: any, cities: any[], units: any[]): number => {
-  const resourceScore = Object.values(resources).reduce((sum: number, value: any) => sum + Number(value || 0), 0);
+  const resourceScore = Object.values(resources).reduce((sum: number, value: unknown) => {
+    const numValue = Number(value);
+    return sum + (isNaN(numValue) ? 0 : numValue);
+  }, 0);
   const cityScore = cities.length * 100;
   const unitScore = units.length * 10;
-  return resourceScore + cityScore + unitScore;
+  return (resourceScore as number) + cityScore + unitScore;
 };
 
 export const getTurnTimeRemaining = (turnStartTime: Date, turnTimeLimit: number): number => {
