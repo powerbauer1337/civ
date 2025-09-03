@@ -43,14 +43,14 @@ export class SecurityTestSuite {
 
     // Input validation tests
     await this.testInputValidation();
-    
+
     // Rate limiting tests
     await this.testRateLimitingConfig();
 
     // Generate summary
     const summary = this.generateSummary();
     this.printResults();
-    
+
     return summary;
   }
 
@@ -64,8 +64,8 @@ export class SecurityTestSuite {
       this.addResult({
         testName: 'Production JWT Secret',
         passed: !hasDefaultSecret,
-        message: hasDefaultSecret 
-          ? 'CRITICAL: Default JWT secret detected in production' 
+        message: hasDefaultSecret
+          ? 'CRITICAL: Default JWT secret detected in production'
           : 'JWT secret properly configured for production',
         severity: 'critical'
       });
@@ -76,7 +76,7 @@ export class SecurityTestSuite {
     this.addResult({
       testName: 'JWT Secret Strength',
       passed: jwtSecretStrength,
-      message: jwtSecretStrength 
+      message: jwtSecretStrength
         ? `JWT secret is ${config.JWT_SECRET.length} characters (✓ >= 32)`
         : `JWT secret is ${config.JWT_SECRET.length} characters (✗ < 32)`,
       severity: 'high'
@@ -87,7 +87,7 @@ export class SecurityTestSuite {
     this.addResult({
       testName: 'JWT Secrets Separation',
       passed: secretsDifferent,
-      message: secretsDifferent 
+      message: secretsDifferent
         ? 'JWT and refresh secrets are properly separated'
         : 'CRITICAL: JWT and refresh secrets are identical',
       severity: 'critical'
@@ -97,7 +97,7 @@ export class SecurityTestSuite {
     this.addResult({
       testName: 'Security Headers',
       passed: config.ENABLE_SECURITY_HEADERS,
-      message: config.ENABLE_SECURITY_HEADERS 
+      message: config.ENABLE_SECURITY_HEADERS
         ? 'Security headers enabled'
         : 'Security headers disabled',
       severity: 'medium'
@@ -113,7 +113,7 @@ export class SecurityTestSuite {
     this.addResult({
       testName: 'Access Token Expiration',
       passed: shortAccessToken,
-      message: shortAccessToken 
+      message: shortAccessToken
         ? `Access token expires in ${config.JWT_EXPIRES_IN} (✓ short-lived)`
         : `Access token expires in ${config.JWT_EXPIRES_IN} (✗ too long)`,
       severity: 'medium'
@@ -123,7 +123,7 @@ export class SecurityTestSuite {
     this.addResult({
       testName: 'Refresh Token Expiration',
       passed: reasonableRefreshToken,
-      message: reasonableRefreshToken 
+      message: reasonableRefreshToken
         ? `Refresh token expires in ${config.JWT_REFRESH_EXPIRES_IN} (✓ reasonable)`
         : `Refresh token expires in ${config.JWT_REFRESH_EXPIRES_IN} (✗ too long)`,
       severity: 'medium'
@@ -138,7 +138,7 @@ export class SecurityTestSuite {
     this.addResult({
       testName: 'Bcrypt Rounds',
       passed: bcryptRoundsSecure,
-      message: bcryptRoundsSecure 
+      message: bcryptRoundsSecure
         ? `Bcrypt rounds: ${config.BCRYPT_ROUNDS} (✓ secure)`
         : `Bcrypt rounds: ${config.BCRYPT_ROUNDS} (✗ too low, minimum 10)`,
       severity: 'high'
@@ -151,11 +151,11 @@ export class SecurityTestSuite {
   private async testJWTManagerInitialization(): Promise<void> {
     try {
       const keyInfo = secureJWTManager.getKeyInfo();
-      
+
       this.addResult({
         testName: 'JWT Manager Active Keys',
         passed: keyInfo.totalKeys > 0,
-        message: keyInfo.totalKeys > 0 
+        message: keyInfo.totalKeys > 0
           ? `JWT Manager has ${keyInfo.totalKeys} active keys`
           : 'JWT Manager has no active keys',
         severity: 'critical'
@@ -164,7 +164,7 @@ export class SecurityTestSuite {
       this.addResult({
         testName: 'JWT Manager Current Key',
         passed: keyInfo.currentKeyId !== null,
-        message: keyInfo.currentKeyId 
+        message: keyInfo.currentKeyId
           ? `Current key ID: ${keyInfo.currentKeyId}`
           : 'No current key set',
         severity: 'critical'
@@ -190,7 +190,7 @@ export class SecurityTestSuite {
       };
 
       const token = await secureJWTManager.sign(testPayload);
-      
+
       this.addResult({
         testName: 'Token Generation',
         passed: typeof token === 'string' && token.length > 0,
@@ -201,11 +201,11 @@ export class SecurityTestSuite {
       // Verify token structure
       const decoded = jwt.decode(token, { complete: true });
       const hasJTI = decoded && typeof decoded === 'object' && (decoded.payload as any).jti;
-      
+
       this.addResult({
         testName: 'Token JTI (JWT ID)',
         passed: !!hasJTI,
-        message: hasJTI 
+        message: hasJTI
           ? 'JWT tokens include unique JTI for blacklisting'
           : 'JWT tokens missing JTI - blacklisting unavailable',
         severity: 'high'
@@ -232,14 +232,14 @@ export class SecurityTestSuite {
 
       const token = await secureJWTManager.sign(testPayload);
       const verified = await secureJWTManager.verify(token);
-      
-      const verificationValid = verified.userId === testPayload.userId && 
+
+      const verificationValid = verified.userId === testPayload.userId &&
                                verified.username === testPayload.username;
-      
+
       this.addResult({
         testName: 'Token Verification',
         passed: verificationValid,
-        message: verificationValid 
+        message: verificationValid
           ? 'JWT token verification successful'
           : 'JWT token verification failed',
         severity: 'critical'
@@ -265,13 +265,13 @@ export class SecurityTestSuite {
       };
 
       const token = await secureJWTManager.sign(testPayload);
-      
+
       // Verify token works initially
       await secureJWTManager.verify(token);
-      
+
       // Blacklist the token
       await secureJWTManager.blacklistToken(token, 'Test blacklisting');
-      
+
       // Try to verify blacklisted token
       let blacklistWorking = false;
       try {
@@ -279,11 +279,11 @@ export class SecurityTestSuite {
       } catch (error) {
         blacklistWorking = (error as Error).message.includes('blacklisted');
       }
-      
+
       this.addResult({
         testName: 'Token Blacklisting',
         passed: blacklistWorking,
-        message: blacklistWorking 
+        message: blacklistWorking
           ? 'Token blacklisting working correctly'
           : 'Token blacklisting failed - security risk',
         severity: 'high'
@@ -306,21 +306,21 @@ export class SecurityTestSuite {
       const initialKeyInfo = secureJWTManager.getKeyInfo();
       const initialKeyCount = initialKeyInfo.totalKeys;
       const initialCurrentKey = initialKeyInfo.currentKeyId;
-      
+
       // Perform key rotation
       await secureJWTManager.rotateKeys();
-      
+
       const postRotationKeyInfo = secureJWTManager.getKeyInfo();
       const newKeyCount = postRotationKeyInfo.totalKeys;
       const newCurrentKey = postRotationKeyInfo.currentKeyId;
-      
-      const rotationWorked = newKeyCount > initialKeyCount && 
+
+      const rotationWorked = newKeyCount > initialKeyCount &&
                            newCurrentKey !== initialCurrentKey;
-      
+
       this.addResult({
         testName: 'Key Rotation',
         passed: rotationWorked,
-        message: rotationWorked 
+        message: rotationWorked
           ? `Key rotation successful: ${initialKeyCount} → ${newKeyCount} keys`
           : 'Key rotation failed',
         severity: 'medium'
@@ -342,15 +342,15 @@ export class SecurityTestSuite {
     // Test that validation schemas exist
     try {
       const { commonSchemas } = await import('../middleware/validation');
-      
-      const schemasExist = !!(commonSchemas.registerSchema && 
-                           commonSchemas.loginSchema && 
+
+      const schemasExist = !!(commonSchemas.registerSchema &&
+                           commonSchemas.loginSchema &&
                            commonSchemas.updateProfileSchema);
-      
+
       this.addResult({
         testName: 'Input Validation Schemas',
         passed: schemasExist,
-        message: schemasExist 
+        message: schemasExist
           ? 'Input validation schemas properly configured'
           : 'Input validation schemas missing',
         severity: 'high'
@@ -369,13 +369,13 @@ export class SecurityTestSuite {
    * Test rate limiting configuration
    */
   private async testRateLimitingConfig(): Promise<void> {
-    const rateLimitingConfigured = config.RATE_LIMIT_MAX_REQUESTS > 0 && 
+    const rateLimitingConfigured = config.RATE_LIMIT_MAX_REQUESTS > 0 &&
                                   config.RATE_LIMIT_WINDOW_MS > 0;
-    
+
     this.addResult({
       testName: 'Rate Limiting Configuration',
       passed: rateLimitingConfigured,
-      message: rateLimitingConfigured 
+      message: rateLimitingConfigured
         ? `Rate limiting: ${config.RATE_LIMIT_MAX_REQUESTS} req/${config.RATE_LIMIT_WINDOW_MS}ms`
         : 'Rate limiting not properly configured',
       severity: 'medium'
@@ -388,7 +388,7 @@ export class SecurityTestSuite {
   private parseTimeString(timeStr: string): number {
     const unit = timeStr.slice(-1);
     const value = parseInt(timeStr.slice(0, -1));
-    
+
     switch (unit) {
       case 's': return value;
       case 'm': return value * 60;
@@ -432,7 +432,7 @@ export class SecurityTestSuite {
     console.log('='.repeat(60));
 
     const summary = this.generateSummary();
-    
+
     // Overall summary
     console.log(`\n📊 Summary: ${summary.passed} passed, ${summary.failed} failed`);
     if (summary.critical > 0) {
@@ -482,7 +482,7 @@ export class SecurityTestSuite {
     }
 
     console.log('\n' + '='.repeat(60));
-    
+
     // Security recommendations
     if (summary.failed > 0) {
       console.log('\n🛠️  SECURITY RECOMMENDATIONS:');

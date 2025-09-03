@@ -7,18 +7,18 @@ import { v4 as uuidv4 } from 'uuid';
  * Replaces the mock GameState.executeAction with comprehensive game mechanics
  */
 export class GameEngine {
-  
+
   constructor(config?: any) {
     // GameEngine is primarily used as a static utility class
     // Constructor provided for compatibility with existing code
   }
-  
+
   /**
    * Process any player action and update game state accordingly
    */
   public static processPlayerAction(gameState: GameState, action: GameAction): ActionResult {
     console.log(`Processing action: ${action.type} for player ${action.payload?.playerId || 'unknown'}`);
-    
+
     try {
       // Validate basic action structure
       if (!action.type || !action.payload) {
@@ -29,25 +29,25 @@ export class GameEngine {
       switch (action.type) {
         case GameActionType.MOVE_UNIT:
           return this.processMoveUnit(gameState, action);
-        
+
         case GameActionType.ATTACK_UNIT:
           return this.processAttackUnit(gameState, action);
-        
+
         case GameActionType.FOUND_CITY:
           return this.processFoundCity(gameState, action);
-        
+
         case GameActionType.BUILD_IMPROVEMENT:
           return this.processBuildImprovement(gameState, action);
-        
+
         case GameActionType.CHANGE_PRODUCTION:
           return this.processChangeProduction(gameState, action);
-        
+
         case GameActionType.RESEARCH_TECHNOLOGY:
           return this.processResearchTechnology(gameState, action);
-        
+
         case GameActionType.END_TURN:
           return this.processEndTurn(gameState, action);
-        
+
         default:
           return { success: false, error: `Unknown action type: ${action.type}`, gameState };
       }
@@ -62,7 +62,7 @@ export class GameEngine {
    */
   private static processMoveUnit(gameState: GameState, action: GameAction): ActionResult {
     const { unitId, from, to } = action.payload;
-    
+
     if (!unitId || !from || !to) {
       return { success: false, error: 'Missing required parameters for move unit', gameState };
     }
@@ -104,7 +104,7 @@ export class GameEngine {
     // Update tile occupancy in map
     const fromTile = hexMap.getTile(from.x, from.y);
     const toTile = hexMap.getTile(to.x, to.y);
-    
+
     if (fromTile) fromTile.unit = null;
     if (toTile) toTile.unit = unit;
 
@@ -115,10 +115,10 @@ export class GameEngine {
     gameState.map = hexMap.serialize();
     gameState.lastUpdate = new Date();
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: `Unit ${unit.type} moved to (${to.x}, ${to.y})`,
-      gameState 
+      gameState
     };
   }
 
@@ -127,10 +127,10 @@ export class GameEngine {
    */
   private static processAttackUnit(gameState: GameState, action: GameAction): ActionResult {
     const { attackerId, targetId } = action.payload;
-    
+
     const attacker = this.findUnit(gameState, attackerId);
     const target = this.findUnit(gameState, targetId);
-    
+
     if (!attacker || !target) {
       return { success: false, error: 'Attacker or target unit not found', gameState };
     }
@@ -144,10 +144,10 @@ export class GameEngine {
 
     // Process combat
     const combatResult = this.resolveCombat(attacker, target, hexMap);
-    
+
     // Apply damage
     target.health -= combatResult.damage;
-    
+
     // Remove unit if destroyed
     if (target.health <= 0) {
       this.removeUnit(gameState, target.id);
@@ -171,7 +171,7 @@ export class GameEngine {
    */
   private static processFoundCity(gameState: GameState, action: GameAction): ActionResult {
     const { settlerId, location, cityName } = action.payload;
-    
+
     const settler = this.findUnit(gameState, settlerId);
     if (!settler || settler.type !== UnitType.SETTLER) {
       return { success: false, error: 'Valid settler unit required to found city', gameState };
@@ -241,7 +241,7 @@ export class GameEngine {
    */
   private static processBuildImprovement(gameState: GameState, action: GameAction): ActionResult {
     const { workerId, improvementType, location } = action.payload;
-    
+
     const worker = this.findUnit(gameState, workerId);
     if (!worker || worker.type !== UnitType.WORKER) {
       return { success: false, error: 'Valid worker unit required to build improvement', gameState };
@@ -281,11 +281,11 @@ export class GameEngine {
    */
   private static processChangeProduction(gameState: GameState, action: GameAction): ActionResult {
     const { cityId, productionType, targetId } = action.payload;
-    
+
     // Find city in game state
     const hexMap = HexMap.deserialize(gameState.map);
     let targetCity: City | null = null;
-    
+
     for (let y = 0; y < hexMap.height; y++) {
       for (let x = 0; x < hexMap.width; x++) {
         const tile = hexMap.getTile(x, y);
@@ -325,7 +325,7 @@ export class GameEngine {
    */
   private static processResearchTechnology(gameState: GameState, action: GameAction): ActionResult {
     const { playerId, techId } = action.payload;
-    
+
     const playerState = gameState.players.find(p => p.userId === playerId);
     if (!playerState) {
       return { success: false, error: 'Player not found', gameState };
@@ -374,7 +374,7 @@ export class GameEngine {
     // If back to first player, increment turn number
     if (nextPlayerIndex === 0) {
       gameState.turn++;
-      
+
       // Process turn-based updates
       const turnResult = this.processTurnEnd(gameState);
       if (!turnResult.success) {
@@ -407,13 +407,13 @@ export class GameEngine {
 
         // Generate resources from cities
         this.processResourceGeneration(gameState, playerState);
-        
+
         // Process city production
         this.processCityProduction(gameState, playerState);
-        
+
         // Process technology research
         this.processTechnologyResearch(playerState);
-        
+
         // Update player score
         playerState.score = this.calculatePlayerScore(gameState, playerState);
       }
@@ -442,16 +442,16 @@ export class GameEngine {
    */
   private static processResourceGeneration(gameState: GameState, playerState: PlayerState): void {
     const hexMap = HexMap.deserialize(gameState.map);
-    
+
     // Reset per-turn resources
     const generatedResources = { food: 0, production: 0, gold: 0, science: 0, culture: 0, faith: 0 };
-    
+
     // Process each city
     for (const cityId of playerState.cities) {
       const city = this.findCityById(hexMap, cityId);
       if (city) {
         const cityYield = this.calculateCityYield(hexMap, city);
-        
+
         generatedResources.food += cityYield.food || 0;
         generatedResources.production += cityYield.production || 0;
         generatedResources.gold += cityYield.gold || 0;
@@ -477,7 +477,7 @@ export class GameEngine {
    */
   private static processCityProduction(gameState: GameState, playerState: PlayerState): void {
     const hexMap = HexMap.deserialize(gameState.map);
-    
+
     for (const cityId of playerState.cities) {
       const city = this.findCityById(hexMap, cityId);
       if (!city || !city.production) continue;
@@ -501,7 +501,7 @@ export class GameEngine {
       if (!tech.isResearched && tech.turnsToComplete !== undefined) {
         tech.progress += playerState.resources.science;
         tech.turnsToComplete--;
-        
+
         if (tech.turnsToComplete <= 0) {
           tech.isResearched = true;
           tech.turnsToComplete = undefined;
@@ -516,7 +516,7 @@ export class GameEngine {
    */
   private static calculateCityYield(hexMap: HexMap, city: City): any {
     const baseYield = { food: 2, production: 1, gold: 1, science: 1, culture: 1, faith: 0 };
-    
+
     // Add yield from worked tiles
     for (const tilePos of city.workingTiles) {
       const tile = hexMap.getTile(tilePos.x, tilePos.y);
@@ -606,32 +606,32 @@ export class GameEngine {
   private static calculateMovementCost(hexMap: HexMap, from: any, to: any): number {
     const tile = hexMap.getTile(to.x, to.y);
     if (!tile) return 999; // Invalid tile
-    
+
     // Basic movement costs
     let cost = 1;
     if (tile.terrain === TerrainType.HILLS) cost = 2;
     if (tile.features.includes('forest' as any)) cost += 1;
-    
+
     return cost;
   }
 
   private static resolveCombat(attacker: Unit, defender: Unit, hexMap: HexMap): { damage: number, message: string } {
     const attackStrength = attacker.strength;
     const defenseStrength = defender.strength;
-    
+
     // Get terrain defense bonus
     const defenderTile = hexMap.getTile(defender.x, defender.y);
     let defensiveBonus = 0;
     if (defenderTile?.terrain === TerrainType.HILLS) defensiveBonus = 25;
     if (defenderTile?.features.includes('forest' as any)) defensiveBonus += 10;
-    
+
     const adjustedDefense = defenseStrength * (1 + defensiveBonus / 100);
-    
+
     // Simple damage calculation
     const baseDamage = Math.max(1, attackStrength - adjustedDefense);
     const randomMultiplier = 0.8 + Math.random() * 0.4; // 0.8 to 1.2
     const finalDamage = Math.floor(baseDamage * randomMultiplier);
-    
+
     return {
       damage: finalDamage,
       message: `${attacker.type} deals ${finalDamage} damage to ${defender.type}`
@@ -684,7 +684,7 @@ export class GameEngine {
     if (!city.production) return;
 
     console.log(`${city.name} completed production of ${city.production.targetId}`);
-    
+
     // Reset production
     city.production = null;
   }
@@ -707,7 +707,7 @@ export class GameEngine {
 
     // Check turn limit (300 turns)
     if (gameState.turn >= 300) {
-      const winner = gameState.players.reduce((prev, current) => 
+      const winner = gameState.players.reduce((prev, current) =>
         current.score > prev.score ? current : prev
       );
       return {

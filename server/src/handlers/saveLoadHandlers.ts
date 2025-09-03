@@ -69,8 +69,8 @@ export class SaveLoadHandlers {
         console.info(`Game saved: ${gameId} by player ${playerId}`);
       } catch (error) {
         console.error('Error saving game:', error);
-        socket.emit('save_error', { 
-          message: error instanceof Error ? error.message : 'Failed to save game' 
+        socket.emit('save_error', {
+          message: error instanceof Error ? error.message : 'Failed to save game'
         });
       }
     });
@@ -102,16 +102,16 @@ export class SaveLoadHandlers {
 
         // Check if game room exists
         let room = this.gameManager.getRoom(savedGame.gameId);
-        
+
         if (!room) {
           // Create a new room for the loaded game
           room = await this.gameManager.createRoom({
             name: `Loaded: ${savedGame.saveName}`,
             maxPlayers: Object.keys(savedGame.gameState.players).length,
             gameMode: savedGame.gameMode || 'multiplayer',
-            mapSize: { 
-              width: savedGame.gameState.map[0].length, 
-              height: savedGame.gameState.map.length 
+            mapSize: {
+              width: savedGame.gameState.map[0].length,
+              height: savedGame.gameState.map.length
             }
           });
 
@@ -148,8 +148,8 @@ export class SaveLoadHandlers {
         console.info(`Game loaded: ${savedGame.gameId} by player ${playerId}`);
       } catch (error) {
         console.error('Error loading game:', error);
-        socket.emit('load_error', { 
-          message: error instanceof Error ? error.message : 'Failed to load game' 
+        socket.emit('load_error', {
+          message: error instanceof Error ? error.message : 'Failed to load game'
         });
       }
     });
@@ -165,7 +165,7 @@ export class SaveLoadHandlers {
         }
 
         const saves = await this.gamePersistence.getPlayerSaves(playerId);
-        
+
         // Format saves for frontend
         const formattedSaves = saves.map(save => ({
           id: save.id,
@@ -184,8 +184,8 @@ export class SaveLoadHandlers {
         socket.emit('saves_list', { saves: formattedSaves });
       } catch (error) {
         console.error('Error getting saves:', error);
-        socket.emit('error', { 
-          message: error instanceof Error ? error.message : 'Failed to get saves' 
+        socket.emit('error', {
+          message: error instanceof Error ? error.message : 'Failed to get saves'
         });
       }
     });
@@ -203,7 +203,7 @@ export class SaveLoadHandlers {
         // Verify player owns this save
         const playerSaves = await this.gamePersistence.getPlayerSaves(playerId);
         const ownsSave = playerSaves.some(save => save.id === saveId);
-        
+
         if (!ownsSave) {
           socket.emit('error', { message: 'Cannot delete this save' });
           return;
@@ -215,8 +215,8 @@ export class SaveLoadHandlers {
         console.info(`Save deleted: ${saveId} by player ${playerId}`);
       } catch (error) {
         console.error('Error deleting save:', error);
-        socket.emit('error', { 
-          message: error instanceof Error ? error.message : 'Failed to delete save' 
+        socket.emit('error', {
+          message: error instanceof Error ? error.message : 'Failed to delete save'
         });
       }
     });
@@ -248,7 +248,7 @@ export class SaveLoadHandlers {
         // Perform auto-save
         const gameState = room.game.getState();
         const hostPlayer = room.players[0]; // Use host player for auto-saves
-        
+
         const saveId = await this.gamePersistence.saveGame(
           gameId,
           hostPlayer.id,
@@ -283,12 +283,12 @@ export class SaveLoadHandlers {
         }
 
         const stats = await this.gamePersistence.getPlayerStats(playerId);
-        
+
         socket.emit('player_stats', { stats });
       } catch (error) {
         console.error('Error getting player stats:', error);
-        socket.emit('error', { 
-          message: error instanceof Error ? error.message : 'Failed to get stats' 
+        socket.emit('error', {
+          message: error instanceof Error ? error.message : 'Failed to get stats'
         });
       }
     });
@@ -299,12 +299,12 @@ export class SaveLoadHandlers {
         const { limit = 10, offset = 0 } = data;
 
         const leaderboard = await this.gamePersistence.getLeaderboard(limit, offset);
-        
+
         socket.emit('leaderboard', { leaderboard });
       } catch (error) {
         console.error('Error getting leaderboard:', error);
-        socket.emit('error', { 
-          message: error instanceof Error ? error.message : 'Failed to get leaderboard' 
+        socket.emit('error', {
+          message: error instanceof Error ? error.message : 'Failed to get leaderboard'
         });
       }
     });
@@ -319,7 +319,7 @@ export class SaveLoadHandlers {
     setInterval(async () => {
       try {
         const activeRooms = this.gameManager.getActiveRooms();
-        
+
         for (const room of activeRooms) {
           if (room.status !== 'in_progress') continue;
 
@@ -330,7 +330,7 @@ export class SaveLoadHandlers {
           if (timeSinceLastSave >= AUTO_SAVE_INTERVAL) {
             const gameState = room.game.getState();
             const hostPlayer = room.players[0];
-            
+
             if (hostPlayer) {
               const saveId = await this.gamePersistence.saveGame(
                 room.id,

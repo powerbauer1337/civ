@@ -15,7 +15,7 @@ export class PlayerController {
         score: player.score,
         isOnline: player.isOnline
       }));
-      
+
       res.json(playerList);
     } catch (error) {
       console.error('Error getting players:', error);
@@ -28,12 +28,12 @@ export class PlayerController {
     try {
       const { id } = req.params;
       const player = this.gameService.getPlayer(id);
-      
+
       if (!player) {
         res.status(404).json({ error: 'Player not found' });
         return;
       }
-      
+
       res.json({
         id: player.id,
         username: player.username,
@@ -53,7 +53,7 @@ export class PlayerController {
     try {
       const { id } = req.params;
       const updated = this.gameService.updatePlayerActivity(id);
-      
+
       if (updated) {
         res.json({ message: 'Activity updated successfully' });
       } else {
@@ -70,14 +70,14 @@ export class PlayerController {
     try {
       const { id } = req.params;
       const { isOnline } = req.body;
-      
+
       if (typeof isOnline !== 'boolean') {
         res.status(400).json({ error: 'isOnline must be a boolean' });
         return;
       }
-      
+
       const updated = this.gameService.setPlayerOnlineStatus(id, isOnline);
-      
+
       if (updated) {
         res.json({ message: 'Status updated successfully' });
       } else {

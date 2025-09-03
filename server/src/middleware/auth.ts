@@ -231,7 +231,7 @@ export function createAuthMiddleware(authService: AuthService, userLookup: (user
       next();
     } catch (error: any) {
       console.warn('Authentication failed:', error.message);
-      
+
       if (error.message.includes('blacklisted')) {
         res.status(401).json({
           error: 'Token has been revoked',
@@ -239,7 +239,7 @@ export function createAuthMiddleware(authService: AuthService, userLookup: (user
         });
         return;
       }
-      
+
       if (error.message.includes('expired')) {
         res.status(401).json({
           error: 'Token has expired',
@@ -247,7 +247,7 @@ export function createAuthMiddleware(authService: AuthService, userLookup: (user
         });
         return;
       }
-      
+
       res.status(403).json({
         error: 'Invalid or malformed token',
         code: 'INVALID_TOKEN'
@@ -271,13 +271,13 @@ export function createAuthMiddleware(authService: AuthService, userLookup: (user
 
         const validatedPayload = accessTokenSchema.parse(decoded);
         const user = await userLookup(validatedPayload.userId);
-        
+
         if (user) {
           req.user = user;
           req.token = token;
         }
       }
-      
+
       next();
     } catch (error) {
       // Continue without authentication for optional middleware
@@ -335,7 +335,7 @@ export function requireRole(roles: string[]) {
     // In a real system, you'd check user roles from database
     // For now, we'll assume all authenticated users have basic access
     const userRoles = ['user']; // Would come from user.roles in real system
-    
+
     const hasRequiredRole = roles.some(role => userRoles.includes(role));
     if (!hasRequiredRole) {
       res.status(403).json({
@@ -362,14 +362,14 @@ export function authErrorHandler() {
         code: 'INVALID_TOKEN'
       });
     }
-    
+
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
         error: 'Token expired',
         code: 'TOKEN_EXPIRED'
       });
     }
-    
+
     if (error.name === 'NotBeforeError') {
       return res.status(401).json({
         error: 'Token not active yet',

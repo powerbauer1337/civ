@@ -79,7 +79,7 @@ export class SecureJWTManager {
       await this.loadOrGenerateKeys();
       await this.loadBlacklist();
       this.startKeyRotation();
-      
+
       console.log('SecureJWTManager initialized successfully');
     } catch (error) {
       console.error('Failed to initialize SecureJWTManager:', error);
@@ -127,11 +127,11 @@ export class SecureJWTManager {
     try {
       const keyData = await fs.readFile(this.keyStorePath, 'utf8');
       const parsedKeys = JSON.parse(keyData);
-      
+
       for (const [keyId, keyInfo] of Object.entries(parsedKeys.keys)) {
         this.keys.set(keyId, keyInfo as JWTKeyInfo);
       }
-      
+
       this.currentKeyId = parsedKeys.currentKeyId;
       console.log(`Loaded ${this.keys.size} JWT keys from secure storage`);
     } catch (error) {
@@ -147,11 +147,11 @@ export class SecureJWTManager {
     try {
       const blacklistData = await fs.readFile(this.blacklistPath, 'utf8');
       const parsedBlacklist = JSON.parse(blacklistData);
-      
+
       for (const [jti, entry] of Object.entries(parsedBlacklist)) {
         this.blacklist.set(jti, entry as TokenBlacklistEntry);
       }
-      
+
       // Clean up expired entries
       await this.cleanupBlacklist();
       console.log(`Loaded ${this.blacklist.size} blacklisted tokens`);
@@ -167,7 +167,7 @@ export class SecureJWTManager {
   private async generateInitialKeys(): Promise<void> {
     const keyId = this.generateKeyId();
     const secret = this.generateSecureSecret();
-    
+
     const keyInfo: JWTKeyInfo = {
       secret,
       createdAt: new Date().toISOString(),
@@ -177,7 +177,7 @@ export class SecureJWTManager {
 
     this.keys.set(keyId, keyInfo);
     this.currentKeyId = keyId;
-    
+
     await this.saveKeys();
     console.log('Generated initial JWT key set');
   }
@@ -193,8 +193,8 @@ export class SecureJWTManager {
     };
 
     await fs.writeFile(
-      this.keyStorePath, 
-      JSON.stringify(keyData, null, 2), 
+      this.keyStorePath,
+      JSON.stringify(keyData, null, 2),
       { mode: 0o600 }
     );
   }
@@ -204,7 +204,7 @@ export class SecureJWTManager {
    */
   private async saveBlacklist(): Promise<void> {
     const blacklistData = Object.fromEntries(this.blacklist);
-    
+
     await fs.writeFile(
       this.blacklistPath,
       JSON.stringify(blacklistData, null, 2),
@@ -222,13 +222,13 @@ export class SecureJWTManager {
 
     // Validate payload
     const validatedPayload = jwtPayloadSchema.parse(payload);
-    
+
     // Validate options
     const validatedOptions = signOptionsSchema.parse(options);
 
     const keyInfo = this.keys.get(this.currentKeyId)!;
     const jwtId = this.generateJWTId();
-    
+
     const tokenPayload = {
       ...validatedPayload,
       jti: jwtId
@@ -245,13 +245,13 @@ export class SecureJWTManager {
     };
 
     const token = jwt.sign(tokenPayload, keyInfo.secret, tokenOptions);
-    
-    console.log('JWT token signed', { 
-      keyId: this.currentKeyId, 
+
+    console.log('JWT token signed', {
+      keyId: this.currentKeyId,
       jwtId,
-      expiresIn: tokenOptions.expiresIn 
+      expiresIn: tokenOptions.expiresIn
     });
-    
+
     return token;
   }
 
@@ -277,7 +277,7 @@ export class SecureJWTManager {
     }
 
     const keyInfo = this.keys.get(keyId)!;
-    
+
     const verifyOptions: jwt.VerifyOptions = {
       algorithms: [keyInfo.algorithm as jwt.Algorithm],
       issuer: 'civilization-game-server',
@@ -288,21 +288,21 @@ export class SecureJWTManager {
 
     try {
       const payload = jwt.verify(token, keyInfo.secret, verifyOptions) as jwt.JwtPayload;
-      
+
       // Validate payload structure
       const validatedPayload = jwtPayloadSchema.parse(payload);
-      
-      console.log('JWT token verified', { 
-        keyId, 
+
+      console.log('JWT token verified', {
+        keyId,
         jwtId: payload.jti,
-        userId: validatedPayload.userId 
+        userId: validatedPayload.userId
       });
-      
+
       return validatedPayload as JWTPayload;
     } catch (error) {
-      console.warn('JWT verification failed', { 
-        error: (error as Error).message, 
-        keyId 
+      console.warn('JWT verification failed', {
+        error: (error as Error).message,
+        keyId
       });
       throw error;
     }
@@ -327,9 +327,9 @@ export class SecureJWTManager {
 
     this.blacklist.set(payload.jti!, entry);
     await this.saveBlacklist();
-    
+
     console.log('Token blacklisted', { jti: payload.jti, reason });
-    
+
     // Clean up if blacklist gets too large
     if (this.blacklist.size > 10000) {
       await this.cleanupBlacklist();
@@ -363,11 +363,11 @@ export class SecureJWTManager {
   async rotateKeys(): Promise<void> {
     try {
       console.log('Starting JWT key rotation');
-      
+
       // Generate new key
       const newKeyId = this.generateKeyId();
       const newSecret = this.generateSecureSecret();
-      
+
       const newKeyInfo: JWTKeyInfo = {
         secret: newSecret,
         createdAt: new Date().toISOString(),
@@ -392,9 +392,9 @@ export class SecureJWTManager {
       this.cleanupOldKeys();
 
       await this.saveKeys();
-      console.log('JWT key rotation completed', { 
-        newKeyId, 
-        totalKeys: this.keys.size 
+      console.log('JWT key rotation completed', {
+        newKeyId,
+        totalKeys: this.keys.size
       });
     } catch (error) {
       console.error('JWT key rotation failed:', error);
@@ -440,8 +440,8 @@ export class SecureJWTManager {
       }
     }, this.keyRotationInterval);
 
-    console.log('JWT key rotation started', { 
-      intervalHours: this.keyRotationInterval / (1000 * 60 * 60) 
+    console.log('JWT key rotation started', {
+      intervalHours: this.keyRotationInterval / (1000 * 60 * 60)
     });
   }
 
@@ -493,7 +493,7 @@ export class SecureJWTManager {
     keyExists: boolean;
   } {
     const decoded = jwt.decode(token, { complete: true });
-    
+
     if (!decoded || typeof decoded === 'string') {
       throw new Error('Invalid token format');
     }

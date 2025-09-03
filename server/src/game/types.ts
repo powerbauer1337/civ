@@ -11,7 +11,7 @@ export interface ServerGameAction {
 
 export enum ServerGamePhase {
   LOBBY = 'lobby',
-  ACTIVE = 'active', 
+  ACTIVE = 'active',
   ENDED = 'ended'
 }
 

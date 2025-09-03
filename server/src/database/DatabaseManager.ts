@@ -124,7 +124,7 @@ export class DatabaseManager {
       INSERT INTO users (id, username, email, password_hash)
       VALUES ($1, $2, $3, $4)
     `;
-    
+
     await this.pgClient.query(query, [
       userData.id,
       userData.username,
@@ -138,13 +138,13 @@ export class DatabaseManager {
       SELECT * FROM users 
       WHERE username = $1 OR email = $1
     `;
-    
+
     const result = await this.pgClient.query(query, [username]);
     return result.rows[0];
   }
 
   public async getUserById(userId: string): Promise<any> {
-    const query = `SELECT * FROM users WHERE id = $1`;
+    const query = 'SELECT * FROM users WHERE id = $1';
     const result = await this.pgClient.query(query, [userId]);
     return result.rows[0];
   }
@@ -157,11 +157,11 @@ export class DatabaseManager {
           updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
     `;
-    
+
     await this.pgClient.query(query, [userId, won ? 1 : 0]);
   }
 
-  // Game operations  
+  // Game operations
   public async saveGame(gameState: GameState): Promise<void> {
     const query = `
       INSERT INTO games (id, config, phase, current_turn, current_player, created_at, updated_at)
@@ -211,7 +211,7 @@ export class DatabaseManager {
   }
 
   public async getGameById(gameId: string): Promise<any> {
-    const gameQuery = `SELECT * FROM games WHERE id = $1`;
+    const gameQuery = 'SELECT * FROM games WHERE id = $1';
     const playersQuery = `
       SELECT gp.*, u.username 
       FROM game_players gp 
@@ -273,11 +273,11 @@ export class DatabaseManager {
     const params = [gameId];
 
     if (fromTurn !== undefined) {
-      query += ` AND turn_number >= $2`;
+      query += ' AND turn_number >= $2';
       params.push(fromTurn.toString());
     }
 
-    query += ` ORDER BY created_at ASC`;
+    query += ' ORDER BY created_at ASC';
 
     const result = await this.pgClient.query(query, params);
     return result.rows.map(row => ({
@@ -289,22 +289,22 @@ export class DatabaseManager {
   // Redis operations for active game states
   public async cacheGameState(gameId: string, gameState: GameState): Promise<void> {
     if (!this.isInitialized) return;
-    
+
     const key = `game:${gameId}`;
     const serialized = JSON.stringify(gameState.serialize());
-    
+
     // Cache for 1 hour
     await this.redisClient.setEx(key, 3600, serialized);
   }
 
   public async getCachedGameState(gameId: string): Promise<GameState | null> {
     if (!this.isInitialized) return null;
-    
+
     const key = `game:${gameId}`;
     const cached = await this.redisClient.get(key);
-    
+
     if (!cached) return null;
-    
+
     try {
       const data = JSON.parse(cached);
       return GameState.deserialize(data);
@@ -316,7 +316,7 @@ export class DatabaseManager {
 
   public async removeCachedGameState(gameId: string): Promise<void> {
     if (!this.isInitialized) return;
-    
+
     const key = `game:${gameId}`;
     await this.redisClient.del(key);
   }
@@ -324,26 +324,26 @@ export class DatabaseManager {
   // Player session management
   public async setPlayerSession(playerId: string, sessionData: any): Promise<void> {
     if (!this.isInitialized) return;
-    
+
     const key = `session:${playerId}`;
     const serialized = JSON.stringify(sessionData);
-    
+
     // Session expires in 24 hours
     await this.redisClient.setEx(key, 86400, serialized);
   }
 
   public async getPlayerSession(playerId: string): Promise<any | null> {
     if (!this.isInitialized) return null;
-    
+
     const key = `session:${playerId}`;
     const cached = await this.redisClient.get(key);
-    
+
     return cached ? JSON.parse(cached) : null;
   }
 
   public async removePlayerSession(playerId: string): Promise<void> {
     if (!this.isInitialized) return;
-    
+
     const key = `session:${playerId}`;
     await this.redisClient.del(key);
   }
@@ -396,7 +396,7 @@ export class DatabaseManager {
     // This would scan all session keys and remove expired ones
     // In a production environment, you'd want a more efficient approach
     const keys = await this.redisClient.keys('session:*');
-    
+
     for (const key of keys) {
       const ttl = await this.redisClient.ttl(key);
       if (ttl === -1) {

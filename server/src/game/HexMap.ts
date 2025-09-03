@@ -74,11 +74,11 @@ export class HexMap implements GameMap {
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
         const tile = this.tiles[y][x];
-        
+
         // Simple terrain generation based on position and noise
         const distanceFromCenter = this.getDistanceFromCenter(x, y);
         const noise = this.simpleNoise(x, y, 0.1, random) + this.simpleNoise(x, y, 0.05, random) * 0.5;
-        
+
         // Coastal areas
         if (distanceFromCenter > this.width * 0.4) {
           tile.terrain = random() < 0.7 ? TerrainType.OCEAN : TerrainType.COAST;
@@ -114,14 +114,14 @@ export class HexMap implements GameMap {
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
         const tile = this.tiles[y][x];
-        
+
         // Skip water tiles and mountains
         if (tile.terrain === TerrainType.OCEAN || tile.terrain === TerrainType.MOUNTAINS) {
           continue;
         }
 
         const featureChance = random();
-        
+
         // Forests on grassland and plains
         if ((tile.terrain === TerrainType.GRASSLAND || tile.terrain === TerrainType.PLAINS) && featureChance < 0.3) {
           tile.features.push(TerrainFeature.FOREST);
@@ -148,24 +148,24 @@ export class HexMap implements GameMap {
   private generateResources(random: () => number): void {
     const resourceDensity = 0.25; // 25% of tiles have resources
     const resourcesPlaced = Math.floor(this.width * this.height * resourceDensity);
-    
+
     const availableResources = this.getAvailableResources();
-    
+
     for (let i = 0; i < resourcesPlaced; i++) {
       const x = Math.floor(random() * this.width);
       const y = Math.floor(random() * this.height);
       const tile = this.tiles[y][x];
-      
+
       // Skip if tile already has resource or is water/mountain
       if (tile.resources || tile.terrain === TerrainType.OCEAN || tile.terrain === TerrainType.MOUNTAINS) {
         continue;
       }
 
       // Select appropriate resource for terrain type
-      const suitableResources = availableResources.filter(resource => 
+      const suitableResources = availableResources.filter(resource =>
         this.isResourceSuitableForTerrain(resource, tile)
       );
-      
+
       if (suitableResources.length > 0) {
         const selectedResource = suitableResources[Math.floor(random() * suitableResources.length)];
         tile.resources = selectedResource;
@@ -179,7 +179,7 @@ export class HexMap implements GameMap {
   private balanceStartingPositions(random: () => number): void {
     // Ensure there are good starting locations with food and production
     const startingPositions = this.findGoodStartingPositions(6); // Support up to 6 players initially
-    
+
     startingPositions.forEach(pos => {
       const tile = this.getTile(pos.x, pos.y);
       if (tile) {
@@ -191,7 +191,7 @@ export class HexMap implements GameMap {
             yield: { food: 2, production: 1 }
           };
         }
-        
+
         // Clear any negative features from starting positions
         tile.features = tile.features.filter(f => f !== TerrainFeature.MARSH);
       }
@@ -204,26 +204,26 @@ export class HexMap implements GameMap {
   private findGoodStartingPositions(maxPlayers: number): { x: number, y: number }[] {
     const positions: { x: number, y: number }[] = [];
     const minDistance = Math.min(this.width, this.height) / 4; // Minimum distance between starting positions
-    
+
     for (let attempts = 0; attempts < maxPlayers * 10 && positions.length < maxPlayers; attempts++) {
       const x = Math.floor(Math.random() * this.width);
       const y = Math.floor(Math.random() * this.height);
       const tile = this.tiles[y]?.[x];
-      
+
       if (!tile || tile.terrain === TerrainType.OCEAN || tile.terrain === TerrainType.MOUNTAINS) {
         continue;
       }
-      
+
       // Check distance from other starting positions
-      const tooClose = positions.some(pos => 
+      const tooClose = positions.some(pos =>
         this.calculateDistance(x, y, pos.x, pos.y) < minDistance
       );
-      
+
       if (!tooClose) {
         positions.push({ x, y });
       }
     }
-    
+
     return positions;
   }
 
@@ -240,18 +240,18 @@ export class HexMap implements GameMap {
       { type: ResourceType.SHEEP, category: ResourceCategory.BONUS, yield: { food: 1, production: 1 } },
       { type: ResourceType.DEER, category: ResourceCategory.BONUS, yield: { food: 1, production: 1 } },
       { type: ResourceType.FISH, category: ResourceCategory.BONUS, yield: { food: 3 } },
-      
+
       // Luxury Resources
       { type: ResourceType.GOLD, category: ResourceCategory.LUXURY, yield: { gold: 3 } },
       { type: ResourceType.SILVER, category: ResourceCategory.LUXURY, yield: { gold: 2 } },
       { type: ResourceType.GEMS, category: ResourceCategory.LUXURY, yield: { gold: 3 } },
       { type: ResourceType.SILK, category: ResourceCategory.LUXURY, yield: { gold: 2 } },
       { type: ResourceType.SPICES, category: ResourceCategory.LUXURY, yield: { gold: 2 } },
-      
+
       // Strategic Resources
       { type: ResourceType.IRON, category: ResourceCategory.STRATEGIC, yield: { production: 2 }, requiredTech: 'iron_working' },
       { type: ResourceType.HORSES, category: ResourceCategory.STRATEGIC, yield: { production: 1 }, requiredTech: 'animal_husbandry' },
-      { type: ResourceType.COAL, category: ResourceCategory.STRATEGIC, yield: { production: 3 }, requiredTech: 'steam_power' },
+      { type: ResourceType.COAL, category: ResourceCategory.STRATEGIC, yield: { production: 3 }, requiredTech: 'steam_power' }
     ];
   }
 
@@ -287,10 +287,10 @@ export class HexMap implements GameMap {
   private simpleNoise(x: number, y: number, scale: number, random: () => number): number {
     const scaledX = x * scale;
     const scaledY = y * scale;
-    
+
     // Simple pseudo-noise based on position
     const value = Math.sin(scaledX) * Math.cos(scaledY) + Math.sin(scaledX * 2.1) * Math.cos(scaledY * 1.7) * 0.5;
-    
+
     // Add some randomness
     return value + (random() - 0.5) * 0.3;
   }
@@ -338,7 +338,7 @@ export class HexMap implements GameMap {
    */
   public getNeighbors(x: number, y: number): MapTile[] {
     const neighbors: MapTile[] = [];
-    
+
     // Hexagonal grid neighbors (axial coordinates)
     const hexDirections = [
       { x: 1, y: 0 }, { x: 1, y: -1 }, { x: 0, y: -1 },
@@ -377,7 +377,7 @@ export class HexMap implements GameMap {
    */
   public getTilesInRange(centerX: number, centerY: number, range: number): MapTile[] {
     const tilesInRange: MapTile[] = [];
-    
+
     for (let y = Math.max(0, centerY - range); y <= Math.min(this.height - 1, centerY + range); y++) {
       for (let x = Math.max(0, centerX - range); x <= Math.min(this.width - 1, centerX + range); x++) {
         if (this.calculateDistance(centerX, centerY, x, y) <= range) {
@@ -388,7 +388,7 @@ export class HexMap implements GameMap {
         }
       }
     }
-    
+
     return tilesInRange;
   }
 
@@ -398,17 +398,17 @@ export class HexMap implements GameMap {
   public isValidMoveDestination(x: number, y: number, playerId: string): boolean {
     const tile = this.getTile(x, y);
     if (!tile) return false;
-    
+
     // Can't move to mountains or ocean (for land units)
     if (tile.terrain === TerrainType.MOUNTAINS || tile.terrain === TerrainType.OCEAN) {
       return false;
     }
-    
+
     // Can't move to tiles occupied by other player's units
     if (tile.unit && tile.unit.playerId !== playerId) {
       return false;
     }
-    
+
     return true;
   }
 

@@ -28,18 +28,18 @@ export class GameController {
       const pageNum = parseInt(page as string);
       const limitNum = parseInt(limit as string);
       const hideTest = hideTestGames === 'true';
-      
+
       let games = this.gameManager.getGameList();
-      
+
       // Filter out test games if requested
       if (hideTest) {
-        games = games.filter(game => 
-          !this.isTestGame(game.id) && 
-          !game.id.includes('test') && 
+        games = games.filter(game =>
+          !this.isTestGame(game.id) &&
+          !game.id.includes('test') &&
           !game.id.includes('perf')
         );
       }
-      
+
       // Apply status filter
       if (filter !== 'all') {
         games = games.filter(game => {
@@ -51,15 +51,15 @@ export class GameController {
           }
         });
       }
-      
+
       // Sort by creation date (newest first)
       games.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      
+
       // Apply pagination
       const startIndex = (pageNum - 1) * limitNum;
       const endIndex = startIndex + limitNum;
       const paginatedGames = games.slice(startIndex, endIndex);
-      
+
       res.json({
         games: paginatedGames.map(game => ({
           id: game.id,
@@ -89,7 +89,7 @@ export class GameController {
       const gameCount = this.gameManager.getGameCount();
       const playerCount = this.gameManager.getActivePlayerCount();
       const gameList = this.gameManager.getGameList();
-      
+
       const gamesByPhase = gameList.reduce((acc, game) => {
         acc[game.phase] = (acc[game.phase] || 0) + 1;
         return acc;
@@ -261,13 +261,13 @@ export class GameController {
   private cleanupTestGames(req: Request, res: Response): void {
     try {
       console.log('Starting cleanup of test games...');
-      
+
       const beforeCount = this.gameManager.getGameCount();
       const removedGames = this.gameManager.cleanupTestGames();
       const afterCount = this.gameManager.getGameCount();
-      
+
       console.log(`Test games cleanup completed. Removed ${removedGames.length} games.`);
-      
+
       res.json({
         success: true,
         message: `Successfully removed ${removedGames.length} test games`,
@@ -285,15 +285,15 @@ export class GameController {
     try {
       const { olderThanHours = '24' } = req.query;
       const hours = parseInt(olderThanHours as string);
-      
+
       console.log(`Starting cleanup of games older than ${hours} hours...`);
-      
+
       const beforeCount = this.gameManager.getGameCount();
       const removedGames = this.gameManager.cleanupOldGames(hours);
       const afterCount = this.gameManager.getGameCount();
-      
+
       console.log(`Old games cleanup completed. Removed ${removedGames.length} games.`);
-      
+
       res.json({
         success: true,
         message: `Successfully removed ${removedGames.length} games older than ${hours} hours`,
@@ -318,7 +318,7 @@ export class GameController {
       'demo',
       'sample'
     ];
-    
+
     const lowerGameId = gameId.toLowerCase();
     return testPatterns.some(pattern => lowerGameId.includes(pattern));
   }
@@ -329,12 +329,12 @@ export class GameController {
     if (gameState && (gameState as any).name) {
       return (gameState as any).name;
     }
-    
+
     // Fallback to generating a display name from ID
     if (this.isTestGame(gameId)) {
       return `Test Game (${gameId.substring(0, 8)})`;
     }
-    
+
     return `Game ${gameId.substring(0, 8)}`;
   }
 
@@ -357,7 +357,7 @@ export class GameController {
     const games = this.gameManager.getGameList();
     const testGames = games.filter(game => this.isTestGame(game.id)).length;
     const activeGames = games.filter(game => game.phase === 'active').length;
-    
+
     return {
       testGames,
       totalGames: games.length,

@@ -25,7 +25,7 @@ async function runSecurityAudit(): Promise<void> {
     const statusEmoji = results.critical === 0 ? '🛡️' : '🚨';
 
     console.log(`\n${statusEmoji} OVERALL SECURITY STATUS: ${overallStatus}`);
-    
+
     if (results.critical > 0) {
       console.log('\n⚠️  CRITICAL SECURITY ISSUES DETECTED:');
       console.log('   - Production deployment is NOT RECOMMENDED');

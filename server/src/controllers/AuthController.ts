@@ -176,7 +176,7 @@ export class AuthController {
 
   private getProfile(req: AuthRequest, res: Response): void {
     const user = req.user!;
-    
+
     res.json({
       id: user.id,
       username: user.username,
@@ -254,7 +254,7 @@ export class AuthController {
   private verifyToken(req: AuthRequest, res: Response): void {
     // If we reach here, the token is valid (middleware handled verification)
     const user = req.user!;
-    
+
     res.json({
       valid: true,
       user: {

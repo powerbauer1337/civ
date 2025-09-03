@@ -46,7 +46,7 @@ export class GameManager {
     this.rooms = new Map();
     this.playerToGame = new Map();
     this.socketToPlayer = new Map();
-    
+
     // Start cleanup interval
     this.cleanupInterval = setInterval(() => {
       this.cleanupInactiveGames();
@@ -77,7 +77,7 @@ export class GameManager {
   private handleCreateGame(socket: Socket, data: { playerName: string; gameConfig: GameConfig }): void {
     try {
       const { playerName, gameConfig } = data;
-      
+
       // Validate game configuration
       if (!this.validateGameConfig(gameConfig)) {
         socket.emit('error', { message: 'Invalid game configuration' });
@@ -86,7 +86,7 @@ export class GameManager {
 
       // Create game state
       const gameState = new GameState(gameConfig);
-      
+
       // Create player
       const playerId = GameUtils.generatePlayerId();
       const playerInfo: PlayerInfo = {
@@ -105,7 +105,7 @@ export class GameManager {
       // Create game room
       const gameRoom: GameRoom = {
         id: gameState.id,
-        name: data.playerName + "'s Game",
+        name: data.playerName + '\'s Game',
         gameState,
         game: new GameEngine(gameConfig),
         players: new Map([[playerId, socket]]),
@@ -162,10 +162,10 @@ export class GameManager {
       const playerId = GameUtils.generatePlayerId();
       const colors = GameUtils.getCivilizationColors();
       const civs = GameUtils.getCivilizationNames();
-      
+
       const usedColors = Array.from(gameRoom.gameState.players).map((p: any) => p.color);
       const usedCivs = Array.from(gameRoom.gameState.players).map((p: any) => p.civilization);
-      
+
       const availableColor = colors.find(c => !usedColors.includes(c)) || colors[gameRoom.players.size % colors.length];
       const availableCiv = civs.find(c => !usedCivs.includes(c)) || civs[gameRoom.players.size % civs.length];
 
@@ -231,7 +231,7 @@ export class GameManager {
         return;
       }
 
-      // Only first player can start the game  
+      // Only first player can start the game
       const firstPlayer = gameRoom.gameState.players[0];
       const firstPlayerId = (firstPlayer as any).id || (firstPlayer as any).userId;
       if (firstPlayerId !== playerId) {
@@ -302,7 +302,7 @@ export class GameManager {
 
       // Execute action using new GameEngine
       const success = gameRoom.gameState.executeAction(data);
-      
+
       if (success) {
         gameRoom.lastActivity = new Date();
 
@@ -333,9 +333,9 @@ export class GameManager {
           this.handleGameEnd(gameId);
         }
       } else {
-        socket.emit('action_failed', { 
-          action: data, 
-          reason: 'Action validation failed - check console for details' 
+        socket.emit('action_failed', {
+          action: data,
+          reason: 'Action validation failed - check console for details'
         });
       }
     } catch (error) {
@@ -374,7 +374,7 @@ export class GameManager {
       if (gameRoom) {
         // Remove player from game
         gameRoom.players.delete(playerId);
-        
+
         // Mark player as inactive in game state
         gameRoom.gameState.removePlayer(playerId);
 
@@ -463,7 +463,7 @@ export class GameManager {
     }
 
     // Determine winner
-    const winner = gameRoom.gameState.players.reduce((prev: any, current: any) => 
+    const winner = gameRoom.gameState.players.reduce((prev: any, current: any) =>
       (current.score > prev.score) ? current : prev
     );
 
@@ -483,7 +483,7 @@ export class GameManager {
 
   private validateGameConfig(config: GameConfig): boolean {
     return (
-      config.maxPlayers >= 2 && 
+      config.maxPlayers >= 2 &&
       config.maxPlayers <= 8 &&
       config.mapSize.width >= 10 &&
       config.mapSize.height >= 10 &&
@@ -497,10 +497,10 @@ export class GameManager {
 
     for (const [gameId, gameRoom] of this.games) {
       const timeSinceActivity = now.getTime() - gameRoom.lastActivity.getTime();
-      
+
       if (timeSinceActivity > inactiveThreshold || gameRoom.players.size === 0) {
         console.log(`Cleaning up inactive game: ${gameId}`);
-        
+
         // Clear turn timer
         if (gameRoom.turnTimer) {
           clearTimeout(gameRoom.turnTimer);
@@ -543,7 +543,7 @@ export class GameManager {
 
     const gameState = new GameState(gameConfig);
     const gameEngine = new GameEngine(gameConfig);
-    
+
     const room: GameRoom = {
       id: roomId,
       name: options.name,
@@ -586,25 +586,25 @@ export class GameManager {
   public cleanupTestGames(): string[] {
     const removedGameIds: string[] = [];
     const testPatterns = ['test', 'perf', 'performance', 'load', 'benchmark', 'demo', 'sample'];
-    
+
     for (const [gameId, gameRoom] of this.games) {
       const lowerGameId = gameId.toLowerCase();
       const isTestGame = testPatterns.some(pattern => lowerGameId.includes(pattern));
-      
+
       if (isTestGame) {
         console.log(`Removing test game: ${gameId}`);
-        
+
         // Clear turn timer
         if (gameRoom.turnTimer) {
           clearTimeout(gameRoom.turnTimer);
         }
-        
+
         // Notify players about game removal
         this.io.to(gameId).emit('game_removed', {
           gameId,
           reason: 'Test game cleanup'
         });
-        
+
         // Remove player mappings
         for (const playerId of gameRoom.players.keys()) {
           this.playerToGame.delete(playerId);
@@ -616,13 +616,13 @@ export class GameManager {
             }
           }
         }
-        
+
         // Remove game
         this.games.delete(gameId);
         removedGameIds.push(gameId);
       }
     }
-    
+
     console.log(`Cleaned up ${removedGameIds.length} test games`);
     return removedGameIds;
   }
@@ -630,22 +630,22 @@ export class GameManager {
   public cleanupOldGames(olderThanHours: number): string[] {
     const removedGameIds: string[] = [];
     const cutoffTime = new Date(Date.now() - (olderThanHours * 60 * 60 * 1000));
-    
+
     for (const [gameId, gameRoom] of this.games) {
       if (gameRoom.gameState.createdAt < cutoffTime) {
         console.log(`Removing old game: ${gameId} (created: ${gameRoom.gameState.createdAt})`);
-        
+
         // Clear turn timer
         if (gameRoom.turnTimer) {
           clearTimeout(gameRoom.turnTimer);
         }
-        
+
         // Notify players about game removal
         this.io.to(gameId).emit('game_removed', {
           gameId,
           reason: `Game cleanup - older than ${olderThanHours} hours`
         });
-        
+
         // Remove player mappings
         for (const playerId of gameRoom.players.keys()) {
           this.playerToGame.delete(playerId);
@@ -657,13 +657,13 @@ export class GameManager {
             }
           }
         }
-        
+
         // Remove game
         this.games.delete(gameId);
         removedGameIds.push(gameId);
       }
     }
-    
+
     console.log(`Cleaned up ${removedGameIds.length} old games (older than ${olderThanHours} hours)`);
     return removedGameIds;
   }
@@ -679,9 +679,9 @@ export class GameManager {
     hasMore: boolean;
   } {
     const { page = 1, limit = 10, filter = 'all', hideTestGames = false } = options;
-    
+
     let games = this.getGameList();
-    
+
     // Filter out test games if requested
     if (hideTestGames) {
       const testPatterns = ['test', 'perf', 'performance', 'load', 'benchmark', 'demo', 'sample'];
@@ -690,7 +690,7 @@ export class GameManager {
         return !testPatterns.some(pattern => lowerGameId.includes(pattern));
       });
     }
-    
+
     // Apply status filter
     if (filter !== 'all') {
       games = games.filter(game => {
@@ -702,14 +702,14 @@ export class GameManager {
         }
       });
     }
-    
+
     // Sort by creation date (newest first)
     games.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    
+
     const startIndex = (page - 1) * limit;
     const endIndex = startIndex + limit;
     const paginatedGames = games.slice(startIndex, endIndex);
-    
+
     return {
       games: paginatedGames,
       totalGames: games.length,

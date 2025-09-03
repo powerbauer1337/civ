@@ -59,7 +59,7 @@ export class GamePersistence {
   private dbPath: string;
   private autoSaveInterval: NodeJS.Timeout | null = null;
   private actionBuffer: Map<string, GameAction[]> = new Map();
-  
+
   constructor(dbPath: string = './data/civilization.db') {
     this.dbPath = dbPath;
   }
@@ -110,8 +110,8 @@ export class GamePersistence {
     try {
       // Compress game state
       const compressedState = await this.compressData(options.gameState);
-      const compressedMap = options.mapData ? 
-        await this.compressData(options.mapData) : 
+      const compressedMap = options.mapData ?
+        await this.compressData(options.mapData) :
         await this.compressData(options.gameState.board);
 
       const saveResult = await this.db.run(
@@ -300,7 +300,7 @@ export class GamePersistence {
     if (!this.actionBuffer.has(gameId)) {
       this.actionBuffer.set(gameId, []);
     }
-    
+
     this.actionBuffer.get(gameId)!.push(action);
 
     // Flush buffer if it gets too large
@@ -350,7 +350,7 @@ export class GamePersistence {
       const updates = Object.entries(stats)
         .map(([key, value]) => `${this.camelToSnake(key)} = ${this.camelToSnake(key)} + ?`)
         .join(', ');
-      
+
       const values: (string | number)[] = Object.values(stats);
       values.push(playerId, gameId);
 
@@ -363,7 +363,7 @@ export class GamePersistence {
       // Insert new record
       const columns = Object.keys(stats).map(k => this.camelToSnake(k));
       const placeholders = columns.map(() => '?');
-      
+
       await this.db.run(
         `INSERT INTO player_statistics (player_id, game_id, ${columns.join(', ')})
          VALUES (?, ?, ${placeholders.join(', ')})`,
@@ -403,7 +403,7 @@ export class GamePersistence {
       totalGames: stats.total_games,
       gamesWon: stats.games_won,
       gamesLost: stats.games_lost,
-      winRate: stats.total_games > 0 ? 
+      winRate: stats.total_games > 0 ?
         (stats.games_won / stats.total_games) * 100 : 0,
       eloRating: stats.elo_rating,
       totalPlaytime: stats.total_playtime,
@@ -506,7 +506,7 @@ export class GamePersistence {
 
       for (const participant of participants) {
         const isWinner = participant.player_id === winnerId;
-        
+
         await this.db.run(
           `UPDATE players 
            SET total_games = total_games + 1,
@@ -586,7 +586,7 @@ export class GamePersistence {
 
   private async flushActionBuffer(gameId: string): Promise<void> {
     if (!this.db) return;
-    
+
     const actions = this.actionBuffer.get(gameId);
     if (!actions || actions.length === 0) return;
 
@@ -700,12 +700,12 @@ export class GamePersistence {
    */
   async close(): Promise<void> {
     this.disableAutoSave();
-    
+
     // Flush any remaining action buffers
     for (const gameId of this.actionBuffer.keys()) {
       await this.flushActionBuffer(gameId);
     }
-    
+
     if (this.db) {
       await this.db.close();
       this.db = null;

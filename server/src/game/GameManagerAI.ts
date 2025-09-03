@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io';
-import { 
-  GameConfig, 
-  PlayerInfo, 
+import {
+  GameConfig,
+  PlayerInfo,
   GameAction,
   ActionType,
   GameActionType,
@@ -49,7 +49,7 @@ export class GameManagerAI {
     this.games = new Map();
     this.playerToGame = new Map();
     this.socketToPlayer = new Map();
-    
+
     // Start cleanup interval
     this.cleanupInterval = setInterval(() => {
       this.cleanupInactiveGames();
@@ -67,7 +67,7 @@ export class GameManagerAI {
     socket.on('game_action', (data) => this.handleGameAction(socket, data));
     socket.on('player_ready', () => this.handlePlayerReady(socket));
     socket.on('request_game_state', () => this.handleRequestGameState(socket));
-    
+
     // Single player specific events
     socket.on('create_single_player', (data) => this.handleCreateSinglePlayer(socket, data));
     socket.on('set_ai_difficulty', (data) => this.handleSetAIDifficulty(socket, data));
@@ -92,11 +92,11 @@ export class GameManagerAI {
   }): void {
     try {
       const { playerName, aiOpponents, aiDifficulty, mapSize = 'medium' } = data;
-      
+
       // Create game configuration
       const gameConfig: GameConfig = {
         maxPlayers: aiOpponents + 1,
-        mapSize: { 
+        mapSize: {
           width: mapSize === 'small' ? 15 : mapSize === 'large' ? 30 : 20,
           height: mapSize === 'small' ? 15 : mapSize === 'large' ? 30 : 20
         },
@@ -109,7 +109,7 @@ export class GameManagerAI {
       const gameId = uuidv4();
       const gameEngine = new GameEngine();
       const hexMap = new HexMap(gameConfig.mapSize.width, gameConfig.mapSize.height);
-      
+
       // Initialize game state
       const gameState = new GameState(gameConfig);
       gameState.id = gameId;
@@ -141,7 +141,7 @@ export class GameManagerAI {
       for (let i = 0; i < aiOpponents; i++) {
         const aiPlayerId = uuidv4();
         const aiPersonality = aiPersonalities[i % aiPersonalities.length];
-        
+
         const aiPlayerInfo: PlayerInfo = {
           id: aiPlayerId,
           name: `AI ${i + 1} (${aiPersonality})`,
@@ -152,9 +152,9 @@ export class GameManagerAI {
           isActive: true,
           score: 0
         };
-        
+
         gameState.addPlayer(aiPlayerInfo);
-        
+
         // Create AI player instance
         const aiPlayer = new AIPlayer(aiPlayerId, aiPersonality, aiDifficulty);
         aiPlayerMap.set(aiPlayerId, aiPlayer);
@@ -239,7 +239,7 @@ export class GameManagerAI {
 
       // Process the action
       const result = { success: true, newState: gameRoom.gameState }; // Placeholder
-      
+
       if (result.success && result.newState) {
         gameRoom.gameState = result.newState;
         gameRoom.lastActivity = new Date();
@@ -249,13 +249,13 @@ export class GameManagerAI {
         if (victoryCheck.gameOver) {
           (gameRoom.gameState as any).gameOver = true;
           (gameRoom.gameState as any).winner = victoryCheck.winner;
-          
+
           this.io.to(gameId).emit('game_over', {
             winner: victoryCheck.winner,
             type: victoryCheck.type,
             gameState: this.serializeGameState(gameRoom.gameState)
           });
-          
+
           return;
         }
 
@@ -343,10 +343,10 @@ export class GameManagerAI {
         }
 
         const result = { success: true, newState: gameRoom.gameState }; // Placeholder
-        
+
         if (result.success && result.newState) {
           gameRoom.gameState = result.newState;
-          
+
           // Broadcast action to human players
           this.io.to(gameId).emit('ai_action', {
             playerId: aiPlayerId,
@@ -362,13 +362,13 @@ export class GameManagerAI {
           if (victoryCheck.gameOver) {
             (gameRoom.gameState as any).gameOver = true;
             (gameRoom.gameState as any).winner = victoryCheck.winner;
-            
+
             this.io.to(gameId).emit('game_over', {
               winner: victoryCheck.winner,
               type: victoryCheck.type,
               gameState: this.serializeGameState(gameRoom.gameState)
             });
-            
+
             return;
           }
 
@@ -391,11 +391,11 @@ export class GameManagerAI {
    */
   private placeStartingUnits(gameState: GameState): void {
     const startPositions = this.generateStartPositions(gameState.board, gameState.players.length);
-    
+
     gameState.players.forEach((player, index) => {
       const startPos = startPositions[index];
       const playerId = (player as any).id;
-      
+
       // Place settler
       const settlerPos = startPos;
       gameState.board[settlerPos.r][settlerPos.q].unit = {
@@ -404,7 +404,7 @@ export class GameManagerAI {
         moves: 2,
         maxMoves: 2
       };
-      
+
       player.units.push({
         id: uuidv4(),
         type: UnitType.SETTLER,
@@ -424,7 +424,7 @@ export class GameManagerAI {
           moves: 1,
           maxMoves: 1
         };
-        
+
         player.units.push({
           id: uuidv4(),
           type: UnitType.WARRIOR,
@@ -444,24 +444,24 @@ export class GameManagerAI {
     const positions: Position[] = [];
     const mapWidth = map[0].length;
     const mapHeight = map.length;
-    
+
     // Simple distribution - divide map into sections
     const angle = (2 * Math.PI) / playerCount;
     const centerX = mapWidth / 2;
     const centerY = mapHeight / 2;
     const radius = Math.min(mapWidth, mapHeight) * 0.35;
-    
+
     for (let i = 0; i < playerCount; i++) {
       const x = Math.round(centerX + radius * Math.cos(angle * i));
       const y = Math.round(centerY + radius * Math.sin(angle * i));
-      
+
       // Find nearest valid land tile
       const validPos = this.findNearestLandTile(map, x, y);
       if (validPos) {
         positions.push(validPos);
       }
     }
-    
+
     return positions;
   }
 
@@ -471,20 +471,20 @@ export class GameManagerAI {
   private findNearestLandTile(map: any[][], x: number, y: number): Position | null {
     const visited = new Set<string>();
     const queue: Position[] = [{ q: x, r: y }];
-    
+
     while (queue.length > 0) {
       const pos = queue.shift()!;
       const key = `${pos.q},${pos.r}`;
-      
+
       if (visited.has(key)) continue;
       visited.add(key);
-      
+
       if (pos.r >= 0 && pos.r < map.length && pos.q >= 0 && pos.q < map[0].length) {
         const tile = map[pos.r][pos.q];
         if (tile && tile.terrain !== 'ocean' && tile.terrain !== 'water') {
           return pos;
         }
-        
+
         // Add neighbors
         const neighbors = [
           { q: pos.q + 1, r: pos.r },
@@ -492,7 +492,7 @@ export class GameManagerAI {
           { q: pos.q, r: pos.r + 1 },
           { q: pos.q, r: pos.r - 1 }
         ];
-        
+
         neighbors.forEach(n => {
           if (!visited.has(`${n.q},${n.r}`)) {
             queue.push(n);
@@ -500,7 +500,7 @@ export class GameManagerAI {
         });
       }
     }
-    
+
     return null;
   }
 
@@ -514,10 +514,10 @@ export class GameManagerAI {
       { q: 0, r: 1 }, { q: 0, r: -1 },
       { q: 1, r: -1 }, { q: -1, r: 1 }
     ];
-    
+
     directions.forEach(dir => {
       const newPos = { q: pos.q + dir.q, r: pos.r + dir.r };
-      if (newPos.r >= 0 && newPos.r < map.length && 
+      if (newPos.r >= 0 && newPos.r < map.length &&
           newPos.q >= 0 && newPos.q < map[0].length) {
         const tile = map[newPos.r][newPos.q];
         if (tile && tile.terrain !== 'ocean' && !tile.unit) {
@@ -525,7 +525,7 @@ export class GameManagerAI {
         }
       }
     });
-    
+
     return neighbors;
   }
 
@@ -534,7 +534,7 @@ export class GameManagerAI {
    */
   private getAIStartingResources(difficulty: AIDifficulty): any {
     const base = GameUtils.createDefaultResources();
-    
+
     switch (difficulty) {
       case AIDifficulty.Easy:
         return {
@@ -581,7 +581,7 @@ export class GameManagerAI {
   }
 
   // Standard GameManager methods...
-  
+
   private handleCreateGame(socket: Socket, data: CreateGameOptions): void {
     // Implementation for multiplayer game creation
     // ... (keep existing implementation)
@@ -612,13 +612,13 @@ export class GameManagerAI {
   private handleRequestGameState(socket: Socket): void {
     const playerId = this.socketToPlayer.get(socket.id);
     if (!playerId) return;
-    
+
     const gameId = this.playerToGame.get(playerId);
     if (!gameId) return;
-    
+
     const gameRoom = this.games.get(gameId);
     if (!gameRoom) return;
-    
+
     socket.emit('game_state', {
       gameState: this.serializeGameState(gameRoom.gameState)
     });
@@ -632,10 +632,10 @@ export class GameManagerAI {
   private handlePlayerDisconnect(playerId: string): void {
     const gameId = this.playerToGame.get(playerId);
     if (!gameId) return;
-    
+
     const gameRoom = this.games.get(gameId);
     if (!gameRoom) return;
-    
+
     // In single player, pause the game
     if (gameRoom.singlePlayer) {
       if (gameRoom.aiProcessingTimer) {
@@ -647,14 +647,14 @@ export class GameManagerAI {
       gameRoom.players.delete(playerId);
       this.io.to(gameId).emit('player_disconnected', { playerId });
     }
-    
+
     this.playerToGame.delete(playerId);
   }
 
   private cleanupInactiveGames(): void {
     const now = Date.now();
     const maxInactivity = 30 * 60 * 1000; // 30 minutes
-    
+
     this.games.forEach((room, gameId) => {
       if (now - room.lastActivity.getTime() > maxInactivity) {
         // Clean up AI timers
@@ -664,14 +664,14 @@ export class GameManagerAI {
         if (room.turnTimer) {
           clearTimeout(room.turnTimer);
         }
-        
+
         // Remove player mappings
         room.players.forEach((socket, playerId) => {
           if (socket !== 'AI') {
             this.playerToGame.delete(playerId);
           }
         });
-        
+
         this.games.delete(gameId);
         console.log(`Cleaned up inactive game: ${gameId}`);
       }
@@ -689,7 +689,7 @@ export class GameManagerAI {
 
   public shutdown(): void {
     clearInterval(this.cleanupInterval);
-    
+
     // Clear all AI timers
     this.games.forEach(room => {
       if (room.aiProcessingTimer) {
@@ -699,7 +699,7 @@ export class GameManagerAI {
         clearTimeout(room.turnTimer);
       }
     });
-    
+
     this.games.clear();
     this.playerToGame.clear();
     this.socketToPlayer.clear();

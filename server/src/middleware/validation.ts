@@ -26,7 +26,7 @@ export const commonSchemas = {
       password: z.string()
         .min(8, 'Password must be at least 8 characters')
         .max(128, 'Password too long')
-        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, 
+        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
                'Password must contain at least one uppercase, lowercase, number, and special character')
     })
   }),
@@ -54,7 +54,7 @@ export const commonSchemas = {
       newPassword: z.string()
         .min(8, 'Password must be at least 8 characters')
         .max(128, 'Password too long')
-        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, 
+        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
                'Password must contain at least one uppercase, lowercase, number, and special character')
         .optional()
     }).refine(data => {
@@ -155,21 +155,21 @@ export class AdvancedRateLimiter {
     this.authLimiter = new RateLimiterMemory({
       points: 5, // Number of requests
       duration: 300, // Per 5 minutes
-      blockDuration: 900, // Block for 15 minutes
+      blockDuration: 900 // Block for 15 minutes
     });
 
     // General API endpoints
     this.apiLimiter = new RateLimiterMemory({
       points: config.RATE_LIMIT_MAX_REQUESTS,
       duration: config.RATE_LIMIT_WINDOW_MS / 1000,
-      blockDuration: 300, // Block for 5 minutes
+      blockDuration: 300 // Block for 5 minutes
     });
 
     // Strict rate limiting for sensitive endpoints
     this.strictLimiter = new RateLimiterMemory({
       points: 2, // Only 2 requests
       duration: 600, // Per 10 minutes
-      blockDuration: 1800, // Block for 30 minutes
+      blockDuration: 1800 // Block for 30 minutes
     });
   }
 
@@ -276,15 +276,15 @@ export function securityHeaders() {
       res.setHeader('X-XSS-Protection', '1; mode=block');
       res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
       res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-      
+
       // Content Security Policy
-      res.setHeader('Content-Security-Policy', 
-        "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline'; " +
-        "style-src 'self' 'unsafe-inline'; " +
-        "connect-src 'self' ws: wss:; " +
-        "img-src 'self' data: https:; " +
-        "font-src 'self';"
+      res.setHeader('Content-Security-Policy',
+        'default-src \'self\'; ' +
+        'script-src \'self\' \'unsafe-inline\'; ' +
+        'style-src \'self\' \'unsafe-inline\'; ' +
+        'connect-src \'self\' ws: wss:; ' +
+        'img-src \'self\' data: https:; ' +
+        'font-src \'self\';'
       );
     }
     next();

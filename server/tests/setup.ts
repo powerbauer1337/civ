@@ -1,11 +1,15 @@
 // Global test setup
 import { beforeAll, afterAll } from '@jest/globals';
 
-// Custom JWT matcher for testing
+// Custom matchers for testing
 declare global {
   namespace jest {
     interface Matchers<R> {
       toBeValidJWT(): R;
+      toMatchApiResponse(): R;
+      toBeValidUserId(): R;
+      toBeValidGameId(): R;
+      toHaveValidTimestamp(): R;
     }
   }
 }
@@ -26,6 +30,50 @@ expect.extend({
       message: () => pass 
         ? `Expected ${received} not to be a valid JWT`
         : `Expected ${received} to be a valid JWT`,
+      pass,
+    };
+  },
+  toMatchApiResponse(received) {
+    const pass = received && 
+      typeof received === 'object' &&
+      'success' in received &&
+      typeof received.success === 'boolean';
+
+    return {
+      message: () => pass
+        ? `Expected object not to match API response format`
+        : `Expected object to match API response format with 'success' property`,
+      pass,
+    };
+  },
+  toBeValidUserId(received) {
+    const pass = typeof received === 'string' && received.length > 0;
+
+    return {
+      message: () => pass
+        ? `Expected ${received} not to be a valid user ID`
+        : `Expected ${received} to be a valid user ID (non-empty string)`,
+      pass,
+    };
+  },
+  toBeValidGameId(received) {
+    const pass = typeof received === 'string' && received.length > 0;
+
+    return {
+      message: () => pass
+        ? `Expected ${received} not to be a valid game ID`
+        : `Expected ${received} to be a valid game ID (non-empty string)`,
+      pass,
+    };
+  },
+  toHaveValidTimestamp(received) {
+    const timestamp = received?.timestamp || received?.createdAt || received?.updatedAt;
+    const pass = timestamp && !isNaN(new Date(timestamp).getTime());
+
+    return {
+      message: () => pass
+        ? `Expected object not to have valid timestamp`
+        : `Expected object to have valid timestamp property`,
       pass,
     };
   },
