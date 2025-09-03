@@ -24,13 +24,8 @@ export enum TerrainType {
   JUNGLE = 'jungle'
 }
 
-export enum ResourceType {
-  GOLD = 'gold',
-  SCIENCE = 'science',
-  CULTURE = 'culture',
-  PRODUCTION = 'production',
-  FOOD = 'food'
-}
+// Import from main types to avoid conflicts
+import { Resources } from './index';
 
 export enum UnitType {
   WARRIOR = 'warrior',
@@ -61,13 +56,7 @@ export enum TechnologyType {
   CURRENCY = 'currency'
 }
 
-export interface GameResources {
-  [ResourceType.GOLD]: number;
-  [ResourceType.SCIENCE]: number;
-  [ResourceType.CULTURE]: number;
-  [ResourceType.PRODUCTION]: number;
-  [ResourceType.FOOD]: number;
-}
+export type GameResources = Resources;
 
 export interface PlayerInfo {
   id: string;
@@ -102,7 +91,7 @@ export enum VictoryType {
 export interface GameAction {
   type: string;
   playerId: string;
-  payload: any;
-  timestamp: number;
-  actionId: string;
+  data: any;  // Changed from payload to data to match server expectations
+  timestamp?: number;
+  actionId?: string;
 }

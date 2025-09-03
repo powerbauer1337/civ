@@ -236,7 +236,7 @@ export class SecureJWTManager {
 
     const tokenOptions: jwt.SignOptions = {
       algorithm: keyInfo.algorithm as jwt.Algorithm,
-      expiresIn: validatedOptions.expiresIn as string | number,
+      expiresIn: validatedOptions.expiresIn as string,
       issuer: validatedOptions.issuer,
       audience: validatedOptions.audience,
       jwtid: jwtId,

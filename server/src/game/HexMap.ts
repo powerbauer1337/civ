@@ -97,11 +97,11 @@ export class HexMap implements GameMap {
         }
         // Plains
         else if (noise < 0 && random() < 0.4) {
-          tile.terrain = TerrainType.PLAINS;
+          tile.terrain = 'plains';
         }
         // Default grassland (fertile areas)
         else {
-          tile.terrain = TerrainType.GRASSLAND;
+          tile.terrain = 'grassland';
         }
       }
     }

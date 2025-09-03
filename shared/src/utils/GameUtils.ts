@@ -1,13 +1,15 @@
-import { HexCoordinate, GameResources, ResourceType } from '../types/GameTypes';
+import { HexCoordinate, GameResources } from '../types/GameTypes';
+import { Resources } from '../types/index';
 
 export class GameUtils {
   public static createDefaultResources(): GameResources {
     return {
-      [ResourceType.GOLD]: 50,
-      [ResourceType.SCIENCE]: 0,
-      [ResourceType.CULTURE]: 0,
-      [ResourceType.PRODUCTION]: 0,
-      [ResourceType.FOOD]: 0
+      food: 0,
+      production: 0,
+      gold: 50,
+      science: 0,
+      culture: 0,
+      faith: 0
     };
   }
 
@@ -33,41 +35,45 @@ export class GameUtils {
 
   public static clampResources(resources: GameResources): GameResources {
     return {
-      [ResourceType.GOLD]: Math.max(0, resources[ResourceType.GOLD]),
-      [ResourceType.SCIENCE]: Math.max(0, resources[ResourceType.SCIENCE]),
-      [ResourceType.CULTURE]: Math.max(0, resources[ResourceType.CULTURE]),
-      [ResourceType.PRODUCTION]: Math.max(0, resources[ResourceType.PRODUCTION]),
-      [ResourceType.FOOD]: Math.max(0, resources[ResourceType.FOOD])
+      food: Math.max(0, resources.food),
+      production: Math.max(0, resources.production),
+      gold: Math.max(0, resources.gold),
+      science: Math.max(0, resources.science),
+      culture: Math.max(0, resources.culture),
+      faith: Math.max(0, resources.faith)
     };
   }
 
   public static addResources(a: GameResources, b: GameResources): GameResources {
     return {
-      [ResourceType.GOLD]: a[ResourceType.GOLD] + b[ResourceType.GOLD],
-      [ResourceType.SCIENCE]: a[ResourceType.SCIENCE] + b[ResourceType.SCIENCE],
-      [ResourceType.CULTURE]: a[ResourceType.CULTURE] + b[ResourceType.CULTURE],
-      [ResourceType.PRODUCTION]: a[ResourceType.PRODUCTION] + b[ResourceType.PRODUCTION],
-      [ResourceType.FOOD]: a[ResourceType.FOOD] + b[ResourceType.FOOD]
+      food: a.food + b.food,
+      production: a.production + b.production,
+      gold: a.gold + b.gold,
+      science: a.science + b.science,
+      culture: a.culture + b.culture,
+      faith: a.faith + b.faith
     };
   }
 
   public static subtractResources(a: GameResources, b: GameResources): GameResources {
     return {
-      [ResourceType.GOLD]: a[ResourceType.GOLD] - b[ResourceType.GOLD],
-      [ResourceType.SCIENCE]: a[ResourceType.SCIENCE] - b[ResourceType.SCIENCE],
-      [ResourceType.CULTURE]: a[ResourceType.CULTURE] - b[ResourceType.CULTURE],
-      [ResourceType.PRODUCTION]: a[ResourceType.PRODUCTION] - b[ResourceType.PRODUCTION],
-      [ResourceType.FOOD]: a[ResourceType.FOOD] - b[ResourceType.FOOD]
+      food: a.food - b.food,
+      production: a.production - b.production,
+      gold: a.gold - b.gold,
+      science: a.science - b.science,
+      culture: a.culture - b.culture,
+      faith: a.faith - b.faith
     };
   }
 
   public static canAfford(resources: GameResources, cost: GameResources): boolean {
     return (
-      resources[ResourceType.GOLD] >= cost[ResourceType.GOLD] &&
-      resources[ResourceType.SCIENCE] >= cost[ResourceType.SCIENCE] &&
-      resources[ResourceType.CULTURE] >= cost[ResourceType.CULTURE] &&
-      resources[ResourceType.PRODUCTION] >= cost[ResourceType.PRODUCTION] &&
-      resources[ResourceType.FOOD] >= cost[ResourceType.FOOD]
+      resources.food >= cost.food &&
+      resources.production >= cost.production &&
+      resources.gold >= cost.gold &&
+      resources.science >= cost.science &&
+      resources.culture >= cost.culture &&
+      resources.faith >= cost.faith
     );
   }
 
@@ -82,9 +88,9 @@ export class GameUtils {
     
     // Resource score
     if (player.resources) {
-      score += player.resources[ResourceType.GOLD] * 0.1;
-      score += player.resources[ResourceType.SCIENCE] * 2;
-      score += player.resources[ResourceType.CULTURE] * 1.5;
+      score += player.resources.gold * 0.1;
+      score += player.resources.science * 2;
+      score += player.resources.culture * 1.5;
     }
     
     return Math.floor(score);

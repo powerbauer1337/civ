@@ -8,6 +8,11 @@ import { v4 as uuidv4 } from 'uuid';
  */
 export class GameEngine {
   
+  constructor(config?: any) {
+    // GameEngine is primarily used as a static utility class
+    // Constructor provided for compatibility with existing code
+  }
+  
   /**
    * Process any player action and update game state accordingly
    */

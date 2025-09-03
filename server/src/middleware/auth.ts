@@ -96,7 +96,7 @@ export class AuthService {
         refreshPayload,
         config.JWT_REFRESH_SECRET,
         {
-          expiresIn: config.JWT_REFRESH_EXPIRES_IN,
+          expiresIn: config.JWT_REFRESH_EXPIRES_IN || '7d',
           audience: 'civilization-game-client',
           issuer: 'civilization-game-server',
           jwtid: `refresh_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`

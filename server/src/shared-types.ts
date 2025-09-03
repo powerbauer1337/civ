@@ -200,6 +200,7 @@ export enum VictoryType {
   DOMINATION = 'domination',
   SCIENCE = 'science',
   CULTURE = 'culture',
+  DIPLOMATIC = 'diplomatic',
   SCORE = 'score'
 }
 

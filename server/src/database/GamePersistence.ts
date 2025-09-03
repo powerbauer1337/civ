@@ -238,7 +238,8 @@ export class GamePersistence {
           civilization: player.civilization,
           resources: {
             ...player.resources,
-            culture: 0 // Add missing culture resource
+            culture: 0, // Add missing culture resource
+            faith: 0    // Add missing faith resource
           },
           technologies: new Set(), // Initialize empty for now
           isActive: true,

@@ -1,5 +1,7 @@
 import { Server, Socket } from 'socket.io';
-import { GameConfig, PlayerInfo, GamePhase, GameAction, GameUtils } from '@civ-game/shared';
+import { GameConfig, PlayerInfo, GameUtils, VictoryType, GameActionType } from '@civ-game/shared';
+import { GamePhase } from '../shared-types';
+import { GameAction } from '@civ-game/shared/dist/types/GameTypes';
 import { GameState } from '../shared-types';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
@@ -19,7 +21,7 @@ export interface GameRoom {
   name: string;
   gameState: GameState;
   game: GameEngine;
-  players: RoomPlayer[];
+  players: Map<string, Socket>; // playerId -> Socket
   maxPlayers: number;
   status: 'waiting' | 'in_progress' | 'completed';
   gameMode: 'singleplayer' | 'multiplayer';
@@ -102,8 +104,14 @@ export class GameManager {
 
       // Create game room
       const gameRoom: GameRoom = {
+        id: gameState.id,
+        name: data.playerName + "'s Game",
         gameState,
+        game: new GameEngine(gameConfig),
         players: new Map([[playerId, socket]]),
+        maxPlayers: gameConfig.maxPlayers,
+        status: 'waiting',
+        gameMode: 'multiplayer',
         spectators: new Set(),
         lastActivity: new Date()
       };
@@ -140,7 +148,7 @@ export class GameManager {
         return;
       }
 
-      if (gameRoom.gameState.phase !== GamePhase.SETUP && gameRoom.gameState.phase !== GamePhase.SETUP) {
+      if (gameRoom.gameState.phase !== GamePhase.LOBBY) {
         socket.emit('error', { message: 'Game already started' });
         return;
       }
@@ -281,7 +289,7 @@ export class GameManager {
         return;
       }
 
-      if (gameRoom.gameState.phase !== 'PLAYER_TURN' && gameRoom.gameState.phase !== 'active') {
+      if (gameRoom.gameState.phase !== GamePhase.ACTIVE) {
         socket.emit('error', { message: 'Game is not active' });
         return;
       }
@@ -321,7 +329,7 @@ export class GameManager {
         });
 
         // Check for game end
-        if (gameRoom.gameState.phase === 'END_GAME') {
+        if (gameRoom.gameState.phase === GamePhase.ENDED) {
           this.handleGameEnd(gameId);
         }
       } else {
@@ -419,9 +427,9 @@ export class GameManager {
 
     // Force end turn
     const endTurnAction: GameAction = {
-      type: 'end_turn',
+      type: GameActionType.END_TURN,
       playerId: gameRoom.gameState.getCurrentPlayer().id,
-      payload: {},
+      data: {},
       timestamp: Date.now(),
       actionId: uuidv4()
     };
@@ -529,10 +537,8 @@ export class GameManager {
       maxPlayers: options.maxPlayers,
       mapSize: options.mapSize,
       turnTimeLimit: 120,
-      fogOfWar: true,
-      difficulty: 'normal',
-      victoryConditions: ['domination', 'science', 'culture'],
-      gameSpeed: 'normal'
+      victoryConditions: [VictoryType.DOMINATION, VictoryType.SCIENCE, VictoryType.CULTURE],
+      startingResources: GameUtils.createDefaultResources()
     };
 
     const gameState = new GameState(gameConfig);
@@ -543,7 +549,7 @@ export class GameManager {
       name: options.name,
       gameState,
       game: gameEngine,
-      players: [],
+      players: new Map(),
       maxPlayers: options.maxPlayers,
       status: 'waiting',
       gameMode: options.gameMode,
