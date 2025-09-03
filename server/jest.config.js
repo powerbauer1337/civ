@@ -6,15 +6,7 @@ module.exports = {
   // TypeScript support
   preset: 'ts-jest',
   
-  globals: {
-    'ts-jest': {
-      isolatedModules: true,
-      tsconfig: {
-        skipLibCheck: true,
-        noEmit: true
-      }
-    }
-  },
+  // TypeScript configuration moved to transform section (see below)
   
   // Test file patterns
   testMatch: [
@@ -87,7 +79,12 @@ module.exports = {
   
   // Transform configuration
   transform: {
-    '^.+\\.ts$': 'ts-jest'
+    '^.+\\.ts$': ['ts-jest', {
+      tsconfig: {
+        skipLibCheck: true,
+        noEmit: true
+      }
+    }]
   },
   
   // Module file extensions

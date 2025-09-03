@@ -3,6 +3,7 @@ import jwt, { SignOptions } from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { config } from '../config/config';
 import { GameUtils } from '../shared-types';
+import { validateRequest, commonSchemas } from '../middleware/validation';
 import type { StringValue } from 'ms';
 
 interface User {
@@ -31,11 +32,21 @@ export class AuthController {
   }
 
   private setupRoutes(): void {
-    this.router.post('/register', this.register.bind(this));
-    this.router.post('/login', this.login.bind(this));
+    this.router.post('/register', 
+      validateRequest(commonSchemas.registerSchema), 
+      this.register.bind(this)
+    );
+    this.router.post('/login', 
+      validateRequest(commonSchemas.loginSchema), 
+      this.login.bind(this)
+    );
     this.router.post('/logout', this.authenticateToken, this.logout.bind(this));
     this.router.get('/profile', this.authenticateToken, this.getProfile.bind(this));
-    this.router.put('/profile', this.authenticateToken, this.updateProfile.bind(this));
+    this.router.put('/profile', 
+      this.authenticateToken, 
+      validateRequest(commonSchemas.updateProfileSchema), 
+      this.updateProfile.bind(this)
+    );
     this.router.get('/verify', this.authenticateToken, this.verifyToken.bind(this));
   }
 
@@ -43,19 +54,10 @@ export class AuthController {
     try {
       const { username, email, password } = req.body;
 
-      // Validate input
-      if (!username || !email || !password) {
-        res.status(400).json({ error: 'Username, email, and password are required' });
-        return;
-      }
-
+      // Input validation is now handled by middleware
+      // Additional custom validation if needed
       if (!GameUtils.validatePlayerName(username)) {
         res.status(400).json({ error: 'Invalid username format' });
-        return;
-      }
-
-      if (password.length < 6) {
-        res.status(400).json({ error: 'Password must be at least 6 characters' });
         return;
       }
 
@@ -117,10 +119,7 @@ export class AuthController {
     try {
       const { username, password } = req.body;
 
-      if (!username || !password) {
-        res.status(400).json({ error: 'Username and password are required' });
-        return;
-      }
+      // Input validation is now handled by middleware
 
       // Find user
       const user = Array.from(this.users.values()).find(
@@ -220,10 +219,7 @@ export class AuthController {
           return;
         }
 
-        if (newPassword.length < 6) {
-          res.status(400).json({ error: 'New password must be at least 6 characters' });
-          return;
-        }
+        // Password complexity validation is handled by middleware
 
         user.passwordHash = await bcrypt.hash(newPassword, config.BCRYPT_ROUNDS);
         updated = true;
@@ -277,7 +273,7 @@ export class AuthController {
 
     jwt.verify(token, config.JWT_SECRET, (err: any, decoded: any) => {
       if (err) {
-        res.status(403).json({ error: 'Invalid or expired token' });
+        res.status(401).json({ error: 'Invalid or expired token' });
         return;
       }
 
