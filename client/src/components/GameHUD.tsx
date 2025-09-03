@@ -46,13 +46,14 @@ const GameHUD: React.FC = () => {
   };
 
   return (
-    <Box className="game-hud">
+    <Box className="game-hud" data-testid="game-hud">
       {/* Left side - Menu and game info */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <IconButton
           color="inherit"
           onClick={handleMenuClick}
           sx={{ color: 'white' }}
+          aria-label="Open game menu"
         >
           <MenuIcon />
         </IconButton>
@@ -110,6 +111,7 @@ const GameHUD: React.FC = () => {
           disabled={!currentPlayerTurn}
           onClick={handleEndTurn}
           startIcon={currentPlayerTurn ? <PlayIcon /> : <PauseIcon />}
+          aria-label={currentPlayerTurn ? 'End current turn' : 'Waiting for turn'}
         >
           {currentPlayerTurn ? 'End Turn' : 'Waiting...'}
         </Button>

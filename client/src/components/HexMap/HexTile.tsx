@@ -135,8 +135,24 @@ const HexTile: React.FC<HexTileProps> = ({
     { x: x + size * 0.3, y: y - size * 0.3, color: '#FFD700' }
   ] : [];
 
+  const ariaLabel = `Hex tile at ${x}, ${y} with ${terrain}${unit ? ` and ${unit.type} unit` : ''}`;
+  
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onClick();
+    }
+  };
+
   return (
-    <g>
+    <g 
+      data-testid={`hex-tile-${x}-${y}`}
+      className={`hex-tile terrain-${terrain} ${isHighlighted ? 'highlighted' : ''} ${isHovered ? 'hovered' : ''} ${isSelected ? 'selected' : ''}`}
+      aria-label={ariaLabel}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      role="button"
+    >
       {/* Main hex tile */}
       <path
         d={getHexPath(x, y, size)}
@@ -150,17 +166,21 @@ const HexTile: React.FC<HexTileProps> = ({
       />
 
       {/* Resource indicators */}
-      {resourceDots.map((dot, index) => (
-        <circle
-          key={index}
-          cx={dot.x}
-          cy={dot.y}
-          r={3}
-          fill={dot.color}
-          stroke="#000"
-          strokeWidth={0.5}
-        />
-      ))}
+      {hasResource && (
+        <g data-testid="resource-indicator">
+          {resourceDots.map((dot, index) => (
+            <circle
+              key={index}
+              cx={dot.x}
+              cy={dot.y}
+              r={3}
+              fill={dot.color}
+              stroke="#000"
+              strokeWidth={0.5}
+            />
+          ))}
+        </g>
+      )}
 
       {/* Terrain features (simple) */}
       {terrain === 'hills' && (
@@ -186,9 +206,21 @@ const HexTile: React.FC<HexTileProps> = ({
         </>
       )}
 
+      {/* Terrain label */}
+      <text
+        x={x}
+        y={y + size * 0.8}
+        textAnchor="middle"
+        fontSize="6"
+        fill="#333"
+        opacity={0.7}
+      >
+        {terrain}
+      </text>
+
       {/* Unit visualization */}
       {unit && (
-        <g>
+        <g data-testid={`unit-${unit.type}`}>
           {/* Unit background circle */}
           <circle
             cx={x}
@@ -213,24 +245,47 @@ const HexTile: React.FC<HexTileProps> = ({
           >
             {getUnitSymbol(unit.type)}
           </text>
+          
+          {/* Unit type text */}
+          <text
+            x={x}
+            y={y - size * 0.8}
+            textAnchor="middle"
+            fontSize="6"
+            fill="#000"
+          >
+            {unit.type}
+          </text>
 
           {/* Unit health indicator */}
-          {unit.health < unit.maxHealth && (
-            <rect
-              x={x - size * 0.3}
-              y={y - size * 0.6}
-              width={size * 0.6 * (unit.health / unit.maxHealth)}
-              height={3}
-              fill="#00FF00"
-              stroke="#000"
-              strokeWidth={0.5}
-            />
-          )}
+          <rect
+            data-testid="unit-health-bar"
+            className={`${unit.health === 0 ? 'critical-health' : unit.health === unit.maxHealth ? 'full-health' : ''}`}
+            x={x - size * 0.3}
+            y={y - size * 0.6}
+            width={size * 0.6 * (unit.health / unit.maxHealth)}
+            height={3}
+            fill={unit.health < unit.maxHealth * 0.3 ? "#FF0000" : "#00FF00"}
+            stroke="#000"
+            strokeWidth={0.5}
+            style={{width: `${(unit.health / unit.maxHealth) * 100}%`}}
+          />
 
           {/* Movement points indicator */}
-          {unit.movement < unit.maxMovement && (
-            <g>
-              {[...Array(unit.maxMovement)].map((_, i) => (
+          <g 
+            data-testid="unit-movement" 
+            className={unit.movement === 0 ? 'no-movement' : ''}
+          >
+            <text
+              x={x}
+              y={y + size * 0.7}
+              textAnchor="middle"
+              fontSize="8"
+              fill="#000"
+            >
+              {unit.movement}/{unit.maxMovement}
+            </text>
+            {[...Array(unit.maxMovement)].map((_, i) => (
                 <circle
                   key={i}
                   cx={x - size * 0.4 + i * 8}
@@ -241,8 +296,7 @@ const HexTile: React.FC<HexTileProps> = ({
                   strokeWidth={0.5}
                 />
               ))}
-            </g>
-          )}
+          </g>
         </g>
       )}
 
