@@ -26,10 +26,19 @@ describe('AIPlayer', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
-    // Mock HexMap methods
-    mockHexMap.prototype.getNeighbors = jest.fn().mockReturnValue([
-      { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 1 }
-    ]);
+    // Mock HexMap methods - should return neighbors for (2,2)
+    mockHexMap.prototype.getNeighbors = jest.fn().mockImplementation((x, y) => {
+      // For warrior at (2,2), return proper neighbors
+      if (x === 2 && y === 2) {
+        return [
+          { x: 3, y: 2 }, { x: 1, y: 2 }, { x: 2, y: 3 }, { x: 2, y: 1 }, { x: 3, y: 1 }, { x: 1, y: 3 }
+        ];
+      }
+      // Default return for other positions
+      return [
+        { x: x + 1, y: y }, { x: x - 1, y: y }, { x: x, y: y + 1 }
+      ];
+    });
     mockHexMap.prototype.calculateDistance = jest.fn().mockImplementation((x1, y1, x2, y2) => {
       // Return 0 for worker at same position, 5 for city distance checks, 1 for other cases
       if (x1 === x2 && y1 === y2) return 0;
@@ -226,8 +235,8 @@ describe('AIPlayer', () => {
 
   describe('Unit Decision Making', () => {
     it('should make warrior attack adjacent enemies', async () => {
-      // Place enemy unit adjacent to AI warrior
-      const neighborPos = mockHexMap.prototype.getNeighbors(2, 2)[0];
+      // Place enemy unit adjacent to AI warrior at (3,2)
+      const neighborPos = { x: 3, y: 2 };
       mockGameState.board[neighborPos.y][neighborPos.x].unit = {
         id: 'enemy-unit-2',
         type: UnitType.WARRIOR,
