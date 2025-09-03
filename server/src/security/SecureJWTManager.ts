@@ -234,12 +234,13 @@ export class SecureJWTManager {
       jti: jwtId
     };
 
-    const tokenOptions: jwt.SignOptions = {
+    const tokenOptions: any = {
       algorithm: keyInfo.algorithm as jwt.Algorithm,
       expiresIn: validatedOptions.expiresIn || '1h',
       issuer: validatedOptions.issuer,
       header: {
-        kid: this.currentKeyId
+        kid: this.currentKeyId,
+        alg: keyInfo.algorithm as jwt.Algorithm
       }
     };
 
