@@ -1,107 +1,179 @@
 import { GameManagerAI, GameRoom, CreateGameOptions } from '../../src/game/GameManagerAI';
-import { Server, Socket } from 'socket.io';
+import { Server as SocketIOServer } from 'socket.io';
 import { GameState, GamePhase } from '../../src/shared-types';
 import { GameEngine } from '../../src/game/GameEngine';
+import { HexMap } from '../../src/game/HexMap';
 import { AIPlayer, AIPersonality, AIDifficulty } from '../../src/game/AIPlayer';
-import { GameConfig, PlayerInfo, GameAction, GameActionType } from '@civ-game/shared';
+import {
+  GameConfig,
+  PlayerInfo,
+  GameAction,
+  GameActionType,
+  UnitType,
+  VictoryType,
+  GameUtils
+} from '@civ-game/shared';
 
 // Mock dependencies
 jest.mock('socket.io');
 jest.mock('../../src/game/GameEngine');
+jest.mock('../../src/game/HexMap');
 jest.mock('../../src/game/AIPlayer');
 jest.mock('../../src/shared-types');
 jest.mock('../../src/config/config', () => ({
   config: {
-    AI_TURN_DELAY: 1000,
-    TURN_TIMER_DURATION: 60000,
     GAME_CLEANUP_INTERVAL: 300000,
-    MAX_IDLE_TIME: 1800000
+    AI_TURN_DELAY: 1000
   }
 }));
 
-const mockSocket = {
-  id: 'socket-123',
+// Mock GameUtils
+jest.mock('@civ-game/shared', () => ({
+  ...jest.requireActual('@civ-game/shared'),
+  GameUtils: {
+    createDefaultResources: jest.fn().mockReturnValue({
+      gold: 50,
+      production: 10,
+      food: 20,
+      science: 5,
+      culture: 2
+    }),
+    getCivilizationColors: jest.fn().mockReturnValue([
+      'blue', 'red', 'green', 'yellow', 'purple', 'orange'
+    ]),
+    getCivilizationNames: jest.fn().mockReturnValue([
+      'Romans', 'Greeks', 'Egyptians', 'Babylonians', 'Chinese', 'Aztecs'
+    ])
+  }
+}));
+
+// Mock Socket interface
+const createMockSocket = (id: string) => ({
+  id,
   join: jest.fn(),
   leave: jest.fn(),
   emit: jest.fn(),
   to: jest.fn().mockReturnThis(),
-  broadcast: { to: jest.fn().mockReturnThis(), emit: jest.fn() }
-} as unknown as Socket;
+  on: jest.fn()
+});
 
-const mockServer = {
+// Mock Socket.IO Server
+const createMockServer = () => ({
   to: jest.fn().mockReturnThis(),
   emit: jest.fn(),
   sockets: { sockets: new Map() }
-} as unknown as Server;
+});
 
-const mockGameState = {
+// Mock GameState
+const createMockGameState = (config?: Partial<GameState>) => ({
   id: 'game-123',
   players: [],
   currentPlayer: 0,
   currentTurn: 1,
   phase: GamePhase.LOBBY,
-  addPlayer: jest.fn(),
-  removePlayer: jest.fn(),
-  startGame: jest.fn(),
-  serialize: jest.fn().mockReturnValue({ serializedData: true }),
+  board: [],
   config: {
-    mapSize: { width: 10, height: 10 },
     maxPlayers: 4,
-    turnTimeLimit: 60,
-    difficulty: 'normal',
-    victoryConditions: ['conquest']
-  }
-} as unknown as GameState;
+    mapSize: { width: 20, height: 20 },
+    victoryConditions: [VictoryType.DOMINATION],
+    turnTimeLimit: 0,
+    startingResources: GameUtils.createDefaultResources()
+  },
+  addPlayer: jest.fn(),
+  getCurrentPlayer: jest.fn().mockReturnValue({ id: 'player-123', name: 'Test' }),
+  ...config
+});
 
-const mockGameEngine = {
+// Mock GameEngine
+const createMockGameEngine = () => ({
   processAction: jest.fn().mockReturnValue({ success: true }),
-  getCurrentPlayerActions: jest.fn().mockReturnValue([]),
-  getGameStatus: jest.fn().mockReturnValue({ phase: 'active', winner: null }),
-  checkVictoryConditions: jest.fn().mockReturnValue(null),
-  endTurn: jest.fn()
-} as unknown as GameEngine;
+  endTurn: jest.fn(),
+  checkVictoryConditions: jest.fn().mockReturnValue({ gameOver: false })
+});
 
-const mockAIPlayer = {
-  makeDecisions: jest.fn().mockReturnValue([]),
+// Mock HexMap
+const createMockHexMap = () => ({
+  tiles: Array(20).fill(null).map(() => Array(20).fill(null).map(() => ({
+    terrain: 'grassland',
+    unit: null,
+    city: null,
+    resource: null
+  })))
+});
+
+// Mock AIPlayer
+const createMockAIPlayer = () => ({
+  makeDecisions: jest.fn().mockReturnValue([
+    {
+      type: GameActionType.END_TURN,
+      playerId: 'ai-player-1',
+      data: {}
+    }
+  ]),
   updateVision: jest.fn(),
-  updateKnowledge: jest.fn(),
-  setDifficulty: jest.fn(),
-  getPersonality: jest.fn().mockReturnValue(AIPersonality.BALANCED),
-  getDifficulty: jest.fn().mockReturnValue(AIDifficulty.NORMAL)
-} as unknown as AIPlayer;
-
-// Mock constructors
-(GameState as jest.MockedClass<typeof GameState>).mockImplementation(() => mockGameState);
-(GameEngine as jest.MockedClass<typeof GameEngine>).mockImplementation(() => mockGameEngine);
-(AIPlayer as jest.MockedClass<typeof AIPlayer>).mockImplementation(() => mockAIPlayer);
+  setGameState: jest.fn(),
+  getPersonality: jest.fn().mockReturnValue(AIPersonality.Balanced),
+  getDifficulty: jest.fn().mockReturnValue(AIDifficulty.Normal)
+});
 
 describe('GameManagerAI', () => {
   let gameManager: GameManagerAI;
+  let mockServer: any;
+  let mockSocket: any;
   let consoleLogSpy: jest.SpyInstance;
   let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
+    
+    // Mock setInterval and clearInterval
+    jest.spyOn(global, 'setInterval');
+    jest.spyOn(global, 'clearInterval');
+    jest.spyOn(global, 'setTimeout');
+    jest.spyOn(global, 'clearTimeout');
+    
+    mockServer = createMockServer();
+    mockSocket = createMockSocket('socket-123');
+    
+    // Mock constructors
+    (GameState as jest.MockedClass<typeof GameState>).mockImplementation(
+      (config) => createMockGameState() as any
+    );
+    (GameEngine as jest.MockedClass<typeof GameEngine>).mockImplementation(
+      () => createMockGameEngine() as any
+    );
+    (HexMap as jest.MockedClass<typeof HexMap>).mockImplementation(
+      () => createMockHexMap() as any
+    );
+    (AIPlayer as jest.MockedClass<typeof AIPlayer>).mockImplementation(
+      () => createMockAIPlayer() as any
+    );
+
     gameManager = new GameManagerAI(mockServer);
+    
     consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
   });
 
   afterEach(() => {
+    if (gameManager) {
+      gameManager.shutdown();
+    }
     jest.runOnlyPendingTimers();
     jest.useRealTimers();
     consoleLogSpy.mockRestore();
     consoleErrorSpy.mockRestore();
   });
 
-  describe('Constructor', () => {
-    it('should create GameManagerAI with proper initialization', () => {
+  describe('Constructor and Initialization', () => {
+    it('should initialize with proper dependencies', () => {
       expect(gameManager).toBeDefined();
       expect(gameManager['io']).toBe(mockServer);
       expect(gameManager['games']).toBeDefined();
       expect(gameManager['playerToGame']).toBeDefined();
       expect(gameManager['socketToPlayer']).toBeDefined();
+      expect(gameManager['cleanupInterval']).toBeDefined();
     });
 
     it('should set up cleanup interval', () => {
@@ -109,521 +181,689 @@ describe('GameManagerAI', () => {
     });
   });
 
-  describe('Game Creation', () => {
-    const createGameOptions: CreateGameOptions = {
-      playerName: 'TestPlayer',
-      gameConfig: {
-        mapSize: { width: 10, height: 10 },
-        maxPlayers: 4,
-        turnTimeLimit: 60,
-        difficulty: 'normal',
-        victoryConditions: ['conquest']
-      } as GameConfig,
-      singlePlayer: true,
-      aiOpponents: 2,
-      aiDifficulty: AIDifficulty.NORMAL
-    };
+  describe('Socket Connection Handling', () => {
+    it('should handle socket connection and register event handlers', () => {
+      gameManager.handleConnection(mockSocket);
 
-    it('should create a new single-player game with AI opponents', () => {
-      const gameId = gameManager.createGame(mockSocket, createGameOptions);
-
-      expect(gameId).toBeDefined();
-      expect(typeof gameId).toBe('string');
-      expect(gameManager.getGameCount()).toBe(1);
-      expect(GameState).toHaveBeenCalled();
-      expect(GameEngine).toHaveBeenCalled();
+      expect(mockSocket.on).toHaveBeenCalledWith('create_game', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('join_game', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('leave_game', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('start_game', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('game_action', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('player_ready', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('request_game_state', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('create_single_player', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('set_ai_difficulty', expect.any(Function));
     });
 
-    it('should create a multiplayer game without AI opponents', () => {
-      const multiplayerOptions = { ...createGameOptions, singlePlayer: false, aiOpponents: 0 };
+    it('should handle socket disconnection', () => {
+      // First simulate connection
+      gameManager['socketToPlayer'].set(mockSocket.id, 'player-123');
       
-      const gameId = gameManager.createGame(mockSocket, multiplayerOptions);
-
-      expect(gameId).toBeDefined();
-      expect(gameManager.getGameCount()).toBe(1);
-    });
-
-    it('should add AI players for single-player games', () => {
-      const gameId = gameManager.createGame(mockSocket, createGameOptions);
-      const gameRoom = gameManager['games'].get(gameId);
-
-      expect(gameRoom).toBeDefined();
-      expect(gameRoom?.aiPlayers.size).toBe(2); // aiOpponents: 2
-      expect(AIPlayer).toHaveBeenCalledTimes(2);
-    });
-
-    it('should handle invalid game configuration', () => {
-      const invalidOptions = { ...createGameOptions, gameConfig: null as any };
-      
-      expect(() => gameManager.createGame(mockSocket, invalidOptions)).toThrow();
-    });
-  });
-
-  describe('Player Management', () => {
-    let gameId: string;
-
-    beforeEach(() => {
-      const createGameOptions: CreateGameOptions = {
-        playerName: 'TestPlayer',
-        gameConfig: {
-          mapSize: { width: 10, height: 10 },
-          maxPlayers: 4,
-          turnTimeLimit: 60,
-          difficulty: 'normal',
-          victoryConditions: ['conquest']
-        } as GameConfig,
-        singlePlayer: false
-      };
-      gameId = gameManager.createGame(mockSocket, createGameOptions);
-    });
-
-    it('should allow players to join existing games', () => {
-      const newPlayer = { ...mockSocket, id: 'socket-456' } as Socket;
-      const playerInfo: PlayerInfo = {
-        id: 'player-456',
-        name: 'Player2',
-        civilization: 'romans',
-        color: 'red'
-      };
-
-      const result = gameManager.joinGame(newPlayer, gameId, playerInfo);
-
-      expect(result).toBe(true);
-      expect(mockGameState.addPlayer).toHaveBeenCalledWith(playerInfo);
-    });
-
-    it('should prevent joining non-existent games', () => {
-      const result = gameManager.joinGame(mockSocket, 'nonexistent-game', {} as PlayerInfo);
-
-      expect(result).toBe(false);
-    });
-
-    it('should prevent joining full games', () => {
-      // Simulate a full game
-      const gameRoom = gameManager['games'].get(gameId);
-      if (gameRoom) {
-        gameRoom.gameState.players = new Array(4).fill({}).map((_, i) => ({ id: `player-${i}` }));
-      }
-
-      const result = gameManager.joinGame(mockSocket, gameId, {} as PlayerInfo);
-
-      expect(result).toBe(false);
-    });
-
-    it('should handle player disconnection', () => {
       gameManager.handleDisconnection(mockSocket);
 
-      // Should not crash and should handle gracefully
-      expect(consoleLogSpy).toHaveBeenCalled();
+      expect(gameManager['socketToPlayer'].has(mockSocket.id)).toBe(false);
+    });
+
+    it('should handle disconnection of unknown socket', () => {
+      gameManager.handleDisconnection(mockSocket);
+      // Should not throw error and should complete silently
+      expect(() => gameManager.handleDisconnection(mockSocket)).not.toThrow();
     });
   });
 
-  describe('Game Starting', () => {
-    let gameId: string;
+  describe('Single Player Game Creation', () => {
+    const singlePlayerData = {
+      playerName: 'TestPlayer',
+      aiOpponents: 2,
+      aiDifficulty: AIDifficulty.Normal,
+      mapSize: 'medium' as const
+    };
 
-    beforeEach(() => {
-      const createGameOptions: CreateGameOptions = {
-        playerName: 'TestPlayer',
-        gameConfig: {
-          mapSize: { width: 10, height: 10 },
-          maxPlayers: 2,
-          turnTimeLimit: 60,
-          difficulty: 'normal',
-          victoryConditions: ['conquest']
-        } as GameConfig,
-        singlePlayer: false
-      };
-      gameId = gameManager.createGame(mockSocket, createGameOptions);
-    });
+    it('should create single player game with AI opponents', () => {
+      gameManager['handleCreateSinglePlayer'](mockSocket, singlePlayerData);
 
-    it('should start game when enough players have joined', () => {
-      const newPlayer = { ...mockSocket, id: 'socket-456' } as Socket;
-      const playerInfo: PlayerInfo = {
-        id: 'player-456',
-        name: 'Player2',
-        civilization: 'romans',
-        color: 'red'
-      };
-
-      gameManager.joinGame(newPlayer, gameId, playerInfo);
-      const result = gameManager.startGame(gameId);
-
-      expect(result).toBe(true);
-      expect(mockGameState.startGame).toHaveBeenCalled();
-    });
-
-    it('should not start game with insufficient players', () => {
-      const result = gameManager.startGame(gameId);
-
-      expect(result).toBe(false);
-    });
-
-    it('should not start already started game', () => {
-      const gameRoom = gameManager['games'].get(gameId);
-      if (gameRoom) {
-        gameRoom.gameState.phase = GamePhase.ACTIVE;
-      }
-
-      const result = gameManager.startGame(gameId);
-
-      expect(result).toBe(false);
-    });
-  });
-
-  describe('Action Processing', () => {
-    let gameId: string;
-
-    beforeEach(() => {
-      const createGameOptions: CreateGameOptions = {
-        playerName: 'TestPlayer',
-        gameConfig: {
-          mapSize: { width: 10, height: 10 },
-          maxPlayers: 2,
-          turnTimeLimit: 60,
-          difficulty: 'normal',
-          victoryConditions: ['conquest']
-        } as GameConfig,
+      expect(GameState).toHaveBeenCalled();
+      expect(GameEngine).toHaveBeenCalled();
+      expect(HexMap).toHaveBeenCalledWith(20, 20);
+      expect(AIPlayer).toHaveBeenCalledTimes(2);
+      expect(mockSocket.join).toHaveBeenCalled();
+      expect(mockSocket.emit).toHaveBeenCalledWith('game_created', expect.objectContaining({
+        gameId: expect.any(String),
+        playerId: expect.any(String),
         singlePlayer: true,
-        aiOpponents: 1
-      };
-      gameId = gameManager.createGame(mockSocket, createGameOptions);
+        aiPlayers: expect.any(Array)
+      }));
       
-      // Start the game
-      const gameRoom = gameManager['games'].get(gameId);
-      if (gameRoom) {
-        gameRoom.gameState.phase = GamePhase.ACTIVE;
-      }
+      // Verify game was added to manager
+      expect(gameManager.getGameCount()).toBe(1);
     });
 
-    it('should process valid player actions', () => {
-      const action: GameAction = {
-        type: GameActionType.MOVE_UNIT,
-        playerId: 'player-123',
-        data: { unitId: 'unit-1', to: { x: 1, y: 1 } }
-      };
-
-      const result = gameManager.processAction(mockSocket, gameId, action);
-
-      expect(result).toBe(true);
-      expect(mockGameEngine.processAction).toHaveBeenCalledWith(action);
-    });
-
-    it('should reject actions from wrong players', () => {
-      const action: GameAction = {
-        type: GameActionType.MOVE_UNIT,
-        playerId: 'wrong-player',
-        data: { unitId: 'unit-1', to: { x: 1, y: 1 } }
-      };
-
-      const result = gameManager.processAction(mockSocket, gameId, action);
-
-      expect(result).toBe(false);
-    });
-
-    it('should reject actions in non-active games', () => {
-      const gameRoom = gameManager['games'].get(gameId);
-      if (gameRoom) {
-        gameRoom.gameState.phase = GamePhase.LOBBY;
-      }
-
-      const action: GameAction = {
-        type: GameActionType.MOVE_UNIT,
-        playerId: 'player-123',
-        data: { unitId: 'unit-1', to: { x: 1, y: 1 } }
-      };
-
-      const result = gameManager.processAction(mockSocket, gameId, action);
-
-      expect(result).toBe(false);
-    });
-  });
-
-  describe('AI Processing', () => {
-    let gameId: string;
-
-    beforeEach(() => {
-      const createGameOptions: CreateGameOptions = {
-        playerName: 'TestPlayer',
-        gameConfig: {
-          mapSize: { width: 10, height: 10 },
-          maxPlayers: 2,
-          turnTimeLimit: 60,
-          difficulty: 'normal',
-          victoryConditions: ['conquest']
-        } as GameConfig,
-        singlePlayer: true,
-        aiOpponents: 1,
-        aiDifficulty: AIDifficulty.HARD
-      };
-      gameId = gameManager.createGame(mockSocket, createGameOptions);
-      
-      // Start the game
-      const gameRoom = gameManager['games'].get(gameId);
-      if (gameRoom) {
-        gameRoom.gameState.phase = GamePhase.ACTIVE;
-      }
-    });
-
-    it('should process AI turns automatically', () => {
-      const gameRoom = gameManager['games'].get(gameId);
-      expect(gameRoom).toBeDefined();
-
-      // Simulate AI turn by calling processAITurn manually
-      gameManager['processAITurn'](gameRoom!);
-
-      expect(mockAIPlayer.makeDecisions).toHaveBeenCalled();
-    });
-
-    it('should handle AI decision making with multiple actions', () => {
-      const mockActions = [
-        { type: GameActionType.MOVE_UNIT, data: { unitId: 'unit-1', to: { x: 2, y: 2 } } },
-        { type: GameActionType.END_TURN, data: {} }
-      ];
-      mockAIPlayer.makeDecisions.mockReturnValue(mockActions);
-
-      const gameRoom = gameManager['games'].get(gameId);
-      gameManager['processAITurn'](gameRoom!);
-
-      expect(mockGameEngine.processAction).toHaveBeenCalledTimes(2);
-    });
-
-    it('should update AI knowledge after actions', () => {
-      const gameRoom = gameManager['games'].get(gameId);
-      gameManager['processAITurn'](gameRoom!);
-
-      expect(mockAIPlayer.updateVision).toHaveBeenCalled();
-      expect(mockAIPlayer.updateKnowledge).toHaveBeenCalled();
-    });
-
-    it('should handle AI errors gracefully', () => {
-      mockAIPlayer.makeDecisions.mockImplementation(() => {
-        throw new Error('AI decision error');
+    it('should create different map sizes', () => {
+      gameManager['handleCreateSinglePlayer'](mockSocket, {
+        ...singlePlayerData,
+        mapSize: 'small'
       });
 
-      const gameRoom = gameManager['games'].get(gameId);
-      expect(() => gameManager['processAITurn'](gameRoom!)).not.toThrow();
+      expect(HexMap).toHaveBeenCalledWith(15, 15);
+    });
+
+    it('should create large map', () => {
+      gameManager['handleCreateSinglePlayer'](mockSocket, {
+        ...singlePlayerData,
+        mapSize: 'large'
+      });
+
+      expect(HexMap).toHaveBeenCalledWith(30, 30);
+    });
+
+    it('should create AI players with different personalities', () => {
+      gameManager['handleCreateSinglePlayer'](mockSocket, {
+        ...singlePlayerData,
+        aiOpponents: 5
+      });
+
+      expect(AIPlayer).toHaveBeenCalledTimes(5);
+      // Verify different personalities were used
+      const aiPlayerCalls = (AIPlayer as jest.MockedClass<typeof AIPlayer>).mock.calls;
+      const personalities = aiPlayerCalls.map(call => call[1]);
+      expect(new Set(personalities).size).toBeGreaterThan(1);
+    });
+
+    it('should handle single player game creation errors', () => {
+      (GameState as jest.MockedClass<typeof GameState>).mockImplementationOnce(() => {
+        throw new Error('GameState creation failed');
+      });
+
+      gameManager['handleCreateSinglePlayer'](mockSocket, singlePlayerData);
+
       expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(mockSocket.emit).toHaveBeenCalledWith('error', {
+        message: 'Failed to create single player game'
+      });
+    });
+  });
+
+  describe('AI Starting Resources', () => {
+    it('should give reduced resources for Easy difficulty', () => {
+      const resources = gameManager['getAIStartingResources'](AIDifficulty.Easy);
+      const baseResources = GameUtils.createDefaultResources();
+      
+      expect(resources.gold).toBe(baseResources.gold * 0.8);
+      expect(resources.production).toBe(baseResources.production * 0.8);
+    });
+
+    it('should give bonus resources for Hard difficulty', () => {
+      const resources = gameManager['getAIStartingResources'](AIDifficulty.Hard);
+      const baseResources = GameUtils.createDefaultResources();
+      
+      expect(resources.gold).toBe(baseResources.gold * 1.2);
+      expect(resources.production).toBe(baseResources.production * 1.2);
+      expect(resources.science).toBe(baseResources.science * 1.2);
+    });
+
+    it('should give maximum bonus resources for Insane difficulty', () => {
+      const resources = gameManager['getAIStartingResources'](AIDifficulty.Insane);
+      const baseResources = GameUtils.createDefaultResources();
+      
+      expect(resources.gold).toBe(baseResources.gold * 1.5);
+      expect(resources.production).toBe(baseResources.production * 1.5);
+      expect(resources.science).toBe(baseResources.science * 1.5);
+      expect(resources.food).toBe(baseResources.food * 1.5);
+    });
+
+    it('should return default resources for Normal difficulty', () => {
+      const resources = gameManager['getAIStartingResources'](AIDifficulty.Normal);
+      const baseResources = GameUtils.createDefaultResources();
+      
+      expect(resources).toEqual(baseResources);
+    });
+  });
+
+  describe('Game Action Processing', () => {
+    let gameId: string;
+
+    beforeEach(() => {
+      // Set up a game
+      gameManager['handleCreateSinglePlayer'](mockSocket, {
+        playerName: 'TestPlayer',
+        aiOpponents: 1,
+        aiDifficulty: AIDifficulty.Normal
+      });
+
+      // Get the created game ID
+      const games = Array.from(gameManager['games'].keys());
+      gameId = games[0];
+
+      // Set up player mapping
+      gameManager['socketToPlayer'].set(mockSocket.id, 'player-123');
+      gameManager['playerToGame'].set('player-123', gameId);
+
+      // Mock current player
+      const gameRoom = gameManager['games'].get(gameId);
+      if (gameRoom) {
+        gameRoom.gameState.getCurrentPlayer = jest.fn().mockReturnValue({ id: 'player-123' });
+      }
+    });
+
+    it('should process valid game actions', async () => {
+      const action: GameAction = {
+        type: GameActionType.MOVE_UNIT,
+        playerId: 'player-123',
+        data: { unitId: 'unit-1', to: { x: 1, y: 1 } }
+      };
+
+      await gameManager['handleGameAction'](mockSocket, action);
+
+      expect(mockServer.to).toHaveBeenCalledWith(gameId);
+      expect(mockServer.emit).toHaveBeenCalledWith('game_state_updated', expect.any(Object));
+    });
+
+    it('should reject actions from unknown players', async () => {
+      gameManager['socketToPlayer'].delete(mockSocket.id);
+
+      const action: GameAction = {
+        type: GameActionType.MOVE_UNIT,
+        playerId: 'player-123',
+        data: {}
+      };
+
+      await gameManager['handleGameAction'](mockSocket, action);
+
+      expect(mockSocket.emit).toHaveBeenCalledWith('error', {
+        message: 'Player not found'
+      });
+    });
+
+    it('should reject actions when not player turn', async () => {
+      const gameRoom = gameManager['games'].get(gameId);
+      if (gameRoom) {
+        gameRoom.gameState.getCurrentPlayer = jest.fn().mockReturnValue({ id: 'other-player' });
+      }
+
+      const action: GameAction = {
+        type: GameActionType.MOVE_UNIT,
+        playerId: 'player-123',
+        data: {}
+      };
+
+      await gameManager['handleGameAction'](mockSocket, action);
+
+      expect(mockSocket.emit).toHaveBeenCalledWith('error', {
+        message: 'Not your turn'
+      });
+    });
+
+    it('should process end turn actions and advance to next player', async () => {
+      const action: GameAction = {
+        type: GameActionType.END_TURN,
+        playerId: 'player-123',
+        data: {}
+      };
+
+      const processNextTurnSpy = jest.spyOn(gameManager as any, 'processNextTurn');
+      processNextTurnSpy.mockImplementation(() => {});
+
+      await gameManager['handleGameAction'](mockSocket, action);
+
+      expect(processNextTurnSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('AI Turn Processing', () => {
+    let gameRoom: GameRoom;
+    let gameId: string;
+
+    beforeEach(() => {
+      gameId = 'test-game-id';
+      const mockAI = createMockAIPlayer();
+      
+      gameRoom = {
+        gameState: createMockGameState(),
+        gameEngine: createMockGameEngine(),
+        players: new Map([['human-player', mockSocket], ['ai-player', 'AI']]),
+        aiPlayers: new Map([['ai-player', mockAI as any]]),
+        spectators: new Set(),
+        lastActivity: new Date(),
+        singlePlayer: true
+      };
+
+      gameManager['games'].set(gameId, gameRoom);
+    });
+
+    it('should process AI turn and make decisions', async () => {
+      await gameManager['processAITurn'](gameRoom, gameId, 'ai-player');
+
+      expect(mockServer.to).toHaveBeenCalledWith(gameId);
+      expect(mockServer.emit).toHaveBeenCalledWith('ai_thinking', expect.objectContaining({
+        playerId: 'ai-player'
+      }));
+
+      const aiPlayer = gameRoom.aiPlayers.get('ai-player');
+      expect(aiPlayer?.makeDecisions).toHaveBeenCalledWith(gameRoom.gameState);
+    });
+
+    it('should broadcast AI actions to all players', async () => {
+      const mockActions = [
+        {
+          type: GameActionType.MOVE_UNIT,
+          playerId: 'ai-player',
+          data: { unitId: 'unit-1', to: { x: 2, y: 2 } }
+        }
+      ];
+
+      const aiPlayer = gameRoom.aiPlayers.get('ai-player');
+      (aiPlayer?.makeDecisions as jest.Mock).mockReturnValue(mockActions);
+
+      await gameManager['processAITurn'](gameRoom, gameId, 'ai-player');
+
+      expect(mockServer.to).toHaveBeenCalledWith(gameId);
+      expect(mockServer.emit).toHaveBeenCalledWith('ai_action', expect.objectContaining({
+        playerId: 'ai-player',
+        action: mockActions[0]
+      }));
+    });
+
+    it('should handle AI errors gracefully', async () => {
+      const aiPlayer = gameRoom.aiPlayers.get('ai-player');
+      (aiPlayer?.makeDecisions as jest.Mock).mockImplementation(() => {
+        throw new Error('AI decision failed');
+      });
+
+      const processNextTurnSpy = jest.spyOn(gameManager as any, 'processNextTurn');
+      processNextTurnSpy.mockImplementation(() => {});
+
+      await gameManager['processAITurn'](gameRoom, gameId, 'ai-player');
+
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(processNextTurnSpy).toHaveBeenCalledWith(gameRoom, gameId);
+    });
+
+    it('should handle missing AI player', async () => {
+      await gameManager['processAITurn'](gameRoom, gameId, 'nonexistent-ai');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('AI player not found: nonexistent-ai');
     });
   });
 
   describe('Turn Management', () => {
+    let gameRoom: GameRoom;
     let gameId: string;
 
     beforeEach(() => {
-      const createGameOptions: CreateGameOptions = {
-        playerName: 'TestPlayer',
-        gameConfig: {
-          mapSize: { width: 10, height: 10 },
-          maxPlayers: 2,
-          turnTimeLimit: 60,
-          difficulty: 'normal',
-          victoryConditions: ['conquest']
-        } as GameConfig,
-        singlePlayer: true,
-        aiOpponents: 1
+      gameId = 'test-game-id';
+      gameRoom = {
+        gameState: {
+          ...createMockGameState(),
+          players: [
+            { id: 'player-1', name: 'Human' },
+            { id: 'ai-player-1', name: 'AI 1' }
+          ],
+          currentPlayer: 0,
+          currentTurn: 1
+        } as any,
+        gameEngine: createMockGameEngine(),
+        players: new Map([['player-1', mockSocket], ['ai-player-1', 'AI']]),
+        aiPlayers: new Map([['ai-player-1', createMockAIPlayer() as any]]),
+        spectators: new Set(),
+        lastActivity: new Date(),
+        singlePlayer: true
       };
-      gameId = gameManager.createGame(mockSocket, createGameOptions);
+
+      gameManager['games'].set(gameId, gameRoom);
     });
 
-    it('should advance to next turn', () => {
-      const gameRoom = gameManager['games'].get(gameId);
-      gameManager['advanceToNextTurn'](gameRoom!);
+    it('should advance to next player and increment turn when cycling', async () => {
+      await gameManager['processNextTurn'](gameRoom, gameId);
 
-      expect(mockGameEngine.endTurn).toHaveBeenCalled();
+      expect(gameRoom.gameState.currentPlayer).toBe(1);
+      expect(gameRoom.gameState.currentTurn).toBe(1);
+
+      expect(mockServer.to).toHaveBeenCalledWith(gameId);
+      expect(mockServer.emit).toHaveBeenCalledWith('turn_changed', expect.objectContaining({
+        currentPlayer: 'ai-player-1',
+        turn: gameRoom.gameState.currentTurn
+      }));
     });
 
-    it('should start turn timer for human players', () => {
-      const gameRoom = gameManager['games'].get(gameId);
-      gameManager['startTurnTimer'](gameRoom!);
+    it('should increment turn counter when reaching first player', async () => {
+      gameRoom.gameState.currentPlayer = 1; // Start from AI player
 
-      expect(gameRoom?.turnTimer).toBeDefined();
+      await gameManager['processNextTurn'](gameRoom, gameId);
+
+      expect(gameRoom.gameState.currentPlayer).toBe(0);
+      expect(gameRoom.gameState.currentTurn).toBe(2);
     });
 
-    it('should clear existing timers before starting new ones', () => {
-      const gameRoom = gameManager['games'].get(gameId);
-      gameRoom!.turnTimer = setTimeout(() => {}, 1000);
-      
-      gameManager['startTurnTimer'](gameRoom!);
+    it('should trigger AI processing when next player is AI', async () => {
+      const processAITurnSpy = jest.spyOn(gameManager as any, 'processAITurn');
+      processAITurnSpy.mockImplementation(() => {});
+
+      await gameManager['processNextTurn'](gameRoom, gameId);
+
+      // Should set a timeout for AI processing
+      expect(setTimeout).toHaveBeenCalledWith(expect.any(Function), 1000);
+    });
+
+    it('should clear existing AI timer before setting new one', async () => {
+      gameRoom.aiProcessingTimer = setTimeout(() => {}, 500) as NodeJS.Timeout;
+
+      await gameManager['processNextTurn'](gameRoom, gameId);
 
       expect(clearTimeout).toHaveBeenCalled();
     });
   });
 
-  describe('Victory Conditions', () => {
-    let gameId: string;
+  describe('Starting Unit Placement', () => {
+    let gameState: any;
 
     beforeEach(() => {
-      const createGameOptions: CreateGameOptions = {
-        playerName: 'TestPlayer',
-        gameConfig: {
-          mapSize: { width: 10, height: 10 },
-          maxPlayers: 2,
-          turnTimeLimit: 60,
-          difficulty: 'normal',
-          victoryConditions: ['conquest']
-        } as GameConfig,
-        singlePlayer: true,
-        aiOpponents: 1
+      gameState = {
+        players: [
+          { id: 'player-1', units: [] },
+          { id: 'player-2', units: [] }
+        ],
+        board: Array(20).fill(null).map(() => Array(20).fill(null).map(() => ({
+          terrain: 'grassland',
+          unit: null
+        })))
       };
-      gameId = gameManager.createGame(mockSocket, createGameOptions);
     });
 
-    it('should check for victory conditions after actions', () => {
-      const gameRoom = gameManager['games'].get(gameId);
-      gameManager['checkVictoryConditions'](gameRoom!);
+    it('should place starting units for all players', () => {
+      // Mock generateStartPositions to return valid positions
+      jest.spyOn(gameManager as any, 'generateStartPositions').mockReturnValue([
+        { x: 5, y: 5 }, { x: 10, y: 10 }
+      ]);
+      jest.spyOn(gameManager as any, 'getValidNeighbors').mockReturnValue([
+        { q: 6, r: 5, s: -11 }
+      ]);
 
-      expect(mockGameEngine.checkVictoryConditions).toHaveBeenCalled();
-    });
+      gameManager['placeStartingUnits'](gameState);
 
-    it('should end game when victory condition is met', () => {
-      mockGameEngine.checkVictoryConditions.mockReturnValue({
-        type: 'conquest',
-        winner: 'player-123'
-      });
+      // Each player should have 2 units (settler and warrior)
+      expect(gameState.players[0].units.length).toBe(2);
+      expect(gameState.players[1].units.length).toBe(2);
 
-      const gameRoom = gameManager['games'].get(gameId);
-      gameManager['checkVictoryConditions'](gameRoom!);
-
-      expect(gameRoom?.gameState.phase).toBe(GamePhase.ENDED);
+      // Check unit types
+      const player1Units = gameState.players[0].units;
+      expect(player1Units.some((unit: any) => unit.type === UnitType.SETTLER)).toBe(true);
+      expect(player1Units.some((unit: any) => unit.type === UnitType.WARRIOR)).toBe(true);
     });
   });
 
-  describe('Game Room Management', () => {
-    it('should get correct game count', () => {
-      expect(gameManager.getGameCount()).toBe(0);
+  describe('Map Utilities', () => {
+    let testMap: any[][];
 
-      const createGameOptions: CreateGameOptions = {
-        playerName: 'TestPlayer',
-        gameConfig: {
-          mapSize: { width: 10, height: 10 },
-          maxPlayers: 2,
-          turnTimeLimit: 60,
-          difficulty: 'normal',
-          victoryConditions: ['conquest']
-        } as GameConfig
-      };
+    beforeEach(() => {
+      testMap = Array(10).fill(null).map(() => Array(10).fill(null).map(() => ({
+        terrain: 'grassland',
+        unit: null
+      })));
       
-      gameManager.createGame(mockSocket, createGameOptions);
-      expect(gameManager.getGameCount()).toBe(1);
+      // Add some water tiles
+      testMap[0][0] = { terrain: 'ocean', unit: null };
+      testMap[1][1] = { terrain: 'water', unit: null };
     });
 
-    it('should provide game statistics', () => {
-      const stats = gameManager.getGameStats();
+    it('should generate starting positions for players', () => {
+      const positions = gameManager['generateStartPositions'](testMap, 4);
 
-      expect(stats).toHaveProperty('totalGames');
-      expect(stats).toHaveProperty('activeGames');
-      expect(stats).toHaveProperty('playersOnline');
-      expect(stats.totalGames).toBe(0);
-      expect(stats.activeGames).toBe(0);
-      expect(stats.playersOnline).toBe(0);
+      expect(positions).toHaveLength(4);
+      positions.forEach(pos => {
+        expect(pos).toHaveProperty('x');
+        expect(pos).toHaveProperty('y');
+        expect(pos.x).toBeGreaterThanOrEqual(0);
+        expect(pos.y).toBeGreaterThanOrEqual(0);
+        expect(pos.x).toBeLessThan(10);
+        expect(pos.y).toBeLessThan(10);
+      });
     });
 
+    it('should find nearest land tile', () => {
+      const landTile = gameManager['findNearestLandTile'](testMap, 0, 0);
+
+      expect(landTile).toBeDefined();
+      expect(landTile?.q).toBeGreaterThanOrEqual(0);
+      expect(landTile?.r).toBeGreaterThanOrEqual(0);
+      
+      // Should not be water
+      const tile = testMap[landTile!.r][landTile!.q];
+      expect(tile.terrain).not.toBe('ocean');
+      expect(tile.terrain).not.toBe('water');
+    });
+
+    it('should get valid neighbor positions', () => {
+      const neighbors = gameManager['getValidNeighbors'](testMap, { x: 5, y: 5 } as any);
+
+      expect(neighbors.length).toBeGreaterThan(0);
+      neighbors.forEach(neighbor => {
+        expect(neighbor.q).toBeGreaterThanOrEqual(0);
+        expect(neighbor.r).toBeGreaterThanOrEqual(0);
+        expect(neighbor.q).toBeLessThan(10);
+        expect(neighbor.r).toBeLessThan(10);
+        
+        const tile = testMap[neighbor.r][neighbor.q];
+        expect(tile.terrain).not.toBe('ocean');
+        expect(tile.unit).toBeNull();
+      });
+    });
+  });
+
+  describe('Player Disconnect Handling', () => {
+    let gameRoom: GameRoom;
+    let gameId: string;
+
+    beforeEach(() => {
+      gameId = 'test-game-id';
+      gameRoom = {
+        gameState: createMockGameState(),
+        gameEngine: createMockGameEngine(),
+        players: new Map([['player-1', mockSocket]]),
+        aiPlayers: new Map(),
+        spectators: new Set(),
+        lastActivity: new Date(),
+        singlePlayer: true,
+        aiProcessingTimer: setTimeout(() => {}, 1000) as NodeJS.Timeout
+      };
+
+      gameManager['games'].set(gameId, gameRoom);
+      gameManager['playerToGame'].set('player-1', gameId);
+    });
+
+    it('should handle single player disconnect by pausing game', () => {
+      gameManager['handlePlayerDisconnect']('player-1');
+
+      expect(clearTimeout).toHaveBeenCalledWith(gameRoom.aiProcessingTimer);
+      expect(gameManager['playerToGame'].has('player-1')).toBe(false);
+    });
+
+    it('should handle multiplayer disconnect by removing player', () => {
+      gameRoom.singlePlayer = false;
+
+      gameManager['handlePlayerDisconnect']('player-1');
+
+      expect(gameRoom.players.has('player-1')).toBe(false);
+      expect(mockServer.to).toHaveBeenCalledWith(gameId);
+      expect(mockServer.emit).toHaveBeenCalledWith('player_disconnected', {
+        playerId: 'player-1'
+      });
+    });
+  });
+
+  describe('Game State Serialization', () => {
+    it('should serialize game state for transmission', () => {
+      const gameState = {
+        id: 'game-123',
+        players: {
+          'player-1': {
+            id: 'player-1',
+            name: 'Player 1',
+            technologies: new Set(['writing', 'pottery'])
+          }
+        }
+      };
+
+      const serialized = gameManager['serializeGameState'](gameState as any);
+
+      expect(serialized.players['player-1'].technologies).toEqual(['writing', 'pottery']);
+    });
+  });
+
+  describe('Cleanup and Shutdown', () => {
     it('should cleanup inactive games', () => {
-      const createGameOptions: CreateGameOptions = {
-        playerName: 'TestPlayer',
-        gameConfig: {
-          mapSize: { width: 10, height: 10 },
-          maxPlayers: 2,
-          turnTimeLimit: 60,
-          difficulty: 'normal',
-          victoryConditions: ['conquest']
-        } as GameConfig
+      const oldDate = new Date(Date.now() - 35 * 60 * 1000); // 35 minutes ago
+      const gameRoom: GameRoom = {
+        gameState: createMockGameState(),
+        gameEngine: createMockGameEngine(),
+        players: new Map([['player-1', mockSocket]]),
+        aiPlayers: new Map(),
+        spectators: new Set(),
+        lastActivity: oldDate,
+        singlePlayer: false,
+        turnTimer: setTimeout(() => {}, 1000) as NodeJS.Timeout,
+        aiProcessingTimer: setTimeout(() => {}, 1000) as NodeJS.Timeout
       };
-      
-      const gameId = gameManager.createGame(mockSocket, createGameOptions);
-      const gameRoom = gameManager['games'].get(gameId);
-      
-      // Simulate old game
-      if (gameRoom) {
-        gameRoom.lastActivity = new Date(Date.now() - 2000000); // 2000 seconds ago
-      }
+
+      gameManager['games'].set('old-game', gameRoom);
+      gameManager['playerToGame'].set('player-1', 'old-game');
 
       gameManager['cleanupInactiveGames']();
 
-      expect(gameManager.getGameCount()).toBe(0);
-    });
-  });
-
-  describe('Error Handling and Edge Cases', () => {
-    it('should handle operations on non-existent games', () => {
-      const result = gameManager.processAction(mockSocket, 'nonexistent', {} as GameAction);
-      expect(result).toBe(false);
+      expect(gameManager['games'].has('old-game')).toBe(false);
+      expect(gameManager['playerToGame'].has('player-1')).toBe(false);
+      expect(clearTimeout).toHaveBeenCalledWith(gameRoom.turnTimer);
+      expect(clearTimeout).toHaveBeenCalledWith(gameRoom.aiProcessingTimer);
     });
 
-    it('should handle socket operations gracefully', () => {
-      const invalidSocket = null as any;
-      expect(() => gameManager.createGame(invalidSocket, {} as CreateGameOptions)).not.toThrow();
-    });
-
-    it('should handle AI creation failures', () => {
-      (AIPlayer as jest.MockedClass<typeof AIPlayer>).mockImplementationOnce(() => {
-        throw new Error('AI creation failed');
-      });
-
-      const createGameOptions: CreateGameOptions = {
-        playerName: 'TestPlayer',
-        gameConfig: {
-          mapSize: { width: 10, height: 10 },
-          maxPlayers: 2,
-          turnTimeLimit: 60,
-          difficulty: 'normal',
-          victoryConditions: ['conquest']
-        } as GameConfig,
+    it('should shutdown and clear all resources', () => {
+      const gameRoom: GameRoom = {
+        gameState: createMockGameState(),
+        gameEngine: createMockGameEngine(),
+        players: new Map(),
+        aiPlayers: new Map(),
+        spectators: new Set(),
+        lastActivity: new Date(),
         singlePlayer: true,
-        aiOpponents: 1
+        turnTimer: setTimeout(() => {}, 1000) as NodeJS.Timeout,
+        aiProcessingTimer: setTimeout(() => {}, 1000) as NodeJS.Timeout
       };
 
-      expect(() => gameManager.createGame(mockSocket, createGameOptions)).not.toThrow();
-      expect(consoleErrorSpy).toHaveBeenCalled();
-    });
+      gameManager['games'].set('test-game', gameRoom);
+      gameManager['playerToGame'].set('player-1', 'test-game');
+      gameManager['socketToPlayer'].set('socket-1', 'player-1');
 
-    it('should handle cleanup interval errors', () => {
-      const originalCleanup = gameManager['cleanupInactiveGames'];
-      gameManager['cleanupInactiveGames'] = jest.fn().mockImplementation(() => {
-        throw new Error('Cleanup error');
-      });
+      gameManager.shutdown();
 
-      // Trigger cleanup interval
-      jest.advanceTimersByTime(300000);
-
-      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(clearInterval).toHaveBeenCalledWith(gameManager['cleanupInterval']);
+      expect(clearTimeout).toHaveBeenCalledWith(gameRoom.turnTimer);
+      expect(clearTimeout).toHaveBeenCalledWith(gameRoom.aiProcessingTimer);
+      expect(gameManager['games'].size).toBe(0);
+      expect(gameManager['playerToGame'].size).toBe(0);
+      expect(gameManager['socketToPlayer'].size).toBe(0);
     });
   });
 
-  describe('Spectator Management', () => {
+  describe('Game Statistics', () => {
+    it('should return correct game count', () => {
+      expect(gameManager.getGameCount()).toBe(0);
+
+      gameManager['games'].set('game-1', {} as GameRoom);
+      gameManager['games'].set('game-2', {} as GameRoom);
+
+      expect(gameManager.getGameCount()).toBe(2);
+    });
+
+    it('should return correct active player count', () => {
+      expect(gameManager.getActivePlayerCount()).toBe(0);
+
+      gameManager['playerToGame'].set('player-1', 'game-1');
+      gameManager['playerToGame'].set('player-2', 'game-1');
+
+      expect(gameManager.getActivePlayerCount()).toBe(2);
+    });
+  });
+
+  describe('Request Handlers', () => {
     let gameId: string;
 
     beforeEach(() => {
-      const createGameOptions: CreateGameOptions = {
-        playerName: 'TestPlayer',
-        gameConfig: {
-          mapSize: { width: 10, height: 10 },
-          maxPlayers: 2,
-          turnTimeLimit: 60,
-          difficulty: 'normal',
-          victoryConditions: ['conquest']
-        } as GameConfig
+      gameId = 'test-game';
+      const gameRoom: GameRoom = {
+        gameState: createMockGameState(),
+        gameEngine: createMockGameEngine(),
+        players: new Map([['player-1', mockSocket]]),
+        aiPlayers: new Map(),
+        spectators: new Set(),
+        lastActivity: new Date(),
+        singlePlayer: false
       };
-      gameId = gameManager.createGame(mockSocket, createGameOptions);
+
+      gameManager['games'].set(gameId, gameRoom);
+      gameManager['playerToGame'].set('player-1', gameId);
+      gameManager['socketToPlayer'].set(mockSocket.id, 'player-1');
     });
 
-    it('should allow spectators to join games', () => {
-      const spectatorSocket = { ...mockSocket, id: 'spectator-1' } as Socket;
-      const result = gameManager.addSpectator(spectatorSocket, gameId);
+    it('should handle game state requests', () => {
+      gameManager['handleRequestGameState'](mockSocket);
 
+      expect(mockSocket.emit).toHaveBeenCalledWith('game_state', expect.objectContaining({
+        gameState: expect.any(Object)
+      }));
+    });
+
+    it('should handle AI difficulty changes', () => {
+      gameManager['handleSetAIDifficulty'](mockSocket, { difficulty: AIDifficulty.Hard });
+
+      expect(mockSocket.emit).toHaveBeenCalledWith('ai_difficulty_updated', {
+        difficulty: AIDifficulty.Hard
+      });
+    });
+
+    it('should handle leave game requests', () => {
+      const handlePlayerDisconnectSpy = jest.spyOn(gameManager as any, 'handlePlayerDisconnect');
+      handlePlayerDisconnectSpy.mockImplementation(() => {});
+
+      gameManager['handleLeaveGame'](mockSocket);
+
+      expect(handlePlayerDisconnectSpy).toHaveBeenCalledWith('player-1');
+    });
+  });
+
+  describe('Error Edge Cases', () => {
+    it('should handle delay utility', async () => {
+      const delayPromise = gameManager['delay'](100);
+      
+      // Fast-forward time by 100ms
+      jest.advanceTimersByTime(100);
+      
+      await delayPromise;
+      
+      expect(setTimeout).toHaveBeenCalledWith(expect.any(Function), 100);
+    });
+
+    it('should validate game config', () => {
+      const validConfig = {
+        maxPlayers: 4,
+        mapSize: { width: 20, height: 20 }
+      } as GameConfig;
+
+      const result = gameManager['validateGameConfig'](validConfig);
       expect(result).toBe(true);
-      const gameRoom = gameManager['games'].get(gameId);
-      expect(gameRoom?.spectators.has(spectatorSocket)).toBe(true);
     });
 
-    it('should remove spectators when they disconnect', () => {
-      const spectatorSocket = { ...mockSocket, id: 'spectator-1' } as Socket;
-      gameManager.addSpectator(spectatorSocket, gameId);
+    it('should handle missing game for action processing', async () => {
+      const action: GameAction = {
+        type: GameActionType.MOVE_UNIT,
+        playerId: 'player-123',
+        data: {}
+      };
 
-      gameManager.removeSpectator(spectatorSocket, gameId);
+      await gameManager['handleGameAction'](mockSocket, action);
 
-      const gameRoom = gameManager['games'].get(gameId);
-      expect(gameRoom?.spectators.has(spectatorSocket)).toBe(false);
+      expect(mockSocket.emit).toHaveBeenCalledWith('error', {
+        message: 'Player not found'
+      });
     });
   });
 });
