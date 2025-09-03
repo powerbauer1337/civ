@@ -33,20 +33,20 @@ async function runSecurityTests() {
     if (results.critical > 0) {
       console.log('\n⚠️  CRITICAL SECURITY ISSUES DETECTED!');
       console.log('These must be resolved before production deployment.');
-      process.exit(1);
+      throw new Error('Critical security issues detected');
     } else if (results.failed > 0) {
       console.log('\n⚠️  Some security tests failed.');
       console.log('Review and address these issues for optimal security.');
-      process.exit(1);
+      throw new Error('Some security tests failed');
     } else {
       console.log('\n🎉 All security tests passed!');
       console.log('System security validation complete.');
-      process.exit(0);
+      return true;
     }
 
   } catch (error) {
     console.error('\n💥 Security testing failed:', error);
-    process.exit(1);
+    throw error;
   }
 }
 

@@ -31,19 +31,19 @@ async function runSecurityAudit(): Promise<void> {
       console.log('   - Production deployment is NOT RECOMMENDED');
       console.log('   - Fix all critical issues before proceeding');
       console.log('   - Review security configuration');
-      process.exit(1);
+      throw new Error('Critical security issues detected');
     } else if (results.failed > 0) {
       console.log('\n⚠️  Some security improvements needed:');
       console.log('   - Production deployment possible but not optimal');
       console.log('   - Consider addressing remaining issues');
       console.log('   - Monitor security status regularly');
-      process.exit(0);
+      return;
     } else {
       console.log('\n🎉 All security tests passed!');
       console.log('   - System meets security requirements');
       console.log('   - Safe for production deployment');
       console.log('   - Continue regular security monitoring');
-      process.exit(0);
+      return;
     }
   } catch (error) {
     console.error('\n❌ Security audit failed:', error);
@@ -52,7 +52,7 @@ async function runSecurityAudit(): Promise<void> {
     console.log('   2. Verify JWT Manager initialization');
     console.log('   3. Check database connectivity');
     console.log('   4. Review server configuration');
-    process.exit(1);
+    throw error;
   }
 }
 

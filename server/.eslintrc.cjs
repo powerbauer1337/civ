@@ -5,6 +5,9 @@ module.exports = {
     node: true,
     es2022: true,
   },
+  globals: {
+    NodeJS: 'readonly',
+  },
   rules: {
     'no-console': 'off', // Console logging is expected in server
     'no-process-exit': 'error',

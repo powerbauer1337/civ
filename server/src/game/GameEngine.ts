@@ -14,6 +14,18 @@ export class GameEngine {
   }
 
   /**
+   * Instance method for processing actions (used by tests)
+   */
+  public processAction(gameState: GameState, action: GameAction): { success: boolean; newState?: GameState; error?: string } {
+    const result = GameEngine.processPlayerAction(gameState, action);
+    return {
+      success: result.success,
+      newState: result.success ? result.gameState : undefined,
+      error: result.error
+    };
+  }
+
+  /**
    * Process any player action and update game state accordingly
    */
   public static processPlayerAction(gameState: GameState, action: GameAction): ActionResult {

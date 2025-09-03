@@ -83,6 +83,7 @@ console.log('🧪 Setting up test environment...');
 
 // Mock environment variables for testing
 process.env.NODE_ENV = 'test';
+process.env.DATABASE_URL = 'file:./test.db';
 process.env.JWT_SECRET = 'test-jwt-secret-key-for-testing-only-super-long';
 process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-key-for-testing-only-different';
 process.env.JWT_EXPIRES_IN = '1h';
@@ -91,6 +92,8 @@ process.env.BCRYPT_ROUNDS = '10';
 process.env.RATE_LIMIT_MAX_REQUESTS = '100';
 process.env.RATE_LIMIT_WINDOW_MS = '900000';
 process.env.ENABLE_SECURITY_HEADERS = 'true';
+process.env.PORT = '3001';
+process.env.CLIENT_URL = 'http://localhost:5173';
 
 beforeAll(async () => {
   console.log('✅ Test environment setup complete');

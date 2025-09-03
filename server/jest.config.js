@@ -10,10 +10,8 @@ module.exports = {
     'ts-jest': {
       isolatedModules: true,
       tsconfig: {
-        compilerOptions: {
-          skipLibCheck: true,
-          noEmit: true
-        }
+        skipLibCheck: true,
+        noEmit: true
       }
     }
   },
