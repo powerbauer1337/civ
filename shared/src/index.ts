@@ -5,7 +5,9 @@ export * from './constants';
 export * from './validation';
 
 // Ensure critical types are available
-export { PlayerInfo, Position, HexCoordinate, TerrainType, TechnologyType, BuildingType, GameConfig, VictoryType, GameResources } from './types/GameTypes';
-export { PlayerState, GameState, GamePhase, GameAction, GameActionType, UnitType, ResourceType, ResourceCategory } from './types/index';
+export type { PlayerInfo, Position, HexCoordinate, GameConfig, GameResources } from './types/GameTypes';
+export { TerrainType, TechnologyType, BuildingType, VictoryType } from './types/GameTypes';
+export type { PlayerState, GameState, GamePhase, GameAction } from './types/index';
+export { GameActionType, UnitType, ResourceType, ResourceCategory } from './types/index';
 export { GameActionType as ActionType } from './types/index';
 export { GameUtils } from './utils/GameUtils';

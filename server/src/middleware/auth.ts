@@ -381,4 +381,4 @@ export function authErrorHandler() {
   };
 }
 
-export { AuthRequest, User, RefreshTokenPayload };
+export type { AuthRequest, User, RefreshTokenPayload };

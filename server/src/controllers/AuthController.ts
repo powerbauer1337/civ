@@ -32,19 +32,19 @@ export class AuthController {
   }
 
   private setupRoutes(): void {
-    this.router.post('/register', 
-      validateRequest(commonSchemas.registerSchema), 
+    this.router.post('/register',
+      validateRequest(commonSchemas.registerSchema),
       this.register.bind(this)
     );
-    this.router.post('/login', 
-      validateRequest(commonSchemas.loginSchema), 
+    this.router.post('/login',
+      validateRequest(commonSchemas.loginSchema),
       this.login.bind(this)
     );
     this.router.post('/logout', this.authenticateToken.bind(this), this.logout.bind(this));
     this.router.get('/profile', this.authenticateToken.bind(this), this.getProfile.bind(this));
-    this.router.put('/profile', 
-      this.authenticateToken.bind(this), 
-      validateRequest(commonSchemas.updateProfileSchema), 
+    this.router.put('/profile',
+      this.authenticateToken.bind(this),
+      validateRequest(commonSchemas.updateProfileSchema),
       this.updateProfile.bind(this)
     );
     this.router.get('/verify', this.authenticateToken.bind(this), this.verifyToken.bind(this));
