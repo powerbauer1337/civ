@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Paper, Typography, Alert } from '@mui/material';
+import { Box, Paper, Typography, Alert, Switch, FormControlLabel } from '@mui/material';
 import HexTile from './HexTile';
+import EnhancedHexTile from './EnhancedHexTile';
 // Simplified interfaces to avoid import issues
 interface Unit {
   id: string;
@@ -36,6 +37,7 @@ interface HexMapProps {
 const HexMap: React.FC<HexMapProps> = ({ gameState, playerId, onTileClick, onUnitClick }) => {
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
   const [hoveredTile, setHoveredTile] = useState<{ x: number; y: number } | null>(null);
+  const [enhancedTextures, setEnhancedTextures] = useState(true);
   const mapRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan] = useState({ x: 0, y: 0 });
@@ -151,6 +153,20 @@ const HexMap: React.FC<HexMapProps> = ({ gameState, playerId, onTileClick, onUni
             Selected: {selectedUnit.type}
           </Typography>
         )}
+        <FormControlLabel
+          control={
+            <Switch
+              checked={enhancedTextures}
+              onChange={(e) => setEnhancedTextures(e.target.checked)}
+              size="small"
+            />
+          }
+          label={
+            <Typography variant="caption">
+              Enhanced Textures
+            </Typography>
+          }
+        />
       </Box>
 
       {/* Map Container */}
@@ -184,23 +200,36 @@ const HexMap: React.FC<HexMapProps> = ({ gameState, playerId, onTileClick, onUni
               const isHovered = hoveredTile?.x === x && hoveredTile?.y === y;
               const isSelected = selectedUnit?.x === x && selectedUnit?.y === y;
 
-              return (
-                <HexTile
-                  key={`${x}-${y}`}
-                  x={pixelX + HEX_WIDTH/2}
-                  y={pixelY + HEX_HEIGHT/2}
-                  size={HEX_SIZE}
-                  terrain={tile.terrain}
-                  unit={tile.unit}
-                  isHighlighted={isHighlighted}
-                  isHovered={isHovered}
-                  isSelected={isSelected}
-                  hasResource={!!tile.resources}
-                  onClick={() => handleTileClick(x, y)}
-                  onMouseEnter={() => setHoveredTile({ x, y })}
-                  onMouseLeave={() => setHoveredTile(null)}
-                />
-              );
+              const tileProps = {
+                key: `${x}-${y}`,
+                x: pixelX + HEX_WIDTH/2,
+                y: pixelY + HEX_HEIGHT/2,
+                size: HEX_SIZE,
+                terrain: tile.terrain,
+                unit: tile.unit,
+                isHighlighted: isHighlighted,
+                isHovered: isHovered,
+                isSelected: isSelected,
+                onClick: () => handleTileClick(x, y),
+                onMouseEnter: () => setHoveredTile({ x, y }),
+                onMouseLeave: () => setHoveredTile(null)
+              };
+
+              if (enhancedTextures) {
+                return (
+                  <EnhancedHexTile
+                    {...tileProps}
+                    resource={tile.resources}
+                  />
+                );
+              } else {
+                return (
+                  <HexTile
+                    {...tileProps}
+                    hasResource={!!tile.resources}
+                  />
+                );
+              }
             })
           )}
         </svg>
