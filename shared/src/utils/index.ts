@@ -143,3 +143,6 @@ export const getTurnTimeRemaining = (turnStartTime: Date, turnTimeLimit: number)
   const remaining = Math.max(0, (turnTimeLimit * 1000) - elapsed);
   return Math.floor(remaining / 1000); // Return seconds
 };
+
+// Export logger utilities
+export * from './logger';

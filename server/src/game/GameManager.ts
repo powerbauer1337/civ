@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { GameConfig, PlayerInfo, GameUtils, VictoryType, GameActionType } from '@civ-game/shared';
+import { GameConfig, PlayerInfo, GameUtils, VictoryType, GameActionType, logger } from '@civ-game/shared';
 import { GamePhase } from '../shared-types';
 import { GameAction } from '@civ-game/shared/dist/types/GameTypes';
 import { GameState } from '../shared-types';
@@ -54,7 +54,7 @@ export class GameManager {
   }
 
   public handleConnection(socket: Socket): void {
-    console.log(`Game Manager: Client connected ${socket.id}`);
+    logger.info(`Game Manager: Client connected ${socket.id}`);
 
     // Register event handlers
     socket.on('create_game', (data) => this.handleCreateGame(socket, data));
@@ -131,7 +131,7 @@ export class GameManager {
         gameState: gameState.serialize()
       });
 
-      console.log(`Game created: ${gameState.id} by player: ${playerId}`);
+      logger.info(`Game created: ${gameState.id} by player: ${playerId}`);
     } catch (error) {
       console.error('Error creating game:', error);
       socket.emit('error', { message: 'Failed to create game' });
@@ -197,7 +197,7 @@ export class GameManager {
         gameState: gameRoom.gameState.serialize()
       });
 
-      console.log(`Player ${playerId} joined game ${gameId}`);
+      logger.info(`Player ${playerId} joined game ${gameId}`);
     } catch (error) {
       console.error('Error joining game:', error);
       socket.emit('error', { message: 'Failed to join game' });
@@ -256,7 +256,7 @@ export class GameManager {
         gameState: gameRoom.gameState.serialize()
       });
 
-      console.log(`Game ${gameId} started`);
+      logger.info(`Game ${gameId} started`);
     } catch (error) {
       console.error('Error starting game:', error);
       socket.emit('error', { message: 'Failed to start game' });
@@ -386,7 +386,7 @@ export class GameManager {
 
         // If game is empty, mark for cleanup
         if (gameRoom.players.size === 0) {
-          console.log(`Game ${gameId} marked for cleanup - no players left`);
+          logger.debug(`Game ${gameId} marked for cleanup - no players left`);
         }
       }
 
@@ -423,7 +423,7 @@ export class GameManager {
     const gameRoom = this.games.get(gameId);
     if (!gameRoom) return;
 
-    console.log(`Turn timeout for game ${gameId}`);
+    logger.info(`Turn timeout for game ${gameId}`);
 
     // Force end turn
     const endTurnAction: GameAction = {
@@ -478,7 +478,7 @@ export class GameManager {
       gameState: gameRoom.gameState.serialize()
     });
 
-    console.log(`Game ${gameId} ended. Winner: ${(winner as any).name || (winner as any).username || winner.id}`);
+    logger.info(`Game ${gameId} ended. Winner: ${(winner as any).name || (winner as any).username || winner.id}`);
   }
 
   private validateGameConfig(config: GameConfig): boolean {
@@ -499,7 +499,7 @@ export class GameManager {
       const timeSinceActivity = now.getTime() - gameRoom.lastActivity.getTime();
 
       if (timeSinceActivity > inactiveThreshold || gameRoom.players.size === 0) {
-        console.log(`Cleaning up inactive game: ${gameId}`);
+        logger.debug(`Cleaning up inactive game: ${gameId}`);
 
         // Clear turn timer
         if (gameRoom.turnTimer) {
@@ -592,7 +592,7 @@ export class GameManager {
       const isTestGame = testPatterns.some(pattern => lowerGameId.includes(pattern));
 
       if (isTestGame) {
-        console.log(`Removing test game: ${gameId}`);
+        logger.debug(`Removing test game: ${gameId}`);
 
         // Clear turn timer
         if (gameRoom.turnTimer) {
@@ -623,7 +623,7 @@ export class GameManager {
       }
     }
 
-    console.log(`Cleaned up ${removedGameIds.length} test games`);
+    logger.info(`Cleaned up ${removedGameIds.length} test games`);
     return removedGameIds;
   }
 
@@ -633,7 +633,7 @@ export class GameManager {
 
     for (const [gameId, gameRoom] of this.games) {
       if (gameRoom.gameState.createdAt < cutoffTime) {
-        console.log(`Removing old game: ${gameId} (created: ${gameRoom.gameState.createdAt})`);
+        logger.debug(`Removing old game: ${gameId} (created: ${gameRoom.gameState.createdAt})`);
 
         // Clear turn timer
         if (gameRoom.turnTimer) {
@@ -664,7 +664,7 @@ export class GameManager {
       }
     }
 
-    console.log(`Cleaned up ${removedGameIds.length} old games (older than ${olderThanHours} hours)`);
+    logger.info(`Cleaned up ${removedGameIds.length} old games (older than ${olderThanHours} hours)`);
     return removedGameIds;
   }
 
@@ -735,6 +735,6 @@ export class GameManager {
     this.playerToGame.clear();
     this.socketToPlayer.clear();
 
-    console.log('GameManager shut down');
+    logger.info('GameManager shut down');
   }
 }

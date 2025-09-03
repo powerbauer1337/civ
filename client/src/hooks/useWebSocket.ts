@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { logger } from '@civ-game/shared';
 import { apiConfig } from '../config/api';
 
 interface UseWebSocketOptions {
@@ -42,7 +43,7 @@ export const useWebSocket = (
     });
 
     newSocket.on('connect', () => {
-      console.log('🔌 WebSocket connected:', newSocket.id);
+      logger.info('🔌 WebSocket connected:', newSocket.id);
       setState(prev => ({
         ...prev,
         connected: true,
@@ -58,7 +59,7 @@ export const useWebSocket = (
     });
 
     newSocket.on('disconnect', (reason) => {
-      console.log('❌ WebSocket disconnected:', reason);
+      logger.info('❌ WebSocket disconnected:', reason);
       setState(prev => ({
         ...prev,
         connected: false,

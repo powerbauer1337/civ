@@ -26,7 +26,7 @@ module.exports = {
     'comma-dangle': ['error', 'never'],
     'semi': ['error', 'always'],
     'quotes': ['error', 'single'],
-    'no-console': 'warn',
+    'no-console': 'error',
     'no-debugger': 'error',
   },
   overrides: [

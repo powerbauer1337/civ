@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { GameState, GameAction, PlayerInfo, PlayerState, GamePhase } from '@civ-game/shared';
+import { GameState, GameAction, PlayerInfo, PlayerState, GamePhase, logger } from '@civ-game/shared';
 
 export interface GameSliceState {
   currentGameId: string | null
@@ -152,12 +152,12 @@ const gameSlice = createSlice({
     unitMoved: (_state, action: PayloadAction<{ unitId: string; newPosition: any }>) => {
       // Update unit position in local state for immediate feedback
       // Skip unit updates for now - needs proper implementation
-      console.log('Unit moved:', action.payload);
+      logger.debug('Unit moved:', action.payload);
     },
 
     unitAttacked: (_state, action: PayloadAction<{ attackerId: string; defenderId: string; result: any }>) => {
       // Handle combat result in local state
-      console.log('Combat result:', action.payload.result);
+      logger.info('Combat result:', action.payload.result);
     },
 
     cityFounded: (state, action: PayloadAction<{ cityId: string; city: any }>) => {
@@ -188,7 +188,7 @@ const gameSlice = createSlice({
     // Technology updates
     technologyResearched: (_state, action: PayloadAction<{ playerId: string; technology: string }>) => {
       // Skip technology updates for now - needs proper implementation
-      console.log('Technology researched:', action.payload);
+      logger.info('Technology researched:', action.payload);
     },
 
     // Settings management

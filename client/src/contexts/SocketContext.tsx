@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { io, Socket } from 'socket.io-client';
+import { logger } from '@civ-game/shared';
 import { RootState } from '../store/store';
 import {
   setConnectionStatus,
@@ -65,60 +66,60 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
       // Connection event handlers
       newSocket.on('connect', () => {
-        console.log('Connected to server');
+        logger.info('Connected to server');
         setConnected(true);
         dispatch(setConnectionStatus('connected'));
         dispatch(showSuccess({ title: 'Connected', message: 'Connected to game server' }));
       });
 
       newSocket.on('disconnect', () => {
-        console.log('Disconnected from server');
+        logger.info('Disconnected from server');
         setConnected(false);
         dispatch(setConnectionStatus('disconnected'));
         dispatch(showWarning({ title: 'Disconnected', message: 'Lost connection to server' }));
       });
 
       newSocket.on('connect_error', (error) => {
-        console.error('Connection error:', error);
+        logger.error('Connection error:', error);
         dispatch(setConnectionStatus('error'));
         dispatch(showError({ title: 'Connection Error', message: 'Failed to connect to server' }));
       });
 
       // Game event handlers
       newSocket.on('game_created', (data) => {
-        console.log('Game created:', data);
+        logger.info('Game created:', data);
         dispatch(showSuccess({ title: 'Game Created', message: `Game ${data.gameId} created successfully` }));
         dispatch(updateGameState(data.gameState));
       });
 
       newSocket.on('player_joined', (data) => {
-        console.log('Player joined:', data);
+        logger.info('Player joined:', data);
         dispatch(playerJoined(data.player));
         dispatch(updateGameState(data.gameState));
         dispatch(showInfo({ title: 'Player Joined', message: `${data.player.name} joined the game` }));
       });
 
       newSocket.on('player_disconnected', (data) => {
-        console.log('Player disconnected:', data);
+        logger.info('Player disconnected:', data);
         dispatch(playerLeft(data.playerId));
         dispatch(updateGameState(data.gameState));
         dispatch(showWarning({ title: 'Player Left', message: 'A player has left the game' }));
       });
 
       newSocket.on('game_started', (data) => {
-        console.log('Game started:', data);
+        logger.info('Game started:', data);
         dispatch(gameStarted(data.gameState));
         dispatch(showSuccess({ title: 'Game Started', message: 'The game has begun!' }));
       });
 
       newSocket.on('game_updated', (data) => {
-        console.log('Game updated:', data);
+        logger.debug('Game updated:', data);
         dispatch(updateGameState(data.gameState));
         dispatch(addGameAction(data.action));
       });
 
       newSocket.on('game_ended', (data) => {
-        console.log('Game ended:', data);
+        logger.info('Game ended:', data);
         dispatch(gameEnded(data));
         dispatch(showInfo({
           title: 'Game Ended',
@@ -127,13 +128,13 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       });
 
       newSocket.on('turn_timeout', (data) => {
-        console.log('Turn timeout:', data);
+        logger.info('Turn timeout:', data);
         dispatch(updateGameState(data.gameState));
         dispatch(showWarning({ title: 'Turn Timeout', message: 'Turn ended due to timeout' }));
       });
 
       newSocket.on('action_failed', (data) => {
-        console.log('Action failed:', data);
+        logger.warn('Action failed:', data);
         dispatch(showError({
           title: 'Action Failed',
           message: data.reason || 'Your action could not be completed'
@@ -141,17 +142,17 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       });
 
       newSocket.on('game_state', (gameState) => {
-        console.log('Received game state:', gameState);
+        logger.debug('Received game state:', gameState);
         dispatch(updateGameState(gameState));
       });
 
       newSocket.on('player_ready', (data) => {
-        console.log('Player ready:', data);
+        logger.info('Player ready:', data);
         dispatch(showInfo({ title: 'Player Ready', message: 'A player is ready to start' }));
       });
 
       newSocket.on('error', (data) => {
-        console.error('Socket error:', data);
+        logger.error('Socket error:', data);
         dispatch(showError({ title: 'Error', message: data.message || 'An error occurred' }));
       });
 

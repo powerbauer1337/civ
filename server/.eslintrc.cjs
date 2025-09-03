@@ -9,7 +9,7 @@ module.exports = {
     NodeJS: 'readonly',
   },
   rules: {
-    'no-console': 'off', // Console logging is expected in server
+    'no-console': 'error', // Force use of logger instead of console.log
     'no-process-exit': 'error',
     'no-eval': 'error',
     'no-implied-eval': 'error',

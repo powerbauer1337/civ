@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
-import { GameState } from '@civ-game/shared';
+import { GameState, logger } from '@civ-game/shared';
 import Phaser from 'phaser';
 
 interface GameRendererProps {
@@ -91,7 +91,7 @@ class GameScene extends Phaser.Scene {
         const hexZone = this.add.zone(x, y, hexWidth, hexHeight);
         hexZone.setInteractive();
         hexZone.on('pointerdown', () => {
-          console.log(`Clicked hex: ${q}, ${r}, ${s}`);
+          logger.debug(`Clicked hex: ${q}, ${r}, ${s}`);
           hex.clear();
           hex.fillStyle(0xFFFF00, 0.8);
           hex.lineStyle(2, 0x000000, 0.8);
@@ -196,7 +196,7 @@ const GameRenderer: React.FC<GameRendererProps> = ({ gameState }) => {
       const scene = phaserGameRef.current.scene.getScene('GameScene') as GameScene;
       if (scene) {
         // Update units, cities, etc. based on gameState
-        console.log('Updating game scene with new state:', gameState);
+        logger.debug('Updating game scene with new state:', gameState);
       }
     }
   }, [gameState, initialized]);

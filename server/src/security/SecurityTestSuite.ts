@@ -1,5 +1,6 @@
 import { secureJWTManager } from './SecureJWTManager';
 import { config } from '../config/config';
+import { logger } from '@civ-game/shared';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 
@@ -27,7 +28,7 @@ export class SecurityTestSuite {
     critical: number;
     results: SecurityTestResult[];
   }> {
-    console.log('🔍 Running SPARC Security Test Suite...\n');
+    logger.info('🔍 Running SPARC Security Test Suite...');
 
     // Environment and configuration tests
     await this.testEnvironmentSecurity();
