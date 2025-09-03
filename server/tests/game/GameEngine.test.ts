@@ -1,5 +1,5 @@
 import { GameEngine } from '../../src/game/GameEngine';
-import { GameState, GameAction, GameActionType } from '@civ-game/shared';
+import { GameState, GameAction, GameActionType, GamePhase } from '@civ-game/shared';
 import { HexMap } from '../../src/game/HexMap';
 
 describe('GameEngine', () => {
@@ -34,11 +34,15 @@ describe('GameEngine', () => {
       
       testGameState = {
         id: 'test-game',
+        gameId: 'test-game',
         turn: 1,
+        currentTurn: 1,
         currentPlayer: 'player1',
-        players: {
-          'player1': {
+        phase: GamePhase.ACTIVE,
+        players: [
+          {
             id: 'player1',
+            userId: 'player1',
             name: 'Player 1',
             civilization: 'Romans',
             resources: { gold: 100, food: 50, production: 30, science: 10 },
@@ -46,10 +50,15 @@ describe('GameEngine', () => {
             cities: [],
             units: []
           }
+        ],
+        map: {
+          width: 10,
+          height: 10,
+          tiles: hexMap.tiles
         },
-        map: hexMap.tiles,
-        winner: null,
-        gameOver: false
+        cities: {},
+        units: {},
+        lastUpdate: new Date()
       };
     });
 
