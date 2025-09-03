@@ -1,5 +1,5 @@
-import React from 'react'
-import { useSelector, useDispatch } from 'react-redux'
+import React from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import {
   Box,
   Typography,
@@ -7,27 +7,27 @@ import {
   Chip,
   IconButton,
   Tooltip
-} from '@mui/material'
+} from '@mui/material';
 import {
   Menu as MenuIcon,
   Settings as SettingsIcon,
   ExitToApp as ExitIcon,
   PlayArrow as PlayIcon,
   Pause as PauseIcon
-} from '@mui/icons-material'
-import { RootState } from '../store/store'
-import { toggleSidebar } from '../store/uiSlice'
-import { useSocket } from '../contexts/SocketContext'
+} from '@mui/icons-material';
+import { RootState } from '../store/store';
+import { toggleSidebar } from '../store/uiSlice';
+import { useSocket } from '../contexts/SocketContext';
 
 const GameHUD: React.FC = () => {
-  const dispatch = useDispatch()
-  const { sendGameAction } = useSocket()
-  
-  const { gameState, currentPlayerTurn } = useSelector((state: RootState) => state.game)
-  const { user } = useSelector((state: RootState) => state.auth)
+  const dispatch = useDispatch();
+  const { sendGameAction } = useSocket();
 
-  const currentPlayer = gameState?.players.find(p => p.id === user?.id)
-  const activePlayer = gameState?.players?.find(p => p.id === gameState?.currentPlayer)
+  const { gameState, currentPlayerTurn } = useSelector((state: RootState) => state.game);
+  const { user } = useSelector((state: RootState) => state.auth);
+
+  const currentPlayer = gameState?.players.find(p => p.id === user?.id);
+  const activePlayer = gameState?.players?.find(p => p.id === gameState?.currentPlayer);
 
   const handleEndTurn = () => {
     if (currentPlayerTurn) {
@@ -37,34 +37,34 @@ const GameHUD: React.FC = () => {
         payload: {},
         timestamp: Date.now(),
         actionId: `action_${Date.now()}`
-      })
+      });
     }
-  }
+  };
 
   const handleMenuClick = () => {
-    dispatch(toggleSidebar())
-  }
+    dispatch(toggleSidebar());
+  };
 
   return (
     <Box className="game-hud">
       {/* Left side - Menu and game info */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <IconButton 
-          color="inherit" 
+        <IconButton
+          color="inherit"
           onClick={handleMenuClick}
           sx={{ color: 'white' }}
         >
           <MenuIcon />
         </IconButton>
-        
+
         <Typography variant="h6" sx={{ color: 'white', fontWeight: 'bold' }}>
           Turn {gameState?.currentTurn || 1}
         </Typography>
-        
+
         <Chip
           label={activePlayer?.name || 'Unknown'}
           color={currentPlayerTurn ? 'success' : 'default'}
-          sx={{ 
+          sx={{
             color: 'white',
             fontWeight: 'bold'
           }}
@@ -113,13 +113,13 @@ const GameHUD: React.FC = () => {
         >
           {currentPlayerTurn ? 'End Turn' : 'Waiting...'}
         </Button>
-        
+
         <Tooltip title="Game Settings">
           <IconButton color="inherit" sx={{ color: 'white' }}>
             <SettingsIcon />
           </IconButton>
         </Tooltip>
-        
+
         <Tooltip title="Leave Game">
           <IconButton color="inherit" sx={{ color: 'white' }}>
             <ExitIcon />
@@ -127,7 +127,7 @@ const GameHUD: React.FC = () => {
         </Tooltip>
       </Box>
     </Box>
-  )
-}
+  );
+};
 
-export default GameHUD
+export default GameHUD;

@@ -1,5 +1,5 @@
-import React from 'react'
-import { Box, CircularProgress, Typography } from '@mui/material'
+import React from 'react';
+import { Box, CircularProgress, Typography } from '@mui/material';
 
 interface LoadingScreenProps {
   message?: string
@@ -19,16 +19,16 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ message = 'Loading...' })
         color: 'white'
       }}
     >
-      <CircularProgress 
-        size={60} 
-        sx={{ 
+      <CircularProgress
+        size={60}
+        sx={{
           color: '#FFD700',
           mb: 3
-        }} 
+        }}
       />
-      <Typography 
-        variant="h5" 
-        sx={{ 
+      <Typography
+        variant="h5"
+        sx={{
           fontWeight: 300,
           letterSpacing: 1,
           textAlign: 'center'
@@ -37,7 +37,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ message = 'Loading...' })
         {message}
       </Typography>
     </Box>
-  )
-}
+  );
+};
 
-export default LoadingScreen
+export default LoadingScreen;

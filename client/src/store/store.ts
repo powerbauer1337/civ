@@ -1,13 +1,13 @@
-import { configureStore } from '@reduxjs/toolkit'
-import authSlice from './authSlice'
-import gameSlice from './gameSlice'
-import uiSlice from './uiSlice'
+import { configureStore } from '@reduxjs/toolkit';
+import authSlice from './authSlice';
+import gameSlice from './gameSlice';
+import uiSlice from './uiSlice';
 
 export const store = configureStore({
   reducer: {
     auth: authSlice,
     game: gameSlice,
-    ui: uiSlice,
+    ui: uiSlice
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -16,7 +16,7 @@ export const store = configureStore({
         ignoredPaths: ['game.gameState.technologies', 'game.gameState.grid']
       }
     })
-})
+});
 
 export type RootState = ReturnType<typeof store.getState>
 export type AppDispatch = typeof store.dispatch

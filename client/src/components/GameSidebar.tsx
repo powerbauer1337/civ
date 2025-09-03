@@ -1,5 +1,5 @@
-import React from 'react'
-import { useSelector, useDispatch } from 'react-redux'
+import React from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import {
   Box,
   Typography,
@@ -12,35 +12,35 @@ import {
   Paper,
   Chip,
   Button
-} from '@mui/material'
+} from '@mui/material';
 import {
   People as PeopleIcon,
   LocationCity as CityIcon,
   Science as ScienceIcon,
   Close as CloseIcon
-} from '@mui/icons-material'
-import { RootState } from '../store/store'
-import { toggleSidebar, setCurrentPanel } from '../store/uiSlice'
+} from '@mui/icons-material';
+import { RootState } from '../store/store';
+import { toggleSidebar, setCurrentPanel } from '../store/uiSlice';
 
 interface GameSidebarProps {
   open: boolean
 }
 
 const GameSidebar: React.FC<GameSidebarProps> = ({ open }) => {
-  const dispatch = useDispatch()
-  const { gameState } = useSelector((state: RootState) => state.game)
-  const { currentPanel } = useSelector((state: RootState) => state.ui)
-  const { user } = useSelector((state: RootState) => state.auth)
+  const dispatch = useDispatch();
+  const { gameState } = useSelector((state: RootState) => state.game);
+  const { currentPanel } = useSelector((state: RootState) => state.ui);
+  const { user } = useSelector((state: RootState) => state.auth);
 
   const handleClose = () => {
-    dispatch(toggleSidebar())
-  }
+    dispatch(toggleSidebar());
+  };
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: string) => {
-    dispatch(setCurrentPanel(newValue as any))
-  }
+    dispatch(setCurrentPanel(newValue as any));
+  };
 
-  const currentPlayer = gameState?.players.find(p => p.id === user?.id)
+  const currentPlayer = gameState?.players.find(p => p.id === user?.id);
 
   return (
     <Box
@@ -52,17 +52,17 @@ const GameSidebar: React.FC<GameSidebarProps> = ({ open }) => {
       }}
     >
       {/* Header */}
-      <Box sx={{ 
-        p: 2, 
-        display: 'flex', 
-        justifyContent: 'space-between', 
+      <Box sx={{
+        p: 2,
+        display: 'flex',
+        justifyContent: 'space-between',
         alignItems: 'center',
         borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
       }}>
         <Typography variant="h6" sx={{ color: 'white', fontWeight: 'bold' }}>
           Game Info
         </Typography>
-        <Button 
+        <Button
           onClick={handleClose}
           sx={{ color: 'white', minWidth: 'auto', p: 1 }}
         >
@@ -72,28 +72,28 @@ const GameSidebar: React.FC<GameSidebarProps> = ({ open }) => {
 
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs 
-          value={currentPanel} 
+        <Tabs
+          value={currentPanel}
           onChange={handleTabChange}
           textColor="inherit"
           indicatorColor="primary"
           variant="fullWidth"
         >
-          <Tab 
-            label="Players" 
-            value="units" 
+          <Tab
+            label="Players"
+            value="units"
             icon={<PeopleIcon />}
             sx={{ color: 'white' }}
           />
-          <Tab 
-            label="Cities" 
-            value="cities" 
+          <Tab
+            label="Cities"
+            value="cities"
             icon={<CityIcon />}
             sx={{ color: 'white' }}
           />
-          <Tab 
-            label="Tech" 
-            value="tech" 
+          <Tab
+            label="Tech"
+            value="tech"
             icon={<ScienceIcon />}
             sx={{ color: 'white' }}
           />
@@ -109,22 +109,22 @@ const GameSidebar: React.FC<GameSidebarProps> = ({ open }) => {
             </Typography>
             <List>
               {gameState?.players.map((player) => (
-                <ListItem 
+                <ListItem
                   key={player.id}
-                  sx={{ 
+                  sx={{
                     bgcolor: player.id === user?.id ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
                     borderRadius: 1,
                     mb: 1
                   }}
                 >
                   <ListItemIcon>
-                    <Box 
-                      sx={{ 
-                        width: 20, 
-                        height: 20, 
+                    <Box
+                      sx={{
+                        width: 20,
+                        height: 20,
                         borderRadius: '50%',
                         backgroundColor: player.color
-                      }} 
+                      }}
                     />
                   </ListItemIcon>
                   <ListItemText
@@ -140,9 +140,9 @@ const GameSidebar: React.FC<GameSidebarProps> = ({ open }) => {
                     }
                   />
                   {player.id === gameState.currentPlayer && (
-                    <Chip 
-                      label="Current" 
-                      size="small" 
+                    <Chip
+                      label="Current"
+                      size="small"
                       color="success"
                     />
                   )}
@@ -219,7 +219,7 @@ const GameSidebar: React.FC<GameSidebarProps> = ({ open }) => {
         )}
       </Box>
     </Box>
-  )
-}
+  );
+};
 
-export default GameSidebar
+export default GameSidebar;

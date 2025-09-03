@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -28,7 +28,7 @@ import {
   Switch,
   FormControlLabel,
   Fab
-} from '@mui/material'
+} from '@mui/material';
 import {
   Add as AddIcon,
   Refresh as RefreshIcon,
@@ -40,7 +40,7 @@ import {
   Pending as PendingIcon,
   CheckCircle as CheckIcon,
   Info as InfoIcon
-} from '@mui/icons-material'
+} from '@mui/icons-material';
 
 interface Game {
   id: string
@@ -64,41 +64,41 @@ interface GameListResponse {
 
 
 const SimpleLobbyPage: React.FC = () => {
-  const navigate = useNavigate()
-  const [games, setGames] = useState<Game[]>([])
-  const [loading, setLoading] = useState(true)
-  const [createGameOpen, setCreateGameOpen] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
-  const [showWelcome, setShowWelcome] = useState(!localStorage.getItem('hasVisited'))
-  
+  const navigate = useNavigate();
+  const [games, setGames] = useState<Game[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [createGameOpen, setCreateGameOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [showWelcome, setShowWelcome] = useState(!localStorage.getItem('hasVisited'));
+
   // Pagination and filtering
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalGames, setTotalGames] = useState(0)
-  const [gameFilter, setGameFilter] = useState<'all' | 'waiting' | 'active' | 'ended'>('all')
-  const [hideTestGames, setHideTestGames] = useState(true)
-  const [isCleaningUp, setIsCleaningUp] = useState(false)
-  
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalGames, setTotalGames] = useState(0);
+  const [gameFilter, setGameFilter] = useState<'all' | 'waiting' | 'active' | 'ended'>('all');
+  const [hideTestGames, setHideTestGames] = useState(true);
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
+
   const [gameForm, setGameForm] = useState({
     name: '',
     maxPlayers: 4
-  })
-  
+  });
+
   const [playerForm, setPlayerForm] = useState({
     username: localStorage.getItem('playerName') || '',
     civilization: 'Random'
-  })
+  });
 
   useEffect(() => {
-    fetchGames(1)
-  }, [gameFilter, hideTestGames])
+    fetchGames(1);
+  }, [gameFilter, hideTestGames]);
 
   useEffect(() => {
     // Refresh games every 10 seconds (reduced frequency for better UX)
-    const interval = setInterval(() => fetchGames(), 10000)
-    return () => clearInterval(interval)
-  }, [currentPage, gameFilter, hideTestGames])
+    const interval = setInterval(() => fetchGames(), 10000);
+    return () => clearInterval(interval);
+  }, [currentPage, gameFilter, hideTestGames]);
 
   const fetchGames = async (page = currentPage) => {
     try {
@@ -107,170 +107,170 @@ const SimpleLobbyPage: React.FC = () => {
         limit: '10',
         filter: gameFilter,
         hideTestGames: hideTestGames.toString()
-      })
-      
+      });
+
       const response = await fetch(
         `${process.env.VITE_API_BASE_URL || 'http://localhost:4002'}/api/games?${queryParams}`
-      )
-      
+      );
+
       if (response.ok) {
-        const data: GameListResponse = await response.json()
-        setGames(data.games || data as any) // Fallback for old API format
-        setTotalGames(data.totalGames || data.games?.length || 0)
-        setCurrentPage(data.currentPage || page)
-        setTotalPages(data.totalPages || Math.ceil((data.totalGames || 0) / 10))
+        const data: GameListResponse = await response.json();
+        setGames(data.games || data as any); // Fallback for old API format
+        setTotalGames(data.totalGames || data.games?.length || 0);
+        setCurrentPage(data.currentPage || page);
+        setTotalPages(data.totalPages || Math.ceil((data.totalGames || 0) / 10));
       } else {
-        throw new Error('Failed to fetch games')
+        throw new Error('Failed to fetch games');
       }
     } catch (error) {
-      console.error('Error fetching games:', error)
-      setError('Failed to connect to server')
+      console.error('Error fetching games:', error);
+      setError('Failed to connect to server');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleCreateGame = async () => {
     if (!gameForm.name.trim()) {
-      setError('Game name is required')
-      return
+      setError('Game name is required');
+      return;
     }
 
     try {
       const response = await fetch(`${process.env.VITE_API_BASE_URL || 'http://localhost:4002'}/api/games`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           name: gameForm.name.trim(),
           maxPlayers: gameForm.maxPlayers
-        }),
-      })
+        })
+      });
 
       if (response.ok) {
-        const result = await response.json()
-        setSuccess(`Game "${result.game.name}" created successfully!`)
-        setCreateGameOpen(false)
-        setGameForm({ name: '', maxPlayers: 4 })
-        fetchGames() // Refresh the games list
+        const result = await response.json();
+        setSuccess(`Game "${result.game.name}" created successfully!`);
+        setCreateGameOpen(false);
+        setGameForm({ name: '', maxPlayers: 4 });
+        fetchGames(); // Refresh the games list
       } else {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to create game')
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create game');
       }
     } catch (error) {
-      console.error('Error creating game:', error)
-      setError(error instanceof Error ? error.message : 'Failed to create game')
+      console.error('Error creating game:', error);
+      setError(error instanceof Error ? error.message : 'Failed to create game');
     }
-  }
+  };
 
   const handleJoinGame = async (gameId: string, gameName: string) => {
     if (!playerForm.username.trim()) {
-      setError('Username is required')
-      return
+      setError('Username is required');
+      return;
     }
 
     // Save username for future use
-    localStorage.setItem('playerName', playerForm.username.trim())
+    localStorage.setItem('playerName', playerForm.username.trim());
 
     try {
       const response = await fetch(`${process.env.VITE_API_BASE_URL || 'http://localhost:4002'}/api/games/${gameId}/join`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           username: playerForm.username.trim(),
           civilization: playerForm.civilization
-        }),
-      })
+        })
+      });
 
       if (response.ok) {
-        const result = await response.json()
-        setSuccess(`Joined "${gameName}" as ${result.playerId}!`)
+        const result = await response.json();
+        setSuccess(`Joined "${gameName}" as ${result.playerId}!`);
         // Store player info for game session
-        localStorage.setItem('currentGameId', gameId)
-        localStorage.setItem('currentPlayerId', result.playerId)
-        
+        localStorage.setItem('currentGameId', gameId);
+        localStorage.setItem('currentPlayerId', result.playerId);
+
         // Navigate to game (we'll create this route)
         setTimeout(() => {
-          navigate(`/game/${gameId}`)
-        }, 1000)
+          navigate(`/game/${gameId}`);
+        }, 1000);
       } else {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to join game')
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to join game');
       }
     } catch (error) {
-      console.error('Error joining game:', error)
-      setError(error instanceof Error ? error.message : 'Failed to join game')
+      console.error('Error joining game:', error);
+      setError(error instanceof Error ? error.message : 'Failed to join game');
     }
-  }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'waiting': return 'primary'
-      case 'active': return 'success' 
-      case 'ended': return 'default'
-      default: return 'secondary'
+      case 'waiting': return 'primary';
+      case 'active': return 'success';
+      case 'ended': return 'default';
+      default: return 'secondary';
     }
-  }
+  };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'waiting': return 'Waiting for Players'
-      case 'active': return 'Game in Progress'
-      case 'ended': return 'Game Finished'
-      default: return status
+      case 'waiting': return 'Waiting for Players';
+      case 'active': return 'Game in Progress';
+      case 'ended': return 'Game Finished';
+      default: return status;
     }
-  }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'waiting': return <PendingIcon />
-      case 'active': return <PlayIcon />
-      case 'ended': return <CheckIcon />
-      default: return <InfoIcon />
+      case 'waiting': return <PendingIcon />;
+      case 'active': return <PlayIcon />;
+      case 'ended': return <CheckIcon />;
+      default: return <InfoIcon />;
     }
-  }
+  };
 
   const handlePageChange = (_event: React.ChangeEvent<unknown>, page: number) => {
-    setCurrentPage(page)
-    fetchGames(page)
-  }
+    setCurrentPage(page);
+    fetchGames(page);
+  };
 
   const handleCleanupTestGames = async () => {
-    setIsCleaningUp(true)
+    setIsCleaningUp(true);
     try {
       const response = await fetch(
         `${process.env.VITE_API_BASE_URL || 'http://localhost:4002'}/api/games/cleanup-test-games`,
         { method: 'DELETE' }
-      )
-      
+      );
+
       if (response.ok) {
-        const data = await response.json()
-        setSuccess(`${data.message}. Refreshing game list...`)
+        const data = await response.json();
+        setSuccess(`${data.message}. Refreshing game list...`);
         // Reset to page 1 and refresh
-        setCurrentPage(1)
-        setTimeout(() => fetchGames(1), 1000)
+        setCurrentPage(1);
+        setTimeout(() => fetchGames(1), 1000);
       } else {
-        throw new Error('Failed to cleanup test games')
+        throw new Error('Failed to cleanup test games');
       }
     } catch (error) {
-      console.error('Error cleaning up test games:', error)
-      setError('Failed to cleanup test games')
+      console.error('Error cleaning up test games:', error);
+      setError('Failed to cleanup test games');
     } finally {
-      setIsCleaningUp(false)
+      setIsCleaningUp(false);
     }
-  }
+  };
 
   const handleWelcomeComplete = () => {
-    setShowWelcome(false)
-    localStorage.setItem('hasVisited', 'true')
-  }
+    setShowWelcome(false);
+    localStorage.setItem('hasVisited', 'true');
+  };
 
   // Welcome Screen Component
   const WelcomeScreen = () => (
-    <Box sx={{ 
+    <Box sx={{
       position: 'fixed',
       top: 0,
       left: 0,
@@ -290,7 +290,7 @@ const SimpleLobbyPage: React.FC = () => {
           <Typography variant="h5" gutterBottom color="text.secondary">
             Build Your Empire • Conquer the World • Make History
           </Typography>
-          
+
           <Box sx={{ my: 4 }}>
             <Grid container spacing={3} sx={{ mb: 4 }}>
               <Grid item xs={12} md={4}>
@@ -313,18 +313,18 @@ const SimpleLobbyPage: React.FC = () => {
               </Grid>
             </Grid>
           </Box>
-          
+
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Button 
-              variant="contained" 
+            <Button
+              variant="contained"
               size="large"
               onClick={handleWelcomeComplete}
               sx={{ minWidth: 200, py: 1.5 }}
             >
               Start Playing Now
             </Button>
-            <Button 
-              variant="outlined" 
+            <Button
+              variant="outlined"
               size="large"
               onClick={handleWelcomeComplete}
               sx={{ minWidth: 200, py: 1.5 }}
@@ -335,7 +335,7 @@ const SimpleLobbyPage: React.FC = () => {
         </Paper>
       </Container>
     </Box>
-  )
+  );
 
   if (loading) {
     return (
@@ -343,13 +343,13 @@ const SimpleLobbyPage: React.FC = () => {
         <CircularProgress />
         <Typography sx={{ ml: 2 }}>Connecting to server...</Typography>
       </Box>
-    )
+    );
   }
 
   return (
     <>
       {showWelcome && <WelcomeScreen />}
-      
+
     <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)' }}>
       {/* Header */}
       <AppBar position="static" sx={{ background: 'rgba(0, 0, 0, 0.3)' }}>
@@ -448,7 +448,7 @@ const SimpleLobbyPage: React.FC = () => {
                 <MenuItem value="ended">Finished Games</MenuItem>
               </Select>
             </FormControl>
-            
+
             <FormControlLabel
               control={
                 <Switch
@@ -505,25 +505,25 @@ const SimpleLobbyPage: React.FC = () => {
                           size="small"
                         />
                       </Box>
-                      
+
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                         <PeopleIcon sx={{ mr: 1, fontSize: 16 }} />
                         <Typography variant="body2">
                           {game.playerCount}/{game.maxPlayers} players
                         </Typography>
                       </Box>
-                      
+
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                         <TimeIcon sx={{ mr: 1, fontSize: 16 }} />
                         <Typography variant="body2">
                           Turn {game.currentTurn} • Created {new Date(game.createdAt).toLocaleTimeString()}
                         </Typography>
                       </Box>
-                      
+
                       <Typography variant="caption" display="block" sx={{ mb: 2, color: 'text.secondary' }}>
                         Game ID: {game.id}
                       </Typography>
-                      
+
                       <Button
                         fullWidth
                         variant={game.status === 'waiting' ? 'contained' : 'outlined'}
@@ -532,7 +532,7 @@ const SimpleLobbyPage: React.FC = () => {
                         onClick={() => handleJoinGame(game.id, game.name)}
                       >
                         {loading ? 'Joining...' : (
-                          game.status === 'waiting' 
+                          game.status === 'waiting'
                             ? (game.playerCount < game.maxPlayers ? 'Join Game' : 'Game Full')
                             : game.status === 'active' ? 'Game In Progress' : 'Game Finished'
                         )}
@@ -543,7 +543,7 @@ const SimpleLobbyPage: React.FC = () => {
               ))}
             </Grid>
           )}
-          
+
           {/* Pagination */}
           {totalPages > 1 && (
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -574,7 +574,7 @@ const SimpleLobbyPage: React.FC = () => {
             margin="normal"
             placeholder="e.g., Epic Civilization Battle"
           />
-          
+
           <TextField
             fullWidth
             type="number"
@@ -587,8 +587,8 @@ const SimpleLobbyPage: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCreateGameOpen(false)}>Cancel</Button>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             onClick={handleCreateGame}
             disabled={!gameForm.name.trim()}
           >
@@ -598,9 +598,9 @@ const SimpleLobbyPage: React.FC = () => {
       </Dialog>
 
       {/* Success/Error Snackbars */}
-      <Snackbar 
-        open={!!success} 
-        autoHideDuration={4000} 
+      <Snackbar
+        open={!!success}
+        autoHideDuration={4000}
         onClose={() => setSuccess(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
@@ -609,9 +609,9 @@ const SimpleLobbyPage: React.FC = () => {
         </Alert>
       </Snackbar>
 
-      <Snackbar 
-        open={!!error} 
-        autoHideDuration={6000} 
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
         onClose={() => setError(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
@@ -636,7 +636,7 @@ const SimpleLobbyPage: React.FC = () => {
       </Fab>
     </Box>
     </>
-  )
-}
+  );
+};
 
-export default SimpleLobbyPage
+export default SimpleLobbyPage;

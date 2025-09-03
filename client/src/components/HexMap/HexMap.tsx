@@ -39,7 +39,7 @@ const HexMap: React.FC<HexMapProps> = ({ gameState, playerId, onTileClick, onUni
   const mapRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan] = useState({ x: 0, y: 0 });
-  
+
   // Extract map data from game state
   const mapData = gameState?.board || gameState?.map;
   const tiles: MapTile[][] = mapData?.tiles || [];
@@ -53,7 +53,7 @@ const HexMap: React.FC<HexMapProps> = ({ gameState, playerId, onTileClick, onUni
   const HEX_VERTICAL_SPACING = HEX_HEIGHT * 0.75;
 
   useEffect(() => {
-    console.log('HexMap received game state:', { 
+    console.log('HexMap received game state:', {
       hasBoard: !!gameState?.board,
       hasMap: !!gameState?.map,
       tilesLength: tiles.length,
@@ -77,7 +77,7 @@ const HexMap: React.FC<HexMapProps> = ({ gameState, playerId, onTileClick, onUni
    */
   const handleTileClick = (x: number, y: number) => {
     console.log(`Tile clicked: (${x}, ${y})`);
-    
+
     // Check if tile has a unit
     const tile = tiles[y]?.[x];
     if (tile?.unit) {
@@ -106,7 +106,7 @@ const HexMap: React.FC<HexMapProps> = ({ gameState, playerId, onTileClick, onUni
    */
   const shouldHighlightTile = (x: number, y: number): boolean => {
     if (!selectedUnit) return false;
-    
+
     // Simple range check - highlight tiles within movement range
     const distance = Math.abs(selectedUnit.x - x) + Math.abs(selectedUnit.y - y);
     return distance <= (selectedUnit.maxMovement || 2);
@@ -131,10 +131,10 @@ const HexMap: React.FC<HexMapProps> = ({ gameState, playerId, onTileClick, onUni
   return (
     <Box sx={{ position: 'relative', height: '100%', overflow: 'hidden' }}>
       {/* Map Controls */}
-      <Box sx={{ 
-        position: 'absolute', 
-        top: 10, 
-        left: 10, 
+      <Box sx={{
+        position: 'absolute',
+        top: 10,
+        left: 10,
         zIndex: 10,
         background: 'rgba(255, 255, 255, 0.9)',
         borderRadius: 1,

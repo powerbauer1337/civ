@@ -240,9 +240,9 @@ const SinglePlayerSetup: React.FC = () => {
                         </Box>
                       </Box>
                       {difficulty === level && (
-                        <Chip 
-                          label="Selected" 
-                          color="primary" 
+                        <Chip
+                          label="Selected"
+                          color="primary"
                           size="small"
                           sx={{ bgcolor: info.color }}
                         />
@@ -254,7 +254,7 @@ const SinglePlayerSetup: React.FC = () => {
 
               <Alert severity="info" sx={{ mt: 3 }}>
                 <Typography variant="body2">
-                  <strong>AI Personalities:</strong> Each AI opponent will have a unique personality 
+                  <strong>AI Personalities:</strong> Each AI opponent will have a unique personality
                   (Aggressive, Economic, Scientific, Defensive, or Balanced) that affects their strategy!
                 </Typography>
               </Alert>

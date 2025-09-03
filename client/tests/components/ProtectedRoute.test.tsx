@@ -10,14 +10,14 @@ import authSlice, { AuthState } from '../../src/store/authSlice';
 
 // Mock LoadingScreen component
 vi.mock('../../src/components/LoadingScreen', () => ({
-  default: ({ message }: { message: string }) => <div data-testid="loading-screen">{message}</div>,
+  default: ({ message }: { message: string }) => <div data-testid="loading-screen">{message}</div>
 }));
 
 // Helper function to create store with auth state
 const createMockStore = (authState: Partial<AuthState>) => {
   return configureStore({
     reducer: {
-      auth: authSlice,
+      auth: authSlice
     },
     preloadedState: {
       auth: {
@@ -26,24 +26,24 @@ const createMockStore = (authState: Partial<AuthState>) => {
         isAuthenticated: false,
         isLoading: false,
         error: null,
-        ...authState,
-      },
-    },
+        ...authState
+      }
+    }
   });
 };
 
 // Test wrapper component
-const TestWrapper = ({ 
-  children, 
-  authState, 
-  initialRoute = '/' 
-}: { 
-  children: React.ReactNode; 
+const TestWrapper = ({
+  children,
+  authState,
+  initialRoute = '/'
+}: {
+  children: React.ReactNode;
   authState: Partial<AuthState>;
   initialRoute?: string;
 }) => {
   const store = createMockStore(authState);
-  
+
   return (
     <Provider store={store}>
       <MemoryRouter initialEntries={[initialRoute]}>
@@ -95,7 +95,7 @@ describe('ProtectedRoute', () => {
     // Should not render protected content or loading screen
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
     expect(screen.queryByTestId('loading-screen')).not.toBeInTheDocument();
-    
+
     // Navigate component doesn't render anything visible, but we can check it's not showing our content
     expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
   });
@@ -160,9 +160,9 @@ describe('ProtectedRoute', () => {
     };
 
     render(
-      <TestWrapper 
-        authState={{ 
-          isAuthenticated: true, 
+      <TestWrapper
+        authState={{
+          isAuthenticated: true,
           isLoading: false,
           user: mockUser,
           token: 'mock-jwt-token'
@@ -179,9 +179,9 @@ describe('ProtectedRoute', () => {
 
   it('should handle authenticated user without explicit user object', () => {
     render(
-      <TestWrapper 
-        authState={{ 
-          isAuthenticated: true, 
+      <TestWrapper
+        authState={{
+          isAuthenticated: true,
           isLoading: false,
           user: null,
           token: 'mock-jwt-token'
@@ -249,9 +249,9 @@ describe('ProtectedRoute', () => {
   describe('Edge Cases', () => {
     it('should handle auth state with error', () => {
       render(
-        <TestWrapper 
-          authState={{ 
-            isAuthenticated: false, 
+        <TestWrapper
+          authState={{
+            isAuthenticated: false,
             isLoading: false,
             error: 'Authentication failed'
           }}
@@ -269,9 +269,9 @@ describe('ProtectedRoute', () => {
 
     it('should handle simultaneous loading and authenticated state', () => {
       render(
-        <TestWrapper 
-          authState={{ 
-            isAuthenticated: true, 
+        <TestWrapper
+          authState={{
+            isAuthenticated: true,
             isLoading: true // This shouldn't normally happen but let's test it
           }}
         >

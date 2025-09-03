@@ -128,8 +128,8 @@ export interface GameState {
 
 export enum GamePhase {
   SETUP = 'setup',
-  PLAYER_TURN = 'player_turn', 
-  BETWEEN_TURNS = 'between_turns', 
+  PLAYER_TURN = 'player_turn',
+  BETWEEN_TURNS = 'between_turns',
   END_GAME = 'end_game',
   ENDED = 'ended',   // Add compatibility with client code
   ACTIVE = 'active', // Add compatibility with server code

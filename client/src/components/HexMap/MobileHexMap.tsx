@@ -1,13 +1,13 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { Box, IconButton, Paper, Slider, Typography } from '@mui/material';
-import { 
-  ZoomIn, 
-  ZoomOut, 
+import {
+  ZoomIn,
+  ZoomOut,
   CenterFocusStrong,
   TouchApp,
   PanTool,
   Visibility,
-  VisibilityOff 
+  VisibilityOff
 } from '@mui/icons-material';
 import { MapTile } from '@civ-game/shared';
 
@@ -49,13 +49,13 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
   });
   const [showGrid, setShowGrid] = useState(true);
   const [interactionMode, setInteractionMode] = useState<'pan' | 'select'>('select');
-  
+
   // Refs
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef({ x: 0, y: 0 });
   const lastTapTime = useRef(0);
-  
+
   // Constants
   const HEX_SIZE = isMobile ? 25 : 30;
   const HEX_WIDTH = HEX_SIZE * 2;
@@ -76,16 +76,16 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
   const pixelToHex = useCallback((x: number, y: number) => {
     const q = (2/3 * x) / HEX_SIZE;
     const r = (-1/3 * x + Math.sqrt(3)/3 * y) / HEX_SIZE;
-    
+
     // Round to nearest hex
     const rx = Math.round(q);
     const ry = Math.round(r);
     const rz = Math.round(-q - r);
-    
+
     const x_diff = Math.abs(rx - q);
     const y_diff = Math.abs(ry - r);
     const z_diff = Math.abs(rz - (-q - r));
-    
+
     if (x_diff > y_diff && x_diff > z_diff) {
       return { q: -ry - rz, r: ry };
     } else if (y_diff > z_diff) {
@@ -104,13 +104,13 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
   // Tile selection
   const handleTileSelect = useCallback((clientX: number, clientY: number) => {
     if (!svgRef.current || !containerRef.current) return;
-    
+
     const rect = containerRef.current.getBoundingClientRect();
     const x = (clientX - rect.left - offset.x) / scale;
     const y = (clientY - rect.top - offset.y) / scale;
-    
+
     const hex = pixelToHex(x, y);
-    
+
     if (hex.q >= 0 && hex.q < map[0].length && hex.r >= 0 && hex.r < map.length) {
       onTileClick?.({ x: hex.q, y: hex.r });
     }
@@ -119,7 +119,7 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
   // Touch event handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touches = Array.from(e.touches);
-    
+
     if (touches.length === 1) {
       // Single touch - check for double tap
       const now = Date.now();
@@ -129,7 +129,7 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
         lastTapTime.current = 0;
       } else {
         lastTapTime.current = now;
-        
+
         if (interactionMode === 'pan') {
           setIsDragging(true);
           dragStartPos.current = {
@@ -143,7 +143,7 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
       const dx = touches[0].clientX - touches[1].clientX;
       const dy = touches[0].clientY - touches[1].clientY;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      
+
       setTouchState({
         touches: touches as unknown as Touch[],
         lastDistance: distance,
@@ -153,13 +153,13 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
         }
       });
     }
-    
+
     e.preventDefault();
   }, [interactionMode, offset, handleZoom]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     const touches = Array.from(e.touches);
-    
+
     if (touches.length === 1 && isDragging) {
       // Single finger pan
       const newOffset = {
@@ -172,50 +172,50 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
       const dx = touches[0].clientX - touches[1].clientX;
       const dy = touches[0].clientY - touches[1].clientY;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      
+
       if (touchState.lastDistance > 0) {
         const scaleDelta = distance / touchState.lastDistance;
         const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * scaleDelta));
         setScale(newScale);
       }
-      
+
       // Pan while zooming
       const center = {
         x: (touches[0].clientX + touches[1].clientX) / 2,
         y: (touches[0].clientY + touches[1].clientY) / 2
       };
-      
+
       const deltaX = center.x - touchState.lastCenter.x;
       const deltaY = center.y - touchState.lastCenter.y;
-      
+
       setOffset(prev => ({
         x: prev.x + deltaX,
         y: prev.y + deltaY
       }));
-      
+
       setTouchState({
         touches: touches as unknown as Touch[],
         lastDistance: distance,
         lastCenter: center
       });
     }
-    
+
     e.preventDefault();
   }, [isDragging, scale, touchState]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     const touches = Array.from(e.touches);
-    
+
     if (touches.length === 0) {
       setIsDragging(false);
-      
+
       // Check if it was a tap (not a drag)
       if (interactionMode === 'select' && !isDragging) {
         const touch = e.changedTouches[0];
         handleTileSelect(touch.clientX, touch.clientY);
       }
     }
-    
+
     setTouchState({
       touches: [],
       lastDistance: 0,
@@ -267,11 +267,11 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
   // Calculate viewport for optimization
   const visibleTiles = useMemo(() => {
     if (!containerRef.current) return { minQ: 0, maxQ: map[0].length, minR: 0, maxR: map.length };
-    
+
     const rect = containerRef.current.getBoundingClientRect();
     const viewportWidth = rect.width / scale;
     const viewportHeight = rect.height / scale;
-    
+
     // Calculate visible area with padding
     const padding = 2;
     const topLeft = pixelToHex(-offset.x / scale - HEX_WIDTH, -offset.y / scale - HEX_HEIGHT);
@@ -279,7 +279,7 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
       (-offset.x + viewportWidth) / scale + HEX_WIDTH,
       (-offset.y + viewportHeight) / scale + HEX_HEIGHT
     );
-    
+
     return {
       minQ: Math.max(0, topLeft.q - padding),
       maxQ: Math.min(map[0].length, bottomRight.q + padding),
@@ -304,18 +304,18 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
         backdropFilter: 'blur(10px)'
       }}
     >
-      <IconButton 
-        size="small" 
+      <IconButton
+        size="small"
         onClick={() => setInteractionMode(interactionMode === 'pan' ? 'select' : 'pan')}
         color={interactionMode === 'pan' ? 'primary' : 'default'}
       >
         {interactionMode === 'pan' ? <PanTool /> : <TouchApp />}
       </IconButton>
-      
+
       <IconButton size="small" onClick={() => handleZoom(0.8)}>
         <ZoomOut />
       </IconButton>
-      
+
       <Slider
         value={scale}
         min={MIN_SCALE}
@@ -324,17 +324,17 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
         onChange={(_, value) => setScale(value as number)}
         sx={{ width: 100 }}
       />
-      
+
       <IconButton size="small" onClick={() => handleZoom(1.2)}>
         <ZoomIn />
       </IconButton>
-      
+
       <IconButton size="small" onClick={handleResetView}>
         <CenterFocusStrong />
       </IconButton>
-      
-      <IconButton 
-        size="small" 
+
+      <IconButton
+        size="small"
         onClick={() => setShowGrid(!showGrid)}
         color={showGrid ? 'primary' : 'default'}
       >
@@ -375,14 +375,14 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
         onTouchEnd={handleTouchEnd}
       >
         {/* Render only visible tiles for performance */}
-        {map.slice(visibleTiles.minR, visibleTiles.maxR).map((row, r) => 
+        {map.slice(visibleTiles.minR, visibleTiles.maxR).map((row, r) =>
           row.slice(visibleTiles.minQ, visibleTiles.maxQ).map((tile, q) => {
             const actualQ = q + visibleTiles.minQ;
             const actualR = r + visibleTiles.minR;
             const { x, y } = hexToPixel(actualQ, actualR);
             const isSelected = selectedTile?.x === actualQ && selectedTile?.y === actualR;
             const isHighlighted = highlightedTiles.some(h => h.x === actualQ && h.y === actualR);
-            
+
             return (
               <g key={`${actualQ}-${actualR}`} transform={`translate(${x}, ${y})`}>
                 <HexTile
@@ -404,10 +404,10 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
           })
         )}
       </svg>
-      
+
       {/* Mobile controls */}
       {isMobile && renderMobileControls()}
-      
+
       {/* Scale indicator */}
       <Typography
         variant="caption"

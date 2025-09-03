@@ -70,7 +70,7 @@ export const promiseWithTimeout = <T>(
 ): Promise<T> => {
   return Promise.race([
     promise,
-    new Promise<never>((_, reject) => 
+    new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('Operation timed out')), timeoutMs)
     )
   ]);
@@ -105,7 +105,7 @@ export const getNeighbors = (x: number, y: number): Array<{ x: number; y: number
   const oddRowOffsets = [
     [0, -1], [1, -1], [-1, 0], [1, 0], [0, 1], [1, 1]
   ];
-  
+
   const offsets = y % 2 === 0 ? evenRowOffsets : oddRowOffsets;
   return offsets.map(([dx, dy]) => ({ x: x + dx, y: y + dy }));
 };

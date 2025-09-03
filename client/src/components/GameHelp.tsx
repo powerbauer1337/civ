@@ -287,7 +287,7 @@ const GameHelp: React.FC<GameHelpProps> = ({ open, onClose }) => {
           <Alert severity="info" sx={{ mb: 2 }}>
             Follow this step-by-step guide to learn the basics of the game
           </Alert>
-          
+
           <Stepper activeStep={tutorialStep} orientation="vertical">
             {tutorialSteps.map((step, index) => (
               <Step key={step.label}>
@@ -314,7 +314,7 @@ const GameHelp: React.FC<GameHelpProps> = ({ open, onClose }) => {
               </Step>
             ))}
           </Stepper>
-          
+
           {tutorialStep === tutorialSteps.length && (
             <Paper sx={{ p: 2, mt: 2 }}>
               <Box display="flex" alignItems="center" gap={1}>
@@ -338,7 +338,7 @@ const GameHelp: React.FC<GameHelpProps> = ({ open, onClose }) => {
           <Typography variant="h6" gutterBottom>
             Basic Game Concepts
           </Typography>
-          
+
           {basicConcepts.map((concept) => (
             <Accordion
               key={concept.id}
@@ -382,7 +382,7 @@ const GameHelp: React.FC<GameHelpProps> = ({ open, onClose }) => {
                 </List>
               </Paper>
             </Grid>
-            
+
             <Grid item xs={12} md={4}>
               <Paper sx={{ p: 2 }}>
                 <Box display="flex" alignItems="center" gap={1} mb={2}>
@@ -402,7 +402,7 @@ const GameHelp: React.FC<GameHelpProps> = ({ open, onClose }) => {
                 </List>
               </Paper>
             </Grid>
-            
+
             <Grid item xs={12} md={4}>
               <Paper sx={{ p: 2 }}>
                 <Box display="flex" alignItems="center" gap={1} mb={2}>
@@ -430,7 +430,7 @@ const GameHelp: React.FC<GameHelpProps> = ({ open, onClose }) => {
           <Typography variant="h6" gutterBottom>
             Strategic Tips
           </Typography>
-          
+
           <Grid container spacing={2}>
             {strategies.map((strategy, index) => (
               <Grid item xs={12} md={6} key={index}>
@@ -461,7 +461,7 @@ const GameHelp: React.FC<GameHelpProps> = ({ open, onClose }) => {
           <Typography variant="h6" gutterBottom>
             Victory Conditions
           </Typography>
-          
+
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Card>
@@ -486,7 +486,7 @@ const GameHelp: React.FC<GameHelpProps> = ({ open, onClose }) => {
                 </CardContent>
               </Card>
             </Grid>
-            
+
             <Grid item xs={12} md={6}>
               <Card>
                 <CardContent>
@@ -510,7 +510,7 @@ const GameHelp: React.FC<GameHelpProps> = ({ open, onClose }) => {
                 </CardContent>
               </Card>
             </Grid>
-            
+
             <Grid item xs={12} md={6}>
               <Card>
                 <CardContent>
@@ -534,7 +534,7 @@ const GameHelp: React.FC<GameHelpProps> = ({ open, onClose }) => {
                 </CardContent>
               </Card>
             </Grid>
-            
+
             <Grid item xs={12} md={6}>
               <Card>
                 <CardContent>

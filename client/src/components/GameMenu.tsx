@@ -49,12 +49,12 @@ import {
 } from '@mui/icons-material';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store/store';
-import { 
-  togglePause, 
+import {
+  togglePause,
   setGameSpeed,
   toggleSound,
   toggleFullscreen,
-  toggleDarkMode 
+  toggleDarkMode
 } from '../store/gameSlice';
 import SaveLoadGame from './SaveLoadGame';
 import GameSettings from './GameSettings';
@@ -72,7 +72,7 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
   const gameState = useSelector((state: RootState) => state.game.gameState);
   const settings = useSelector((state: RootState) => state.game.settings);
   const currentPlayer = useSelector((state: RootState) => state.game.currentPlayer);
-  
+
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saveLoadOpen, setSaveLoadOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -82,8 +82,8 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
   const [notifications] = useState(3); // Example notification count
 
   const toggleSection = (section: string) => {
-    setExpandedSections(prev => 
-      prev.includes(section) 
+    setExpandedSections(prev =>
+      prev.includes(section)
         ? prev.filter(s => s !== section)
         : [...prev, section]
     );
@@ -179,7 +179,7 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
           >
             <Close />
           </IconButton>
-          
+
           <Box display="flex" alignItems="center" gap={2}>
             <Avatar
               sx={{
@@ -197,7 +197,7 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
                 <Chip
                   size="small"
                   label={`Turn ${gameState?.turn || 0}`}
-                  sx={{ 
+                  sx={{
                     backgroundColor: alpha(theme.palette.common.white, 0.2),
                     color: 'white'
                   }}
@@ -206,7 +206,7 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
                   size="small"
                   icon={<EmojiEvents sx={{ fontSize: 16 }} />}
                   label={gameState?.players?.find(p => p.id === currentPlayer)?.score || 0}
-                  sx={{ 
+                  sx={{
                     backgroundColor: alpha(theme.palette.common.white, 0.2),
                     color: 'white'
                   }}
@@ -227,7 +227,7 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
               {expandedSections.includes('controls') ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
             </ListItemButton>
           </ListItem>
-          
+
           <Collapse in={expandedSections.includes('controls')} timeout="auto" unmountOnExit>
             <Paper sx={{ mx: 2, mb: 1, p: 2, backgroundColor: alpha(theme.palette.background.default, 0.5) }}>
               <FormControlLabel
@@ -245,7 +245,7 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
                   </Box>
                 }
               />
-              
+
               <Box mt={2}>
                 <Typography variant="body2" gutterBottom>Game Speed</Typography>
                 <Box display="flex" gap={1}>
@@ -278,7 +278,7 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
                     </Box>
                   }
                 />
-                
+
                 <FormControlLabel
                   control={
                     <Switch
@@ -306,8 +306,8 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
               <ListItemIcon>
                 <Save color="primary" />
               </ListItemIcon>
-              <ListItemText 
-                primary="Save Game" 
+              <ListItemText
+                primary="Save Game"
                 secondary="Save your current progress"
               />
             </ListItemButton>
@@ -318,8 +318,8 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
               <ListItemIcon>
                 <FolderOpen color="primary" />
               </ListItemIcon>
-              <ListItemText 
-                primary="Load Game" 
+              <ListItemText
+                primary="Load Game"
                 secondary="Load a previous save"
               />
             </ListItemButton>
@@ -333,8 +333,8 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
               <ListItemIcon>
                 <Timeline color="secondary" />
               </ListItemIcon>
-              <ListItemText 
-                primary="Statistics" 
+              <ListItemText
+                primary="Statistics"
                 secondary="View game statistics"
               />
             </ListItemButton>
@@ -355,9 +355,9 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
               {gameState?.players?.map((p: any) => (
                 <ListItem key={p.id} sx={{ pl: 4 }}>
                   <ListItemIcon>
-                    <Avatar 
-                      sx={{ 
-                        width: 24, 
+                    <Avatar
+                      sx={{
+                        width: 24,
                         height: 24,
                         backgroundColor: p.color,
                         fontSize: '0.75rem'
@@ -366,7 +366,7 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
                       {p.name?.charAt(0)}
                     </Avatar>
                   </ListItemIcon>
-                  <ListItemText 
+                  <ListItemText
                     primary={p.name}
                     secondary={`Score: ${p.score || 0}`}
                   />
@@ -386,8 +386,8 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
               <ListItemIcon>
                 <Settings />
               </ListItemIcon>
-              <ListItemText 
-                primary="Settings" 
+              <ListItemText
+                primary="Settings"
                 secondary="Configure game options"
               />
             </ListItemButton>
@@ -398,8 +398,8 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
               <ListItemIcon>
                 <Help />
               </ListItemIcon>
-              <ListItemText 
-                primary="Help & Tutorial" 
+              <ListItemText
+                primary="Help & Tutorial"
                 secondary="Learn how to play"
               />
             </ListItemButton>
@@ -410,8 +410,8 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
               <ListItemIcon>
                 <School />
               </ListItemIcon>
-              <ListItemText 
-                primary="Interactive Tutorial" 
+              <ListItemText
+                primary="Interactive Tutorial"
                 secondary="Guided walkthrough"
               />
             </ListItemButton>
@@ -425,8 +425,8 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
               <ListItemIcon>
                 {theme.palette.mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
               </ListItemIcon>
-              <ListItemText 
-                primary="Theme" 
+              <ListItemText
+                primary="Theme"
                 secondary={`${theme.palette.mode === 'dark' ? 'Dark' : 'Light'} Mode`}
               />
             </ListItemButton>
@@ -437,8 +437,8 @@ const GameMenu: React.FC<GameMenuProps> = ({ onExitGame, onShowTutorial }) => {
               <ListItemIcon>
                 <ExitToApp color="error" />
               </ListItemIcon>
-              <ListItemText 
-                primary="Exit Game" 
+              <ListItemText
+                primary="Exit Game"
                 secondary="Return to main menu"
               />
             </ListItemButton>

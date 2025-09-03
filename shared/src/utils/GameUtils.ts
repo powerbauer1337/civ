@@ -79,20 +79,20 @@ export class GameUtils {
 
   public static calculateScore(player: any): number {
     let score = 0;
-    
+
     // Population score
     score += player.cities ? player.cities.length * 100 : 0;
-    
+
     // Technology score
     score += player.technologies ? player.technologies.size * 50 : 0;
-    
+
     // Resource score
     if (player.resources) {
       score += player.resources.gold * 0.1;
       score += player.resources.science * 2;
       score += player.resources.culture * 1.5;
     }
-    
+
     return Math.floor(score);
   }
 
@@ -109,7 +109,7 @@ export class GameUtils {
   public static getCivilizationColors(): string[] {
     return [
       '#FF6B6B', // Red
-      '#4ECDC4', // Teal  
+      '#4ECDC4', // Teal
       '#45B7D1', // Blue
       '#96CEB4', // Green
       '#FFEAA7', // Yellow
@@ -122,7 +122,7 @@ export class GameUtils {
   public static getCivilizationNames(): string[] {
     return [
       'Romans',
-      'Egyptians', 
+      'Egyptians',
       'Greeks',
       'Babylonians',
       'Chinese',

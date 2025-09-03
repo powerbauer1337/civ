@@ -69,29 +69,29 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open, onClose }) => {
   const settings = useSelector((state: RootState) => state.game.settings) || {};
   const [tabValue, setTabValue] = useState(0);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
-  
+
   // Local state for settings - using only the properties available in Redux store
   const [localSettings, setLocalSettings] = useState({
     // Graphics
     graphics: settings.graphics || 'medium',
     isFullscreen: settings.isFullscreen || false,
-    
+
     // Audio
     soundEnabled: settings.soundEnabled !== false,
     musicEnabled: settings.musicEnabled !== false,
-    
+
     // Gameplay
     gameSpeed: settings.gameSpeed || 1,
     autoSave: settings.autoSave !== false,
     isPaused: settings.isPaused || false,
-    
+
     // Interface
     darkMode: settings.darkMode || false,
     language: settings.language || 'en',
-    
+
     // Notifications
     notificationsEnabled: settings.notificationsEnabled !== false,
-    
+
     // Extended settings (not in Redux, but used in UI for better experience)
     masterVolume: 100,
     musicVolume: 80,
@@ -159,7 +159,7 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open, onClose }) => {
       darkMode: false,
       language: 'en',
       notificationsEnabled: true,
-      
+
       // Extended UI settings
       masterVolume: 100,
       musicVolume: 80,
@@ -736,8 +736,8 @@ const GameSettings: React.FC<GameSettingsProps> = ({ open, onClose }) => {
         </Button>
         <Box sx={{ flex: 1 }} />
         <Button onClick={onClose}>Cancel</Button>
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           onClick={handleSave}
           startIcon={<Save />}
           disabled={!unsavedChanges}

@@ -21,22 +21,22 @@ Object.defineProperty(window, 'matchMedia', {
     removeListener: vi.fn(), // deprecated
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
+    dispatchEvent: vi.fn()
+  }))
 });
 
 // Mock IntersectionObserver
 global.IntersectionObserver = vi.fn().mockImplementation(() => ({
   observe: vi.fn(),
   unobserve: vi.fn(),
-  disconnect: vi.fn(),
+  disconnect: vi.fn()
 }));
 
 // Mock ResizeObserver
 global.ResizeObserver = vi.fn().mockImplementation(() => ({
   observe: vi.fn(),
   unobserve: vi.fn(),
-  disconnect: vi.fn(),
+  disconnect: vi.fn()
 }));
 
 // Mock Canvas API for Phaser
@@ -65,7 +65,7 @@ HTMLCanvasElement.prototype.getContext = vi.fn().mockImplementation(() => ({
   bezierCurveTo: vi.fn(),
   createLinearGradient: vi.fn(),
   createRadialGradient: vi.fn(),
-  createPattern: vi.fn(),
+  createPattern: vi.fn()
 }));
 
 // Mock WebGL context for Phaser
@@ -100,7 +100,7 @@ HTMLCanvasElement.prototype.getContext = vi.fn().mockImplementation((type: strin
       uniform2f: vi.fn(),
       uniform3f: vi.fn(),
       uniform4f: vi.fn(),
-      uniformMatrix4fv: vi.fn(),
+      uniformMatrix4fv: vi.fn()
     };
   }
   // Return 2D context for other cases
@@ -129,7 +129,7 @@ HTMLCanvasElement.prototype.getContext = vi.fn().mockImplementation((type: strin
     bezierCurveTo: vi.fn(),
     createLinearGradient: vi.fn(),
     createRadialGradient: vi.fn(),
-    createPattern: vi.fn(),
+    createPattern: vi.fn()
   };
 });
 
@@ -141,9 +141,9 @@ Object.defineProperty(window, 'localStorage', {
     removeItem: vi.fn(),
     clear: vi.fn(),
     key: vi.fn(),
-    length: 0,
+    length: 0
   },
-  writable: true,
+  writable: true
 });
 
 // Mock sessionStorage
@@ -154,18 +154,18 @@ Object.defineProperty(window, 'sessionStorage', {
     removeItem: vi.fn(),
     clear: vi.fn(),
     key: vi.fn(),
-    length: 0,
+    length: 0
   },
-  writable: true,
+  writable: true
 });
 
 // Mock URL.createObjectURL
 Object.defineProperty(URL, 'createObjectURL', {
-  value: vi.fn(() => 'mocked-object-url'),
+  value: vi.fn(() => 'mocked-object-url')
 });
 
 Object.defineProperty(URL, 'revokeObjectURL', {
-  value: vi.fn(),
+  value: vi.fn()
 });
 
 // Mock fetch
@@ -181,7 +181,7 @@ global.WebSocket = vi.fn().mockImplementation(() => ({
   CONNECTING: 0,
   OPEN: 1,
   CLOSING: 2,
-  CLOSED: 3,
+  CLOSED: 3
 }));
 
 // Mock Phaser
@@ -191,8 +191,8 @@ vi.mock('phaser', () => ({
     events: {
       on: vi.fn(),
       off: vi.fn(),
-      emit: vi.fn(),
-    },
+      emit: vi.fn()
+    }
   })),
   AUTO: 'auto',
   Scene: vi.fn(),
@@ -200,18 +200,18 @@ vi.mock('phaser', () => ({
     Graphics: vi.fn(),
     Text: vi.fn(),
     Sprite: vi.fn(),
-    Image: vi.fn(),
+    Image: vi.fn()
   },
   Input: {
     Keyboard: {
-      Key: vi.fn(),
+      Key: vi.fn()
     },
     Events: {
       POINTER_DOWN: 'pointerdown',
       POINTER_UP: 'pointerup',
-      POINTER_MOVE: 'pointermove',
-    },
-  },
+      POINTER_MOVE: 'pointermove'
+    }
+  }
 }));
 
 // Mock socket.io-client
@@ -222,8 +222,8 @@ vi.mock('socket.io-client', () => ({
     emit: vi.fn(),
     disconnect: vi.fn(),
     connect: vi.fn(),
-    connected: false,
-  })),
+    connected: false
+  }))
 }));
 
 // Mock axios
@@ -239,24 +239,24 @@ vi.mock('axios', () => ({
       post: vi.fn(),
       put: vi.fn(),
       delete: vi.fn(),
-      patch: vi.fn(),
+      patch: vi.fn()
     })),
     interceptors: {
       request: {
         use: vi.fn(),
-        eject: vi.fn(),
+        eject: vi.fn()
       },
       response: {
         use: vi.fn(),
-        eject: vi.fn(),
-      },
-    },
+        eject: vi.fn()
+      }
+    }
   },
   get: vi.fn(),
   post: vi.fn(),
   put: vi.fn(),
   delete: vi.fn(),
-  patch: vi.fn(),
+  patch: vi.fn()
 }));
 
 // Test timeout

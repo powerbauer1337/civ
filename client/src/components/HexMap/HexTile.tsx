@@ -1,5 +1,5 @@
 import React from 'react';
-// Simplified interface to avoid import issues  
+// Simplified interface to avoid import issues
 interface Unit {
   id: string;
   type: string;
@@ -43,7 +43,7 @@ const HexTile: React.FC<HexTileProps> = ({
   hasResource = false,
   onClick,
   onMouseEnter,
-  onMouseLeave,
+  onMouseLeave
 }) => {
   /**
    * Generate hexagon path for SVG
@@ -65,7 +65,7 @@ const HexTile: React.FC<HexTileProps> = ({
   const getTerrainColor = (terrainType: string): string => {
     switch (terrainType) {
       case 'grassland': return '#90EE90';
-      case 'plains': return '#F0E68C';  
+      case 'plains': return '#F0E68C';
       case 'hills': return '#8B4513';
       case 'mountains': return '#A9A9A9';
       case 'desert': return '#F4A460';
@@ -87,11 +87,11 @@ const HexTile: React.FC<HexTileProps> = ({
     // In a full game, this would map to player civilization colors
     const playerColors: { [key: string]: string } = {
       'player_1': '#FF0000', // Red
-      'player_2': '#0000FF', // Blue  
+      'player_2': '#0000FF', // Blue
       'player_3': '#00FF00', // Green
-      'player_4': '#FFFF00', // Yellow
+      'player_4': '#FFFF00' // Yellow
     };
-    
+
     return playerColors[unitData.playerId] || '#FF6B6B'; // Default red
   };
 
@@ -148,7 +148,7 @@ const HexTile: React.FC<HexTileProps> = ({
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
       />
-      
+
       {/* Resource indicators */}
       {resourceDots.map((dot, index) => (
         <circle
@@ -170,7 +170,7 @@ const HexTile: React.FC<HexTileProps> = ({
           opacity={0.7}
         />
       )}
-      
+
       {terrain === 'mountains' && (
         <>
           <polygon
@@ -199,7 +199,7 @@ const HexTile: React.FC<HexTileProps> = ({
             strokeWidth={2}
             opacity={0.9}
           />
-          
+
           {/* Unit symbol */}
           <text
             x={x}
@@ -213,7 +213,7 @@ const HexTile: React.FC<HexTileProps> = ({
           >
             {getUnitSymbol(unit.type)}
           </text>
-          
+
           {/* Unit health indicator */}
           {unit.health < unit.maxHealth && (
             <rect
@@ -226,7 +226,7 @@ const HexTile: React.FC<HexTileProps> = ({
               strokeWidth={0.5}
             />
           )}
-          
+
           {/* Movement points indicator */}
           {unit.movement < unit.maxMovement && (
             <g>

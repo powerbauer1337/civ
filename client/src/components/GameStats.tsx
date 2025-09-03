@@ -112,41 +112,41 @@ const GameStats: React.FC<GameStatsProps> = ({ open, onClose }) => {
   };
 
   const playerComparison = [
-    { 
-      name: 'You', 
-      score: 850, 
-      cities: 12, 
-      military: 850, 
-      science: 320, 
+    {
+      name: 'You',
+      score: 850,
+      cities: 12,
+      military: 850,
+      science: 320,
       culture: 150,
-      color: theme.palette.primary.main 
+      color: theme.palette.primary.main
     },
-    { 
-      name: 'Napoleon', 
-      score: 780, 
-      cities: 10, 
-      military: 920, 
-      science: 280, 
+    {
+      name: 'Napoleon',
+      score: 780,
+      cities: 10,
+      military: 920,
+      science: 280,
       culture: 120,
-      color: '#f44336' 
+      color: '#f44336'
     },
-    { 
-      name: 'Gandhi', 
-      score: 720, 
-      cities: 8, 
-      military: 450, 
-      science: 380, 
+    {
+      name: 'Gandhi',
+      score: 720,
+      cities: 8,
+      military: 450,
+      science: 380,
       culture: 200,
-      color: '#ff9800' 
+      color: '#ff9800'
     },
-    { 
-      name: 'Caesar', 
-      score: 690, 
-      cities: 9, 
-      military: 780, 
-      science: 250, 
+    {
+      name: 'Caesar',
+      score: 690,
+      cities: 9,
+      military: 780,
+      science: 250,
       culture: 180,
-      color: '#9c27b0' 
+      color: '#9c27b0'
     }
   ];
 
@@ -175,9 +175,9 @@ const GameStats: React.FC<GameStatsProps> = ({ open, onClose }) => {
           <Timeline />
           <Typography variant="h5">Game Statistics</Typography>
           <Box sx={{ ml: 'auto' }}>
-            <Chip 
-              label={`Turn ${mockStats.overview.turn}`} 
-              color="primary" 
+            <Chip
+              label={`Turn ${mockStats.overview.turn}`}
+              color="primary"
               variant="outlined"
             />
           </Box>
@@ -453,8 +453,8 @@ const GameStats: React.FC<GameStatsProps> = ({ open, onClose }) => {
                     <TableCell align="right">{player.science}</TableCell>
                     <TableCell align="right">{player.culture}</TableCell>
                     <TableCell align="center">
-                      <Chip 
-                        label={player.name === 'You' ? 'You' : 'AI'} 
+                      <Chip
+                        label={player.name === 'You' ? 'You' : 'AI'}
                         size="small"
                         color={player.name === 'You' ? 'primary' : 'default'}
                       />
@@ -476,9 +476,9 @@ const GameStats: React.FC<GameStatsProps> = ({ open, onClose }) => {
                       <Typography variant="body2" fontWeight="bold">
                         {player.name}
                       </Typography>
-                      <Chip 
-                        label="Neutral" 
-                        size="small" 
+                      <Chip
+                        label="Neutral"
+                        size="small"
                         variant="outlined"
                         sx={{ mt: 0.5 }}
                       />
@@ -495,16 +495,16 @@ const GameStats: React.FC<GameStatsProps> = ({ open, onClose }) => {
           <Grid container spacing={2}>
             {mockStats.achievements.map((achievement, index) => (
               <Grid item xs={12} md={6} key={index}>
-                <Paper 
-                  sx={{ 
-                    p: 2, 
+                <Paper
+                  sx={{
+                    p: 2,
                     opacity: achievement.unlocked ? 1 : 0.5,
                     border: achievement.unlocked ? `2px solid ${theme.palette.primary.main}` : 'none'
                   }}
                 >
                   <Box display="flex" alignItems="center" gap={2}>
-                    <Avatar 
-                      sx={{ 
+                    <Avatar
+                      sx={{
                         bgcolor: achievement.unlocked ? theme.palette.primary.main : 'grey.500',
                         width: 48,
                         height: 48
@@ -550,8 +550,8 @@ const GameStats: React.FC<GameStatsProps> = ({ open, onClose }) => {
                 <ListItemIcon>
                   <Castle />
                 </ListItemIcon>
-                <ListItemText 
-                  primary="Capital Founded" 
+                <ListItemText
+                  primary="Capital Founded"
                   secondary="Turn 1 - Founded Rome"
                 />
               </ListItem>
@@ -559,8 +559,8 @@ const GameStats: React.FC<GameStatsProps> = ({ open, onClose }) => {
                 <ListItemIcon>
                   <Science />
                 </ListItemIcon>
-                <ListItemText 
-                  primary="First Technology" 
+                <ListItemText
+                  primary="First Technology"
                   secondary="Turn 5 - Researched Agriculture"
                 />
               </ListItem>
@@ -568,8 +568,8 @@ const GameStats: React.FC<GameStatsProps> = ({ open, onClose }) => {
                 <ListItemIcon>
                   <People />
                 </ListItemIcon>
-                <ListItemText 
-                  primary="First Contact" 
+                <ListItemText
+                  primary="First Contact"
                   secondary="Turn 12 - Met Napoleon"
                 />
               </ListItem>
@@ -577,8 +577,8 @@ const GameStats: React.FC<GameStatsProps> = ({ open, onClose }) => {
                 <ListItemIcon>
                   <Security />
                 </ListItemIcon>
-                <ListItemText 
-                  primary="First Battle" 
+                <ListItemText
+                  primary="First Battle"
                   secondary="Turn 25 - Defeated barbarians"
                 />
               </ListItem>
@@ -586,8 +586,8 @@ const GameStats: React.FC<GameStatsProps> = ({ open, onClose }) => {
                 <ListItemIcon>
                   <AccountBalance />
                 </ListItemIcon>
-                <ListItemText 
-                  primary="Wonder Built" 
+                <ListItemText
+                  primary="Wonder Built"
                   secondary="Turn 45 - Completed Pyramids"
                 />
               </ListItem>
@@ -595,8 +595,8 @@ const GameStats: React.FC<GameStatsProps> = ({ open, onClose }) => {
                 <ListItemIcon>
                   <Flag />
                 </ListItemIcon>
-                <ListItemText 
-                  primary="War Declared" 
+                <ListItemText
+                  primary="War Declared"
                   secondary="Turn 78 - Napoleon declared war"
                 />
               </ListItem>
@@ -604,8 +604,8 @@ const GameStats: React.FC<GameStatsProps> = ({ open, onClose }) => {
                 <ListItemIcon>
                   <EmojiEvents />
                 </ListItemIcon>
-                <ListItemText 
-                  primary="Victory Achieved" 
+                <ListItemText
+                  primary="Victory Achieved"
                   secondary="Turn 150 - Leading in score"
                 />
               </ListItem>

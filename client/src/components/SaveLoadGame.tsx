@@ -22,7 +22,7 @@ import {
   Paper,
   Grid,
   Tooltip,
-  Divider,
+  Divider
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -131,12 +131,12 @@ const SaveLoadGame: React.FC<SaveLoadGameProps> = ({
       setSaving(false);
       setSuccess('Game saved successfully!');
       onGameSaved?.(data.saveId);
-      
+
       // Refresh saves list
       if (mode === 'both') {
         loadSavesList();
       }
-      
+
       setTimeout(() => {
         setSuccess(null);
         setSaveName('');
@@ -169,7 +169,7 @@ const SaveLoadGame: React.FC<SaveLoadGameProps> = ({
       dispatch(setGameState(data.gameState));
       onGameLoaded?.(data.gameState);
       setSuccess('Game loaded successfully!');
-      
+
       setTimeout(() => {
         onClose();
       }, 1000);
@@ -248,7 +248,7 @@ const SaveLoadGame: React.FC<SaveLoadGameProps> = ({
             <Typography variant="subtitle1" gutterBottom>
               Save Current Game
             </Typography>
-            
+
             <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
               <Grid container spacing={2} alignItems="center">
                 <Grid item xs={12}>
@@ -264,7 +264,7 @@ const SaveLoadGame: React.FC<SaveLoadGameProps> = ({
                     }}
                   />
                 </Grid>
-                
+
                 {gameState && (
                   <Grid item xs={12}>
                     <Box display="flex" gap={1} flexWrap="wrap">
@@ -336,7 +336,7 @@ const SaveLoadGame: React.FC<SaveLoadGameProps> = ({
                       <ListItemIcon>
                         {getSaveTypeIcon(save.saveType)}
                       </ListItemIcon>
-                      
+
                       <ListItemText
                         primary={
                           <Box display="flex" alignItems="center" gap={1}>
@@ -385,7 +385,7 @@ const SaveLoadGame: React.FC<SaveLoadGameProps> = ({
                           </Box>
                         }
                       />
-                      
+
                       <ListItemSecondaryAction>
                         <Tooltip title="Delete save">
                           <IconButton
@@ -414,7 +414,7 @@ const SaveLoadGame: React.FC<SaveLoadGameProps> = ({
             {error}
           </Alert>
         )}
-        
+
         {success && (
           <Alert severity="success" onClose={() => setSuccess(null)} sx={{ mt: 2 }}>
             {success}
@@ -426,7 +426,7 @@ const SaveLoadGame: React.FC<SaveLoadGameProps> = ({
         <Button onClick={onClose} disabled={loading || saving}>
           Cancel
         </Button>
-        
+
         {(mode === 'save' || (mode === 'both' && tabValue === 0)) && (
           <Button
             variant="contained"
@@ -437,7 +437,7 @@ const SaveLoadGame: React.FC<SaveLoadGameProps> = ({
             {saving ? 'Saving...' : 'Save Game'}
           </Button>
         )}
-        
+
         {(mode === 'load' || (mode === 'both' && tabValue === 1)) && (
           <Button
             variant="contained"
