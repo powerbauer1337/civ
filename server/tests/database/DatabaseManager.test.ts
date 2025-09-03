@@ -14,6 +14,13 @@ jest.mock('../../src/config/config', () => ({
   }
 }));
 
+// Mock GameState static methods
+jest.mock('../../src/shared-types', () => ({
+  GameState: {
+    deserialize: jest.fn()
+  }
+}));
+
 const mockPgClient = {
   connect: jest.fn(),
   query: jest.fn(),
@@ -233,8 +240,8 @@ describe('DatabaseManager', () => {
         await databaseManager.updateUserStats('user-123', true);
 
         expect(mockPgClient.query).toHaveBeenCalledWith(
-          expect.stringContaining('UPDATE users SET games_played = games_played + 1, games_won = games_won + 1'),
-          ['user-123']
+          expect.stringMatching(/UPDATE users.*SET games_played = games_played \+ 1.*games_won = games_won \+ \$2/s),
+          ['user-123', 1]
         );
       });
 
@@ -244,8 +251,8 @@ describe('DatabaseManager', () => {
         await databaseManager.updateUserStats('user-123', false);
 
         expect(mockPgClient.query).toHaveBeenCalledWith(
-          expect.stringContaining('UPDATE users SET games_played = games_played + 1'),
-          ['user-123']
+          expect.stringMatching(/UPDATE users.*SET games_played = games_played \+ 1.*games_won = games_won \+ \$2/s),
+          ['user-123', 0]
         );
       });
 
@@ -270,26 +277,28 @@ describe('DatabaseManager', () => {
       jest.clearAllMocks();
 
       mockGameState = {
-        currentPlayer: 'player-1',
+        id: 'game-123',
+        currentPlayer: 0,
         currentTurn: 1,
-        players: {
-          'player-1': {
-            id: 'player-1',
-            name: 'Player 1',
-            units: [],
-            cities: [],
-            technologies: [],
-            resources: { food: 0, production: 0, science: 0, gold: 0 }
-          }
-        },
-        board: [],
-        gameSettings: {
+        phase: 'active',
+        players: [{
+          id: 'player-1',
+          name: 'Player 1',
+          units: [],
+          cities: [],
+          technologies: [],
+          resources: { food: 0, production: 0, science: 0, gold: 0 }
+        }],
+        board: { tiles: [] },
+        config: {
           mapSize: { width: 10, height: 10 },
           difficulty: 'normal',
           turnLimit: 500,
           victoryConditions: ['conquest']
-        }
-      } as GameState;
+        },
+        createdAt: new Date('2023-01-01'),
+        lastUpdate: new Date('2023-01-01')
+      } as any;
     });
 
     describe('saveGame', () => {
@@ -299,8 +308,13 @@ describe('DatabaseManager', () => {
         await databaseManager.saveGame(mockGameState);
 
         expect(mockPgClient.query).toHaveBeenCalled();
-        // Should call INSERT/UPDATE for game and players
+        // Should call INSERT/UPDATE for game and players (1 game + 1 player = 2 calls)
         expect(mockPgClient.query).toHaveBeenCalledTimes(2); // Game + Player
+        // Check game insertion
+        expect(mockPgClient.query).toHaveBeenCalledWith(
+          expect.stringContaining('INSERT INTO games'),
+          expect.arrayContaining(['game-123'])
+        );
       });
 
       it('should handle database errors during game save', async () => {
@@ -318,24 +332,28 @@ describe('DatabaseManager', () => {
           config: { mapSize: { width: 10, height: 10 } },
           phase: 'active'
         };
+        const mockPlayers = [{ id: 'player-1', username: 'testuser' }];
 
-        mockPgClient.query.mockResolvedValue({ rows: [mockGame] });
+        mockPgClient.query
+          .mockResolvedValueOnce({ rows: [mockGame] })    // Game query
+          .mockResolvedValueOnce({ rows: mockPlayers });   // Players query
 
         const result = await databaseManager.getGameById('game-123');
 
-        expect(result).toEqual(mockGame);
+        expect(result).toEqual({ ...mockGame, players: mockPlayers });
         expect(mockPgClient.query).toHaveBeenCalledWith(
           expect.stringContaining('SELECT * FROM games WHERE id = $1'),
           ['game-123']
         );
+        expect(mockPgClient.query).toHaveBeenCalledTimes(2);
       });
 
-      it('should return undefined for non-existent game', async () => {
+      it('should return null for non-existent game', async () => {
         mockPgClient.query.mockResolvedValue({ rows: [] });
 
         const result = await databaseManager.getGameById('nonexistent');
 
-        expect(result).toBeUndefined();
+        expect(result).toBeNull();
       });
     });
 
@@ -377,12 +395,12 @@ describe('DatabaseManager', () => {
     describe('saveGameAction', () => {
       it('should save game action to database', async () => {
         const mockAction = {
-          id: 'action-123',
+          actionId: 'action-123',
           gameId: 'game-123',
           playerId: 'player-1',
           type: 'MOVE_UNIT',
-          data: { from: { x: 0, y: 0 }, to: { x: 1, y: 0 } },
-          turn: 1
+          payload: { from: { x: 0, y: 0 }, to: { x: 1, y: 0 } },
+          turnNumber: 1
         };
 
         mockPgClient.query.mockResolvedValue({ rows: [] });
@@ -392,12 +410,12 @@ describe('DatabaseManager', () => {
         expect(mockPgClient.query).toHaveBeenCalledWith(
           expect.stringContaining('INSERT INTO game_actions'),
           [
-            mockAction.id,
+            mockAction.actionId,
             mockAction.gameId,
             mockAction.playerId,
             mockAction.type,
-            JSON.stringify(mockAction.data),
-            mockAction.turn
+            JSON.stringify(mockAction.payload),
+            mockAction.turnNumber
           ]
         );
       });
@@ -451,45 +469,48 @@ describe('DatabaseManager', () => {
 
     describe('cacheGameState', () => {
       it('should cache game state in Redis', async () => {
-        const gameState = {
-          currentPlayer: 'player-1',
-          currentTurn: 1,
-          players: {},
-          board: []
+        const mockGameState = {
+          serialize: () => ({ id: 'game-123', data: 'serialized' })
         } as GameState;
+        
+        mockRedisClient.setEx = jest.fn().mockResolvedValue('OK');
 
-        mockRedisClient.set.mockResolvedValue('OK');
+        await databaseManager.cacheGameState('game-123', mockGameState);
 
-        await databaseManager.cacheGameState('game-123', gameState);
-
-        expect(mockRedisClient.set).toHaveBeenCalledWith(
+        expect(mockRedisClient.setEx).toHaveBeenCalledWith(
           'game:game-123',
-          JSON.stringify(gameState),
-          { EX: 3600 }
+          3600,
+          JSON.stringify({ id: 'game-123', data: 'serialized' })
         );
       });
 
       it('should handle Redis errors during caching', async () => {
-        const gameState = {} as GameState;
+        const mockGameState = {
+          serialize: () => ({ id: 'game-123', data: 'serialized' })
+        } as GameState;
         const error = new Error('Redis error');
-        mockRedisClient.set.mockRejectedValue(error);
+        mockRedisClient.setEx = jest.fn().mockRejectedValue(error);
 
-        await expect(databaseManager.cacheGameState('game-123', gameState)).rejects.toThrow(error);
+        await expect(databaseManager.cacheGameState('game-123', mockGameState)).rejects.toThrow(error);
       });
     });
 
     describe('getCachedGameState', () => {
       it('should retrieve cached game state from Redis', async () => {
-        const gameState = {
-          currentPlayer: 'player-1',
+        const cachedData = {
+          id: 'game-123',
+          currentPlayer: 0,
           currentTurn: 1
         };
+        const mockGameState = { id: 'game-123', data: 'deserialized' } as any;
 
-        mockRedisClient.get.mockResolvedValue(JSON.stringify(gameState));
+        mockRedisClient.get.mockResolvedValue(JSON.stringify(cachedData));
+        (GameState.deserialize as jest.Mock).mockReturnValue(mockGameState);
 
         const result = await databaseManager.getCachedGameState('game-123');
 
-        expect(result).toEqual(gameState);
+        expect(result).toEqual(mockGameState);
+        expect(GameState.deserialize).toHaveBeenCalledWith(cachedData);
         expect(mockRedisClient.get).toHaveBeenCalledWith('game:game-123');
       });
 
