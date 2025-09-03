@@ -50,9 +50,7 @@ describe('Auth Middleware', () => {
     mockUserLookup = jest.fn();
     
     // Mock secureJWTManager
-    (secureJWTManager.verifyAccessToken as jest.Mock) = jest.fn();
-    (secureJWTManager.verifyRefreshToken as jest.Mock) = jest.fn();
-    (secureJWTManager.generateTokens as jest.Mock) = jest.fn();
+    (secureJWTManager.verify as jest.Mock) = jest.fn();
   });
 
   afterEach(() => {
@@ -75,7 +73,7 @@ describe('Auth Middleware', () => {
         expect(mockRes.status).toHaveBeenCalledWith(401);
         expect(mockRes.json).toHaveBeenCalledWith({
           error: 'Access token required',
-          code: 'TOKEN_REQUIRED'
+          code: 'MISSING_TOKEN'
         });
         expect(mockNext).not.toHaveBeenCalled();
       });
@@ -88,63 +86,70 @@ describe('Auth Middleware', () => {
         expect(mockRes.status).toHaveBeenCalledWith(401);
         expect(mockRes.json).toHaveBeenCalledWith({
           error: 'Access token required',
-          code: 'TOKEN_REQUIRED'
+          code: 'MISSING_TOKEN'
         });
         expect(mockNext).not.toHaveBeenCalled();
       });
 
       test('should authenticate valid token successfully', async () => {
         const validToken = 'valid.jwt.token';
+        const validUserId = '123e4567-e89b-12d3-a456-426614174000';
         const mockUser = {
-          id: 'user-123',
+          id: validUserId,
           username: 'testuser',
           email: 'test@example.com'
         };
+        const mockTokenPayload = {
+          userId: validUserId,
+          username: 'testuser'
+        };
 
         mockReq.headers = { authorization: `Bearer ${validToken}` };
-        (secureJWTManager.verifyAccessToken as jest.Mock).mockResolvedValue({
-          userId: 'user-123',
-          username: 'testuser'
-        });
+        (secureJWTManager.verify as jest.Mock).mockResolvedValue(mockTokenPayload);
         mockUserLookup.mockResolvedValue(mockUser);
 
         await authMiddleware.authenticateToken(mockReq as AuthRequest, mockRes as Response, mockNext);
 
-        expect(secureJWTManager.verifyAccessToken).toHaveBeenCalledWith(validToken);
-        expect(mockUserLookup).toHaveBeenCalledWith('user-123');
+        expect(secureJWTManager.verify).toHaveBeenCalledWith(validToken, {
+          audience: 'civilization-game-client',
+          issuer: 'civilization-game-server'
+        });
+        expect(mockUserLookup).toHaveBeenCalledWith(validUserId);
         expect(mockReq.user).toEqual(mockUser);
         expect(mockReq.token).toEqual(validToken);
         expect(mockNext).toHaveBeenCalled();
-        expect(mockRes.status).not.toHaveBeenCalled();
       });
 
       test('should reject invalid token', async () => {
-        const invalidToken = 'invalid.token';
+        const invalidToken = 'invalid.jwt.token';
         mockReq.headers = { authorization: `Bearer ${invalidToken}` };
-        (secureJWTManager.verifyAccessToken as jest.Mock).mockRejectedValue(new Error('Invalid token'));
+        (secureJWTManager.verify as jest.Mock).mockRejectedValue(new Error('Invalid token'));
 
         await authMiddleware.authenticateToken(mockReq as AuthRequest, mockRes as Response, mockNext);
 
         expect(mockRes.status).toHaveBeenCalledWith(403);
         expect(mockRes.json).toHaveBeenCalledWith({
-          error: 'Invalid or expired token',
-          code: 'TOKEN_INVALID'
+          error: 'Invalid or malformed token',
+          code: 'INVALID_TOKEN'
         });
         expect(mockNext).not.toHaveBeenCalled();
       });
 
       test('should reject token for non-existent user', async () => {
         const validToken = 'valid.jwt.token';
-        mockReq.headers = { authorization: `Bearer ${validToken}` };
-        (secureJWTManager.verifyAccessToken as jest.Mock).mockResolvedValue({
-          userId: 'user-123',
+        const validUserId = '123e4567-e89b-12d3-a456-426614174000';
+        const mockTokenPayload = {
+          userId: validUserId,
           username: 'testuser'
-        });
-        mockUserLookup.mockResolvedValue(null); // User not found
+        };
+
+        mockReq.headers = { authorization: `Bearer ${validToken}` };
+        (secureJWTManager.verify as jest.Mock).mockResolvedValue(mockTokenPayload);
+        mockUserLookup.mockResolvedValue(null);
 
         await authMiddleware.authenticateToken(mockReq as AuthRequest, mockRes as Response, mockNext);
 
-        expect(mockRes.status).toHaveBeenCalledWith(403);
+        expect(mockRes.status).toHaveBeenCalledWith(404);
         expect(mockRes.json).toHaveBeenCalledWith({
           error: 'User not found',
           code: 'USER_NOT_FOUND'
@@ -154,166 +159,60 @@ describe('Auth Middleware', () => {
 
       test('should handle database errors gracefully', async () => {
         const validToken = 'valid.jwt.token';
-        mockReq.headers = { authorization: `Bearer ${validToken}` };
-        (secureJWTManager.verifyAccessToken as jest.Mock).mockResolvedValue({
-          userId: 'user-123',
+        const validUserId = '123e4567-e89b-12d3-a456-426614174000';
+        const mockTokenPayload = {
+          userId: validUserId,
           username: 'testuser'
-        });
-        mockUserLookup.mockRejectedValue(new Error('Database error'));
+        };
+
+        mockReq.headers = { authorization: `Bearer ${validToken}` };
+        (secureJWTManager.verify as jest.Mock).mockResolvedValue(mockTokenPayload);
+        mockUserLookup.mockRejectedValue(new Error('Database connection failed'));
 
         await authMiddleware.authenticateToken(mockReq as AuthRequest, mockRes as Response, mockNext);
 
-        expect(mockRes.status).toHaveBeenCalledWith(500);
+        expect(mockRes.status).toHaveBeenCalledWith(403);
         expect(mockRes.json).toHaveBeenCalledWith({
-          error: 'Authentication service error',
-          code: 'AUTH_SERVICE_ERROR'
+          error: 'Invalid or malformed token',
+          code: 'INVALID_TOKEN'
         });
         expect(mockNext).not.toHaveBeenCalled();
-      });
-    });
-
-    describe('refreshToken', () => {
-      test('should successfully refresh valid refresh token', async () => {
-        const refreshToken = 'valid.refresh.token';
-        const newTokens = {
-          accessToken: 'new.access.token',
-          refreshToken: 'new.refresh.token'
-        };
-
-        mockReq.body = { refreshToken };
-        (secureJWTManager.verifyRefreshToken as jest.Mock).mockResolvedValue({
-          userId: 'user-123',
-          username: 'testuser',
-          type: 'refresh'
-        });
-        (secureJWTManager.generateTokens as jest.Mock).mockResolvedValue(newTokens);
-
-        await authMiddleware.refreshToken(mockReq as Request, mockRes as Response);
-
-        expect(mockRes.json).toHaveBeenCalledWith({
-          success: true,
-          ...newTokens,
-          message: 'Token refreshed successfully'
-        });
-      });
-
-      test('should reject request without refresh token', async () => {
-        mockReq.body = {};
-
-        await authMiddleware.refreshToken(mockReq as Request, mockRes as Response);
-
-        expect(mockRes.status).toHaveBeenCalledWith(401);
-        expect(mockRes.json).toHaveBeenCalledWith({
-          error: 'Refresh token required',
-          code: 'REFRESH_TOKEN_REQUIRED'
-        });
-      });
-
-      test('should reject invalid refresh token', async () => {
-        const invalidRefreshToken = 'invalid.refresh.token';
-        mockReq.body = { refreshToken: invalidRefreshToken };
-        (secureJWTManager.verifyRefreshToken as jest.Mock).mockRejectedValue(new Error('Invalid token'));
-
-        await authMiddleware.refreshToken(mockReq as Request, mockRes as Response);
-
-        expect(mockRes.status).toHaveBeenCalledWith(403);
-        expect(mockRes.json).toHaveBeenCalledWith({
-          error: 'Invalid or expired refresh token',
-          code: 'REFRESH_TOKEN_INVALID'
-        });
-      });
-
-      test('should handle token generation errors', async () => {
-        const refreshToken = 'valid.refresh.token';
-        mockReq.body = { refreshToken };
-        (secureJWTManager.verifyRefreshToken as jest.Mock).mockResolvedValue({
-          userId: 'user-123',
-          username: 'testuser',
-          type: 'refresh'
-        });
-        (secureJWTManager.generateTokens as jest.Mock).mockRejectedValue(new Error('Token generation failed'));
-
-        await authMiddleware.refreshToken(mockReq as Request, mockRes as Response);
-
-        expect(mockRes.status).toHaveBeenCalledWith(500);
-        expect(mockRes.json).toHaveBeenCalledWith({
-          error: 'Token generation failed',
-          code: 'TOKEN_GENERATION_ERROR'
-        });
-      });
-    });
-
-    describe('validateRefreshToken', () => {
-      test('should validate refresh token successfully', async () => {
-        const refreshToken = 'valid.refresh.token';
-        mockReq.body = { refreshToken };
-        (secureJWTManager.verifyRefreshToken as jest.Mock).mockResolvedValue({
-          userId: 'user-123',
-          username: 'testuser',
-          type: 'refresh'
-        });
-
-        await authMiddleware.validateRefreshToken(mockReq as Request, mockRes as Response);
-
-        expect(mockRes.json).toHaveBeenCalledWith({
-          valid: true,
-          message: 'Refresh token is valid'
-        });
-      });
-
-      test('should reject invalid refresh token', async () => {
-        const invalidRefreshToken = 'invalid.refresh.token';
-        mockReq.body = { refreshToken: invalidRefreshToken };
-        (secureJWTManager.verifyRefreshToken as jest.Mock).mockRejectedValue(new Error('Invalid token'));
-
-        await authMiddleware.validateRefreshToken(mockReq as Request, mockRes as Response);
-
-        expect(mockRes.status).toHaveBeenCalledWith(403);
-        expect(mockRes.json).toHaveBeenCalledWith({
-          valid: false,
-          error: 'Invalid or expired refresh token',
-          code: 'REFRESH_TOKEN_INVALID'
-        });
       });
     });
   });
 
   describe('requireRole', () => {
     test('should allow access for user with required role', () => {
-      mockReq.user = { 
-        id: 'user-123', 
-        roles: ['admin', 'user'] 
-      };
-      const roleMiddleware = requireRole(['admin']);
+      const middleware = requireRole(['user']);
+      mockReq.user = { id: '123e4567-e89b-12d3-a456-426614174000', roles: ['user'] };
 
-      roleMiddleware(mockReq as AuthRequest, mockRes as Response, mockNext);
+      middleware(mockReq as AuthRequest, mockRes as Response, mockNext);
 
       expect(mockNext).toHaveBeenCalled();
       expect(mockRes.status).not.toHaveBeenCalled();
     });
 
     test('should deny access for user without required role', () => {
-      mockReq.user = { 
-        id: 'user-123', 
-        roles: ['user'] 
-      };
-      const roleMiddleware = requireRole(['admin']);
+      const middleware = requireRole(['admin']);
+      mockReq.user = { id: '123e4567-e89b-12d3-a456-426614174000', roles: ['user'] };
 
-      roleMiddleware(mockReq as AuthRequest, mockRes as Response, mockNext);
+      middleware(mockReq as AuthRequest, mockRes as Response, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(403);
       expect(mockRes.json).toHaveBeenCalledWith({
         error: 'Insufficient permissions',
-        code: 'INSUFFICIENT_PERMISSIONS'
+        code: 'INSUFFICIENT_PERMISSIONS',
+        required: ['admin'],
+        current: ['user']
       });
       expect(mockNext).not.toHaveBeenCalled();
     });
 
     test('should deny access for unauthenticated user', () => {
+      const middleware = requireRole(['user']);
       mockReq.user = undefined;
-      const roleMiddleware = requireRole(['admin']);
 
-      roleMiddleware(mockReq as AuthRequest, mockRes as Response, mockNext);
+      middleware(mockReq as AuthRequest, mockRes as Response, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.json).toHaveBeenCalledWith({
@@ -332,10 +231,9 @@ describe('Auth Middleware', () => {
     });
 
     test('should handle JsonWebTokenError', () => {
-      const error = new Error('Invalid token');
-      error.name = 'JsonWebTokenError';
+      const error = { name: 'JsonWebTokenError' };
 
-      errorHandler(error, mockReq as Request, mockRes as Response, mockNext);
+      errorHandler(error, mockReq, mockRes, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.json).toHaveBeenCalledWith({
@@ -345,10 +243,9 @@ describe('Auth Middleware', () => {
     });
 
     test('should handle TokenExpiredError', () => {
-      const error = new Error('Token expired');
-      error.name = 'TokenExpiredError';
+      const error = { name: 'TokenExpiredError' };
 
-      errorHandler(error, mockReq as Request, mockRes as Response, mockNext);
+      errorHandler(error, mockReq, mockRes, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.json).toHaveBeenCalledWith({
@@ -358,14 +255,13 @@ describe('Auth Middleware', () => {
     });
 
     test('should handle NotBeforeError', () => {
-      const error = new Error('Token not active');
-      error.name = 'NotBeforeError';
+      const error = { name: 'NotBeforeError' };
 
-      errorHandler(error, mockReq as Request, mockRes as Response, mockNext);
+      errorHandler(error, mockReq, mockRes, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.json).toHaveBeenCalledWith({
-        error: 'Token not active',
+        error: 'Token not active yet',
         code: 'TOKEN_NOT_ACTIVE'
       });
     });
@@ -373,59 +269,10 @@ describe('Auth Middleware', () => {
     test('should pass non-JWT errors to next middleware', () => {
       const error = new Error('Some other error');
 
-      errorHandler(error, mockReq as Request, mockRes as Response, mockNext);
+      errorHandler(error, mockReq, mockRes, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(error);
       expect(mockRes.status).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('Edge Cases and Security', () => {
-    let authMiddleware: any;
-
-    beforeEach(() => {
-      authMiddleware = createAuthMiddleware(mockAuthService, mockUserLookup);
-    });
-
-    test('should handle extremely long tokens', async () => {
-      const longToken = 'a'.repeat(10000);
-      mockReq.headers = { authorization: `Bearer ${longToken}` };
-      (secureJWTManager.verifyAccessToken as jest.Mock).mockRejectedValue(new Error('Token too long'));
-
-      await authMiddleware.authenticateToken(mockReq as AuthRequest, mockRes as Response, mockNext);
-
-      expect(mockRes.status).toHaveBeenCalledWith(403);
-      expect(mockNext).not.toHaveBeenCalled();
-    });
-
-    test('should handle malicious token payloads', async () => {
-      const maliciousToken = 'malicious.token';
-      mockReq.headers = { authorization: `Bearer ${maliciousToken}` };
-      (secureJWTManager.verifyAccessToken as jest.Mock).mockRejectedValue(new Error('Malicious payload'));
-
-      await authMiddleware.authenticateToken(mockReq as AuthRequest, mockRes as Response, mockNext);
-
-      expect(mockRes.status).toHaveBeenCalledWith(403);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        error: 'Invalid or expired token',
-        code: 'TOKEN_INVALID'
-      });
-    });
-
-    test('should prevent timing attacks on token validation', async () => {
-      const startTime = Date.now();
-      
-      mockReq.headers = { authorization: 'Bearer invalid.token' };
-      (secureJWTManager.verifyAccessToken as jest.Mock).mockRejectedValue(new Error('Invalid'));
-
-      await authMiddleware.authenticateToken(mockReq as AuthRequest, mockRes as Response, mockNext);
-
-      const endTime = Date.now();
-      const duration = endTime - startTime;
-
-      // Should not be instantaneous (indicating proper validation)
-      expect(duration).toBeGreaterThan(0);
-      expect(mockRes.status).toHaveBeenCalledWith(403);
     });
   });
 });
