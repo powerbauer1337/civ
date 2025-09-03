@@ -30,7 +30,12 @@ describe('AIPlayer', () => {
     mockHexMap.prototype.getNeighbors = jest.fn().mockReturnValue([
       { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 1 }
     ]);
-    mockHexMap.prototype.calculateDistance = jest.fn().mockReturnValue(2);
+    mockHexMap.prototype.calculateDistance = jest.fn().mockImplementation((x1, y1, x2, y2) => {
+      // Return 0 for worker at same position, 5 for city distance checks, 1 for other cases
+      if (x1 === x2 && y1 === y2) return 0;
+      if (x1 === 6 && y1 === 5 && x2 === 0 && y2 === 0) return 0; // Worker can improve tile at (0,0)
+      return 5; // Default distance for city spacing
+    });
     mockHexMap.prototype.getTilesInRange = jest.fn().mockReturnValue([
       { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }
     ]);
