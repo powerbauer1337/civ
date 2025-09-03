@@ -129,6 +129,7 @@ export function validateRequest<T extends z.ZodTypeAny>(schema: T) {
         }));
 
         return res.status(400).json({
+          success: false,
           error: 'Validation failed',
           details: errorMessages
         });
@@ -136,6 +137,7 @@ export function validateRequest<T extends z.ZodTypeAny>(schema: T) {
 
       console.error('Validation middleware error:', error);
       return res.status(500).json({
+        success: false,
         error: 'Internal server error during validation'
       });
     }

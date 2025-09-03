@@ -25,7 +25,7 @@ describe('AuthController', () => {
     const validRegistrationData = {
       username: 'testuser',
       email: 'test@example.com',
-      password: 'password123'
+      password: 'Password123!'
     };
 
     it('should register a new user successfully', async () => {
@@ -57,8 +57,16 @@ describe('AuthController', () => {
         .send(invalidData)
         .expect(400);
 
-      expect(response.body).toMatchApiResponse();
-      expect(response.body.error).toBe('Username, email, and password are required');
+      expect(response.body).toMatchObject({
+        success: false,
+        error: 'Validation failed',
+        details: expect.arrayContaining([
+          expect.objectContaining({
+            field: 'body.username',
+            message: 'Required'
+          })
+        ])
+      });
     });
 
     it('should return 400 when email is missing', async () => {
@@ -70,8 +78,16 @@ describe('AuthController', () => {
         .send(invalidData)
         .expect(400);
 
-      expect(response.body).toMatchApiResponse();
-      expect(response.body.error).toBe('Username, email, and password are required');
+      expect(response.body).toMatchObject({
+        success: false,
+        error: 'Validation failed',
+        details: expect.arrayContaining([
+          expect.objectContaining({
+            field: 'body.email',
+            message: 'Required'
+          })
+        ])
+      });
     });
 
     it('should return 400 when password is missing', async () => {
@@ -83,8 +99,16 @@ describe('AuthController', () => {
         .send(invalidData)
         .expect(400);
 
-      expect(response.body).toMatchApiResponse();
-      expect(response.body.error).toBe('Username, email, and password are required');
+      expect(response.body).toMatchObject({
+        success: false,
+        error: 'Validation failed',
+        details: expect.arrayContaining([
+          expect.objectContaining({
+            field: 'body.password',
+            message: 'Required'
+          })
+        ])
+      });
     });
 
     it('should return 400 when password is too short', async () => {
@@ -95,8 +119,16 @@ describe('AuthController', () => {
         .send(invalidData)
         .expect(400);
 
-      expect(response.body).toMatchApiResponse();
-      expect(response.body.error).toBe('Password must be at least 6 characters');
+      expect(response.body).toMatchObject({
+        success: false,
+        error: 'Validation failed',
+        details: expect.arrayContaining([
+          expect.objectContaining({
+            field: 'body.password',
+            message: expect.stringContaining('at least 8 characters')
+          })
+        ])
+      });
     });
 
     it('should return 409 when username already exists', async () => {
@@ -173,7 +205,7 @@ describe('AuthController', () => {
     const userData = {
       username: 'loginuser',
       email: 'login@example.com',
-      password: 'password123'
+      password: 'Password123!'
     };
 
     beforeEach(async () => {
@@ -221,8 +253,16 @@ describe('AuthController', () => {
         })
         .expect(400);
 
-      expect(response.body).toMatchApiResponse();
-      expect(response.body.error).toBe('Username and password are required');
+      expect(response.body).toMatchObject({
+        success: false,
+        error: 'Validation failed',
+        details: expect.arrayContaining([
+          expect.objectContaining({
+            field: 'body.username',
+            message: 'Required'
+          })
+        ])
+      });
     });
 
     it('should return 400 when password is missing', async () => {
@@ -233,8 +273,16 @@ describe('AuthController', () => {
         })
         .expect(400);
 
-      expect(response.body).toMatchApiResponse();
-      expect(response.body.error).toBe('Username and password are required');
+      expect(response.body).toMatchObject({
+        success: false,
+        error: 'Validation failed',
+        details: expect.arrayContaining([
+          expect.objectContaining({
+            field: 'body.password',
+            message: 'Required'
+          })
+        ])
+      });
     });
 
     it('should return 401 when user does not exist', async () => {
@@ -255,7 +303,7 @@ describe('AuthController', () => {
         .post('/auth/login')
         .send({
           username: userData.username,
-          password: 'wrongpassword'
+          password: 'WrongPassword123!'
         })
         .expect(401);
 
@@ -292,7 +340,7 @@ describe('AuthController', () => {
         .send({
           username: 'profileuser',
           email: 'profile@example.com',
-          password: 'password123'
+          password: 'Password123!'
         });
       
       authToken = response.body.token;
@@ -326,11 +374,11 @@ describe('AuthController', () => {
       expect(response.body.error).toBe('Access token required');
     });
 
-    it('should return 403 when invalid token provided', async () => {
+    it('should return 401 when invalid token provided', async () => {
       const response = await request(app)
         .get('/auth/profile')
         .set('Authorization', 'Bearer invalid-token')
-        .expect(403);
+        .expect(401);
 
       expect(response.body).toMatchApiResponse();
       expect(response.body.error).toBe('Invalid or expired token');
@@ -363,7 +411,7 @@ describe('AuthController', () => {
         .send({
           username: 'updateuser',
           email: 'update@example.com',
-          password: 'password123'
+          password: 'Password123!'
         });
       
       authToken = response.body.token;
@@ -389,8 +437,8 @@ describe('AuthController', () => {
         .put('/auth/profile')
         .set('Authorization', `Bearer ${authToken}`)
         .send({
-          currentPassword: 'password123',
-          newPassword: 'newpassword123'
+          currentPassword: 'Password123!',
+          newPassword: 'NewPassword123!'
         })
         .expect(200);
 
@@ -402,7 +450,7 @@ describe('AuthController', () => {
         .post('/auth/login')
         .send({
           username: 'updateuser',
-          password: 'newpassword123'
+          password: 'NewPassword123!'
         })
         .expect(200);
     });
@@ -414,7 +462,7 @@ describe('AuthController', () => {
         .send({
           username: 'otheruser',
           email: 'other@example.com',
-          password: 'password123'
+          password: 'Password123!'
         });
 
       const response = await request(app)
@@ -432,8 +480,8 @@ describe('AuthController', () => {
         .put('/auth/profile')
         .set('Authorization', `Bearer ${authToken}`)
         .send({
-          currentPassword: 'wrongpassword',
-          newPassword: 'newpassword123'
+          currentPassword: 'WrongPassword123!',
+          newPassword: 'NewPassword123!'
         })
         .expect(400);
 
@@ -446,13 +494,21 @@ describe('AuthController', () => {
         .put('/auth/profile')
         .set('Authorization', `Bearer ${authToken}`)
         .send({
-          currentPassword: 'password123',
+          currentPassword: 'Password123!',
           newPassword: '123'
         })
         .expect(400);
 
-      expect(response.body).toMatchApiResponse();
-      expect(response.body.error).toBe('New password must be at least 6 characters');
+      expect(response.body).toMatchObject({
+        success: false,
+        error: 'Validation failed',
+        details: expect.arrayContaining([
+          expect.objectContaining({
+            field: 'body.newPassword',
+            message: expect.stringContaining('at least 8 characters')
+          })
+        ])
+      });
     });
   });
 
@@ -465,7 +521,7 @@ describe('AuthController', () => {
         .send({
           username: 'verifyuser',
           email: 'verify@example.com',
-          password: 'password123'
+          password: 'Password123!'
         });
       
       authToken = response.body.token;
@@ -478,6 +534,7 @@ describe('AuthController', () => {
         .expect(200);
 
       expect(response.body).toEqual({
+        success: true,
         valid: true,
         user: expect.objectContaining({
           username: 'verifyuser',
@@ -490,7 +547,7 @@ describe('AuthController', () => {
       const response = await request(app)
         .get('/auth/verify')
         .set('Authorization', 'Bearer invalid-token')
-        .expect(403);
+        .expect(401);
 
       expect(response.body).toMatchApiResponse();
       expect(response.body.error).toBe('Invalid or expired token');
@@ -506,7 +563,7 @@ describe('AuthController', () => {
         .send({
           username: 'logoutuser',
           email: 'logout@example.com',
-          password: 'password123'
+          password: 'Password123!'
         });
       
       authToken = response.body.token;

@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { config } from '../config/config';
@@ -40,14 +40,14 @@ export class AuthController {
       validateRequest(commonSchemas.loginSchema), 
       this.login.bind(this)
     );
-    this.router.post('/logout', this.authenticateToken, this.logout.bind(this));
-    this.router.get('/profile', this.authenticateToken, this.getProfile.bind(this));
+    this.router.post('/logout', this.authenticateToken.bind(this), this.logout.bind(this));
+    this.router.get('/profile', this.authenticateToken.bind(this), this.getProfile.bind(this));
     this.router.put('/profile', 
-      this.authenticateToken, 
+      this.authenticateToken.bind(this), 
       validateRequest(commonSchemas.updateProfileSchema), 
       this.updateProfile.bind(this)
     );
-    this.router.get('/verify', this.authenticateToken, this.verifyToken.bind(this));
+    this.router.get('/verify', this.authenticateToken.bind(this), this.verifyToken.bind(this));
   }
 
   private async register(req: Request, res: Response): Promise<void> {
@@ -57,7 +57,7 @@ export class AuthController {
       // Input validation is now handled by middleware
       // Additional custom validation if needed
       if (!GameUtils.validatePlayerName(username)) {
-        res.status(400).json({ error: 'Invalid username format' });
+        res.status(400).json({ success: false, error: 'Invalid username format' });
         return;
       }
 
@@ -67,7 +67,7 @@ export class AuthController {
       );
 
       if (existingUser) {
-        res.status(409).json({ error: 'Username or email already exists' });
+        res.status(409).json({ success: false, error: 'Username or email already exists' });
         return;
       }
 
@@ -98,6 +98,7 @@ export class AuthController {
 
       // Return success response
       res.status(201).json({
+        success: true,
         message: 'User registered successfully',
         user: {
           id: user.id,
@@ -111,7 +112,7 @@ export class AuthController {
       });
     } catch (error) {
       console.error('Registration error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ success: false, error: 'Internal server error' });
     }
   }
 
@@ -127,14 +128,14 @@ export class AuthController {
       );
 
       if (!user) {
-        res.status(401).json({ error: 'Invalid credentials' });
+        res.status(401).json({ success: false, error: 'Invalid credentials' });
         return;
       }
 
       // Check password
       const validPassword = await bcrypt.compare(password, user.passwordHash);
       if (!validPassword) {
-        res.status(401).json({ error: 'Invalid credentials' });
+        res.status(401).json({ success: false, error: 'Invalid credentials' });
         return;
       }
 
@@ -151,6 +152,7 @@ export class AuthController {
       );
 
       res.json({
+        success: true,
         message: 'Login successful',
         user: {
           id: user.id,
@@ -164,13 +166,13 @@ export class AuthController {
       });
     } catch (error) {
       console.error('Login error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ success: false, error: 'Internal server error' });
     }
   }
 
   private logout(req: AuthRequest, res: Response): void {
     // In a real implementation, you might want to blacklist the token
-    res.json({ message: 'Logout successful' });
+    res.json({ success: true, message: 'Logout successful' });
   }
 
   private getProfile(req: AuthRequest, res: Response): void {
@@ -203,7 +205,7 @@ export class AuthController {
         );
 
         if (existingUser) {
-          res.status(409).json({ error: 'Email already in use' });
+          res.status(409).json({ success: false, error: 'Email already in use' });
           return;
         }
 
@@ -215,7 +217,7 @@ export class AuthController {
       if (currentPassword && newPassword) {
         const validCurrentPassword = await bcrypt.compare(currentPassword, user.passwordHash);
         if (!validCurrentPassword) {
-          res.status(400).json({ error: 'Current password is incorrect' });
+          res.status(400).json({ success: false, error: 'Current password is incorrect' });
           return;
         }
 
@@ -230,6 +232,7 @@ export class AuthController {
       }
 
       res.json({
+        success: true,
         message: 'Profile updated successfully',
         user: {
           id: user.id,
@@ -243,7 +246,7 @@ export class AuthController {
       });
     } catch (error) {
       console.error('Profile update error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ success: false, error: 'Internal server error' });
     }
   }
 
@@ -252,6 +255,7 @@ export class AuthController {
     const user = req.user!;
 
     res.json({
+      success: true,
       valid: true,
       user: {
         id: user.id,
@@ -262,25 +266,25 @@ export class AuthController {
   }
 
   // Middleware for token authentication
-  private authenticateToken(req: AuthRequest, res: Response, next: Function): void {
+  private authenticateToken(req: AuthRequest, res: Response, next: NextFunction): void {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-      res.status(401).json({ error: 'Access token required' });
+      res.status(401).json({ success: false, error: 'Access token required' });
       return;
     }
 
     jwt.verify(token, config.JWT_SECRET, (err: any, decoded: any) => {
       if (err) {
-        res.status(401).json({ error: 'Invalid or expired token' });
+        res.status(401).json({ success: false, error: 'Invalid or expired token' });
         return;
       }
 
       // Find user
       const user = this.users.get(decoded.userId);
       if (!user) {
-        res.status(404).json({ error: 'User not found' });
+        res.status(404).json({ success: false, error: 'User not found' });
         return;
       }
 
