@@ -40,13 +40,13 @@ describe('AIPlayer', () => {
       ];
     });
     mockHexMap.prototype.calculateDistance = jest.fn().mockImplementation((x1, y1, x2, y2) => {
-      // Return 0 for worker at same position, 5 for city distance checks, 1 for other cases
+      // Return 0 for same position, reasonable distances for nearby tiles
       if (x1 === x2 && y1 === y2) return 0;
-      if (x1 === 6 && y1 === 5 && x2 === 0 && y2 === 0) return 0; // Worker can improve tile at (0,0)
+      if (Math.abs(x1 - x2) <= 1 && Math.abs(y1 - y2) <= 1) return 1; // Adjacent tiles
       return 5; // Default distance for city spacing
     });
     mockHexMap.prototype.getTilesInRange = jest.fn().mockReturnValue([
-      { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }
+      { x: 5, y: 5 }, { x: 6, y: 5 }, { x: 4, y: 5 } // Include city position and adjacent tiles
     ]);
     
     aiPlayer = new AIPlayer('test-ai-player', AIPersonality.Balanced, AIDifficulty.Normal);
@@ -293,15 +293,23 @@ describe('AIPlayer', () => {
     });
 
     it('should make worker improve tiles', async () => {
-      // Add worker unit
+      // Add worker unit positioned near city
       mockGameState.players['test-ai-player'].units.push({
         id: 'worker-1',
         type: UnitType.WORKER,
-        position: { x: 6, y: 5 },
+        position: { x: 5, y: 5 }, // Same as city position
         moves: 2,
         health: 100,
         owner: 'test-ai-player'
       });
+      
+      // Ensure the tile at worker position exists and can be improved
+      if (!mockGameState.board[5]) mockGameState.board[5] = [];
+      mockGameState.board[5][5] = {
+        terrain: TerrainType.GRASSLAND,
+        improvement: null,
+        resource: null
+      };
 
       const actions = await aiPlayer.makeDecisions(mockGameState);
       const workerActions = actions.filter(a => 
@@ -356,6 +364,7 @@ describe('AIPlayer', () => {
       // Ensure enough science and limited techs
       mockGameState.players['test-ai-player'].resources.science = 25;
       mockGameState.players['test-ai-player'].technologies = [TechnologyType.AGRICULTURE];
+      mockGameState.players['test-ai-player'].currentResearch = null; // Not currently researching
 
       const actions = await aiPlayer.makeDecisions(mockGameState);
       const techActions = actions.filter(a => a.type === GameActionType.RESEARCH_TECHNOLOGY);
@@ -598,7 +607,7 @@ describe('AIPlayer', () => {
         {
           id: 'priority-worker',
           type: UnitType.WORKER,
-          position: { x: 6, y: 5 },
+          position: { x: 5, y: 5 }, // Same position as city
           moves: 2,
           health: 100,
           owner: 'test-ai-player'
@@ -608,6 +617,18 @@ describe('AIPlayer', () => {
       // Set production ready for city
       mockGameState.players['test-ai-player'].cities[0].production.progress = 15;
       mockGameState.players['test-ai-player'].cities[0].production.cost = 10;
+      
+      // Add science for technology research
+      mockGameState.players['test-ai-player'].resources.science = 25;
+      mockGameState.players['test-ai-player'].currentResearch = null;
+      
+      // Ensure tiles exist for worker improvements
+      if (!mockGameState.board[5]) mockGameState.board[5] = [];
+      mockGameState.board[5][5] = {
+        terrain: TerrainType.GRASSLAND,
+        improvement: null,
+        resource: null
+      };
 
       const actions = await aiPlayer.makeDecisions(mockGameState);
       
