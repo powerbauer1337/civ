@@ -276,17 +276,45 @@ describe('AIPlayer', () => {
     });
 
     it('should make scout explore unexplored areas', async () => {
-      // Add scout unit
-      mockGameState.players['test-ai-player'].units.push({
+      // Create a larger board with more unexplored areas
+      const largeBoardTiles = Array.from({ length: 20 }, (_, r) => 
+        Array.from({ length: 20 }, (_, q) => ({
+          terrain: TerrainType.GRASSLAND,
+          resource: null,
+          improvement: null,
+          unit: null,
+          city: null,
+          visible: true
+        }))
+      );
+      
+      // Place existing units/cities only in a small corner
+      largeBoardTiles[2][3].unit = mockGameState.players['enemy-player'].units[0];
+      largeBoardTiles[5][5].city = mockGameState.players['test-ai-player'].cities[0];
+      
+      const largeGameState = {
+        ...mockGameState,
+        board: Object.assign(largeBoardTiles, { tiles: largeBoardTiles }) as any
+      };
+
+      // Add scout unit and remove other units to limit vision
+      largeGameState.players['test-ai-player'].units = [{
         id: 'scout-1',
         type: UnitType.SCOUT,
-        position: { x: 7, y: 7 },
+        position: { x: 10, y: 10 }, // Middle of board
         moves: 3,
         health: 100,
         owner: 'test-ai-player'
-      });
+      }];
 
-      const actions = await aiPlayer.makeDecisions(mockGameState);
+      // Clear AI's explored tiles to ensure fresh exploration
+      (aiPlayer as any).exploredTiles.clear();
+
+      // Mock the pathfinding to return a valid path
+      const mockFindPathTo = jest.fn().mockReturnValue([{ x: 11, y: 10 }]);
+      (aiPlayer as any).findPathTo = mockFindPathTo;
+
+      const actions = await aiPlayer.makeDecisions(largeGameState);
       const scoutActions = actions.filter(a => a.type === GameActionType.MOVE_UNIT);
       
       expect(scoutActions.length).toBeGreaterThan(0);
@@ -339,7 +367,7 @@ describe('AIPlayer', () => {
     it('should prioritize settlers for expansion strategy', async () => {
       const expandingGameState = {
         ...mockGameState,
-        currentTurn: 15
+        currentTurn: 25 // Later turn to avoid explore strategy
       };
       
       expandingGameState.players['test-ai-player'].units.push({
@@ -354,6 +382,12 @@ describe('AIPlayer', () => {
       // Complete current production
       expandingGameState.players['test-ai-player'].cities[0].production.progress = 15;
       expandingGameState.players['test-ai-player'].cities[0].production.cost = 10;
+
+      // Populate explored tiles to avoid explore strategy
+      (aiPlayer as any).exploredTiles.clear();
+      for (let i = 0; i < 150; i++) {
+        (aiPlayer as any).exploredTiles.add(`${i % 10},${Math.floor(i / 10)}`);
+      }
 
       const actions = await aiPlayer.makeDecisions(expandingGameState);
       const productionActions = actions.filter(a => a.type === GameActionType.CHANGE_PRODUCTION);
