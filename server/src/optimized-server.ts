@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { Server } from 'socket.io';
 import { createServer } from 'http';
 import { config } from './config/config';
+import { logger } from '@civ-game/shared';
 
 // Import new modular components
 import GameService from './services/GameService';
@@ -43,7 +44,7 @@ app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const duration = Date.now() - start;
-    console.log(`${req.method} ${req.path} - ${res.statusCode} - ${duration}ms`);
+    logger.info(`${req.method} ${req.path} - ${res.statusCode} - ${duration}ms`);
   });
   next();
 });
@@ -113,7 +114,7 @@ app.get('/api/status', (req, res) => {
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Unhandled error:', err);
+  logger.error('Unhandled error:', err);
   res.status(500).json({
     error: 'Internal server error',
     message: config.NODE_ENV === 'development' ? err.message : undefined
@@ -143,25 +144,25 @@ app.use((req, res) => {
 const cleanupInterval = setInterval(() => {
   const result = gameService.cleanup();
   if (result.gamesRemoved > 0 || result.playersRemoved > 0) {
-    console.log(`🧹 Cleanup completed: ${result.gamesRemoved} games, ${result.playersRemoved} players removed`);
+    logger.info(`Cleanup completed: ${result.gamesRemoved} games, ${result.playersRemoved} players removed`);
   }
 }, 5 * 60 * 1000); // Every 5 minutes
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
+  logger.warn('SIGTERM received, shutting down gracefully');
   clearInterval(cleanupInterval);
   server.close(() => {
-    console.log('Server closed');
+    logger.info('Server closed');
     process.exit(0);
   });
 });
 
 process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down gracefully');
+  logger.warn('SIGINT received, shutting down gracefully');
   clearInterval(cleanupInterval);
   server.close(() => {
-    console.log('Server closed');
+    logger.info('Server closed');
     process.exit(0);
   });
 });
@@ -170,19 +171,19 @@ process.on('SIGINT', () => {
 const PORT = config.PORT || 4002;
 
 server.listen(PORT, () => {
-  console.log(`🚀 Civilization Game Server - Optimized Version`);
-  console.log(`🌐 HTTP Server running on port ${PORT}`);
-  console.log(`🔌 WebSocket Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${config.NODE_ENV}`);
-  console.log(`🔗 Client URL: ${config.CLIENT_URL}`);
-  console.log(`📅 Started at: ${new Date().toISOString()}`);
-  console.log(`🎯 Health Check: http://localhost:${PORT}/health`);
-  console.log(`📋 API Info: http://localhost:${PORT}/api`);
-  console.log(`🎮 Games Endpoint: http://localhost:${PORT}/api/games`);
-  console.log(`👥 Players Endpoint: http://localhost:${PORT}/api/players`);
-  console.log(`🛡️  Security: Helmet enabled, CORS configured`);
-  console.log(`🧹 Auto-cleanup: Every 5 minutes`);
-  console.log(`✨ Features: Modular architecture, comprehensive error handling`);
+  logger.info('Civilization Game Server - Optimized Version');
+  logger.info(`HTTP Server running on port ${PORT}`);
+  logger.info(`WebSocket Server running on port ${PORT}`);
+  logger.info(`Environment: ${config.NODE_ENV}`);
+  logger.info(`Client URL: ${config.CLIENT_URL}`);
+  logger.info(`Started at: ${new Date().toISOString()}`);
+  logger.info(`Health Check: http://localhost:${PORT}/health`);
+  logger.info(`API Info: http://localhost:${PORT}/api`);
+  logger.info(`Games Endpoint: http://localhost:${PORT}/api/games`);
+  logger.info(`Players Endpoint: http://localhost:${PORT}/api/players`);
+  logger.info('Security: Helmet enabled, CORS configured');
+  logger.info('Auto-cleanup: Every 5 minutes');
+  logger.info('Features: Modular architecture, comprehensive error handling');
 });
 
 export default server;

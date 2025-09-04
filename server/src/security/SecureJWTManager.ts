@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { z } from 'zod';
+import { logger } from '@civ-game/shared';
 
 /**
  * Secure JWT Management System for TypeScript server
@@ -80,7 +81,7 @@ export class SecureJWTManager {
       await this.loadBlacklist();
       this.startKeyRotation();
 
-      console.log('SecureJWTManager initialized successfully');
+      logger.info('SecureJWTManager initialized successfully');
     } catch (error) {
       console.error('Failed to initialize SecureJWTManager:', error);
       throw error;
@@ -133,7 +134,7 @@ export class SecureJWTManager {
       }
 
       this.currentKeyId = parsedKeys.currentKeyId;
-      console.log(`Loaded ${this.keys.size} JWT keys from secure storage`);
+      logger.info(`Loaded ${this.keys.size} JWT keys from secure storage`);
     } catch (error) {
       // Generate initial key set
       await this.generateInitialKeys();
@@ -154,10 +155,10 @@ export class SecureJWTManager {
 
       // Clean up expired entries
       await this.cleanupBlacklist();
-      console.log(`Loaded ${this.blacklist.size} blacklisted tokens`);
+      logger.info(`Loaded ${this.blacklist.size} blacklisted tokens`);
     } catch (error) {
       // No existing blacklist, start fresh
-      console.log('No existing token blacklist found, starting fresh');
+      logger.info('No existing token blacklist found, starting fresh');
     }
   }
 
@@ -179,7 +180,7 @@ export class SecureJWTManager {
     this.currentKeyId = keyId;
 
     await this.saveKeys();
-    console.log('Generated initial JWT key set');
+    logger.info('Generated initial JWT key set');
   }
 
   /**
@@ -251,7 +252,7 @@ export class SecureJWTManager {
 
     const token = jwt.sign(tokenPayload, keyInfo.secret, tokenOptions);
 
-    console.log('JWT token signed', {
+    logger.debug('JWT token signed', {
       keyId: this.currentKeyId,
       jwtId,
       expiresIn: tokenOptions.expiresIn
@@ -301,7 +302,7 @@ export class SecureJWTManager {
       // Validate payload structure
       const validatedPayload = jwtPayloadSchema.parse(payload);
 
-      console.log('JWT token verified', {
+      logger.debug('JWT token verified', {
         keyId,
         jwtId: payload.jti,
         userId: validatedPayload.userId
@@ -337,7 +338,7 @@ export class SecureJWTManager {
     this.blacklist.set(payload.jti!, entry);
     await this.saveBlacklist();
 
-    console.log('Token blacklisted', { jti: payload.jti, reason });
+    logger.warn('Token blacklisted', { jti: payload.jti, reason });
 
     // Clean up if blacklist gets too large
     if (this.blacklist.size > 10000) {
@@ -362,7 +363,7 @@ export class SecureJWTManager {
 
     if (removedCount > 0) {
       await this.saveBlacklist();
-      console.log(`Cleaned up ${removedCount} expired tokens from blacklist`);
+      logger.info(`Cleaned up ${removedCount} expired tokens from blacklist`);
     }
   }
 
@@ -371,7 +372,7 @@ export class SecureJWTManager {
    */
   async rotateKeys(): Promise<void> {
     try {
-      console.log('Starting JWT key rotation');
+      logger.info('Starting JWT key rotation');
 
       // Generate new key
       const newKeyId = this.generateKeyId();
@@ -401,7 +402,7 @@ export class SecureJWTManager {
       this.cleanupOldKeys();
 
       await this.saveKeys();
-      console.log('JWT key rotation completed', {
+      logger.info('JWT key rotation completed', {
         newKeyId,
         totalKeys: this.keys.size
       });
@@ -429,11 +430,11 @@ export class SecureJWTManager {
 
     keysToRemove.forEach(keyId => {
       this.keys.delete(keyId);
-      console.log('Removed old JWT key', { keyId });
+      logger.info('Removed old JWT key', { keyId });
     });
 
     if (keysToRemove.length > 0) {
-      console.log(`Cleaned up ${keysToRemove.length} old JWT keys`);
+      logger.info(`Cleaned up ${keysToRemove.length} old JWT keys`);
     }
   }
 
@@ -449,7 +450,7 @@ export class SecureJWTManager {
       }
     }, this.keyRotationInterval);
 
-    console.log('JWT key rotation started', {
+    logger.info('JWT key rotation started', {
       intervalHours: this.keyRotationInterval / (1000 * 60 * 60)
     });
   }
@@ -461,7 +462,7 @@ export class SecureJWTManager {
     if (this.rotationTimer) {
       clearInterval(this.rotationTimer);
       this.rotationTimer = null;
-      console.log('JWT key rotation stopped');
+      logger.info('JWT key rotation stopped');
     }
   }
 

@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database (Development)
+  postgres:
+    image: postgres:15-alpine
+    container_name: civ-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: civilization_game_dev
+      POSTGRES_USER: civ_user
+      POSTGRES_PASSWORD: civ_password_dev
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"  # Different port for development
+    networks:
+      - civ-dev-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U civ_user -d civilization_game_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache (Development)
+  redis:
+    image: redis:7-alpine
+    container_name: civ-redis-dev
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_dev_data:/data
+    ports:
+      - "6380:6379"  # Different port for development
+    networks:
+      - civ-dev-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Development Server (Hot Reload)
+  server-dev:
+    image: node:20-alpine
+    container_name: civ-server-dev
+    working_dir: /app
+    command: sh -c "npm install && npm run dev:server"
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      CLIENT_URL: http://localhost:5173
+      DATABASE_URL: postgresql://civ_user:civ_password_dev@postgres:5432/civilization_game_dev
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: dev_jwt_secret_for_development_only
+      SESSION_SECRET: dev_session_secret_for_development_only
+      ENABLE_CORS_CREDENTIALS: "true"
+      ENABLE_SECURITY_HEADERS: "false"  # Relaxed for development
+      RATE_LIMIT_MAX_REQUESTS: "1000"   # Higher limit for development
+      RATE_LIMIT_WINDOW_MS: "60000"
+      REQUEST_TIMEOUT_MS: "60000"       # Longer timeout for debugging
+      ENABLE_DEBUG_ENDPOINTS: "true"
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/server/node_modules
+      - /app/shared/node_modules
+      - /app/client/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - civ-dev-network
+
+  # Development Client (Hot Reload)
+  client-dev:
+    image: node:20-alpine
+    container_name: civ-client-dev
+    working_dir: /app
+    command: sh -c "npm install && npm run dev:client"
+    environment:
+      NODE_ENV: development
+      VITE_SERVER_URL: http://localhost:3001
+      VITE_WEBSOCKET_URL: ws://localhost:3001
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/client/node_modules
+      - /app/shared/node_modules
+    networks:
+      - civ-dev-network
+    depends_on:
+      - server-dev
+
+networks:
+  civ-dev-network:
+    driver: bridge
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local

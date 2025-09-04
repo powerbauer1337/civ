@@ -12,6 +12,7 @@ import { config, getConfigSummary } from './config/config';
 import { securityHeaders, sanitizeRequest, validationErrorHandler } from './middleware/validation';
 import { authErrorHandler } from './middleware/auth';
 import { secureJWTManager } from './security/SecureJWTManager';
+import { logger } from '@civ-game/shared';
 
 async function startServer() {
   const app = express();
@@ -27,9 +28,9 @@ async function startServer() {
   // Initialize secure JWT manager
   try {
     await secureJWTManager.initialize();
-    console.log('✅ Secure JWT Manager initialized');
+    logger.info('Secure JWT Manager initialized');
   } catch (error) {
-    console.error('❌ Failed to initialize Secure JWT Manager:', error);
+    logger.error('Failed to initialize Secure JWT Manager:', error);
     process.exit(1);
   }
 
@@ -83,7 +84,7 @@ async function startServer() {
   try {
     await databaseManager.initialize();
   } catch (error) {
-    console.error('Failed to initialize database, continuing without persistence:', error);
+    logger.warn('Failed to initialize database, continuing without persistence:', error);
   }
 
   // Initialize game manager
@@ -166,13 +167,13 @@ async function startServer() {
 
   // Socket.IO connection handling
   io.on('connection', (socket) => {
-    console.log(`Client connected: ${socket.id}`);
+    logger.debug(`Client connected: ${socket.id}`);
     
     // Handle game events
     gameManager.handleConnection(socket);
     
     socket.on('disconnect', () => {
-      console.log(`Client disconnected: ${socket.id}`);
+      logger.debug(`Client disconnected: ${socket.id}`);
       gameManager.handleDisconnection(socket);
     });
   });
@@ -181,7 +182,7 @@ async function startServer() {
   app.use(validationErrorHandler());
   app.use(authErrorHandler());
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.error('Unhandled error:', err);
+    logger.error('Unhandled error:', err);
     
     // Don't expose internal errors in production
     if (config.NODE_ENV === 'production') {
@@ -202,58 +203,55 @@ async function startServer() {
   server.listen(PORT, () => {
     const summary = getConfigSummary();
     
-    console.log(`
-🚀 SPARC Civilization Game Server Started!
-🌐 Server running on port ${PORT}
-📊 Environment: ${summary.environment}
-🔗 Client URL: ${config.CLIENT_URL}
-💾 Database: ${databaseManager.isConnected() ? 'Connected ✅' : 'Disconnected ❌'}
-🔐 Security: JWT Manager Active ✅
-⚡ Rate Limiting: ${summary.rateLimiting.maxRequests} req/${summary.rateLimiting.windowMs}ms
-🛡️ Security Headers: ${summary.security.securityHeadersEnabled ? 'Enabled ✅' : 'Disabled ❌'}
-📅 Started at: ${new Date().toISOString()}
-
-Endpoints:
-🔍 API Documentation: http://localhost:${PORT}/api
-💊 Health Check: http://localhost:${PORT}/health${config.ENABLE_DEBUG_ENDPOINTS && config.NODE_ENV === 'development' ? '\n🔧 Security Info: http://localhost:' + PORT + '/api/security/info' : ''}
-
-⚠️  Security Status:
-   - JWT Secrets: ${config.NODE_ENV === 'production' ? 'Production Ready ✅' : 'Development Mode ⚠️'}
-   - Environment Variables: Validated ✅
-   - Rate Limiting: Active ✅
-   - Input Validation: Active ✅
-    `);
+    logger.info('SPARC Civilization Game Server Started!');
+    logger.info(`Server running on port ${PORT}`);
+    logger.info(`Environment: ${summary.environment}`);
+    logger.info(`Client URL: ${config.CLIENT_URL}`);
+    logger.info(`Database: ${databaseManager.isConnected() ? 'Connected' : 'Disconnected'}`);
+    logger.info('Security: JWT Manager Active');
+    logger.info(`Rate Limiting: ${summary.rateLimiting.maxRequests} req/${summary.rateLimiting.windowMs}ms`);
+    logger.info(`Security Headers: ${summary.security.securityHeadersEnabled ? 'Enabled' : 'Disabled'}`);
+    logger.info(`Started at: ${new Date().toISOString()}`);
+    logger.info(`API Documentation: http://localhost:${PORT}/api`);
+    logger.info(`Health Check: http://localhost:${PORT}/health`);
+    if (config.ENABLE_DEBUG_ENDPOINTS && config.NODE_ENV === 'development') {
+      logger.info(`Security Info: http://localhost:${PORT}/api/security/info`);
+    }
+    logger.info(`JWT Secrets: ${config.NODE_ENV === 'production' ? 'Production Ready' : 'Development Mode'}`);
+    logger.info('Environment Variables: Validated');
+    logger.info('Rate Limiting: Active');
+    logger.info('Input Validation: Active');
   });
 
   // Enhanced graceful shutdown
   const shutdown = async () => {
-    console.log('🔄 Shutting down gracefully...');
+    logger.warn('Shutting down gracefully...');
     
     server.close(async () => {
       try {
         // Stop JWT key rotation
         secureJWTManager.stop();
-        console.log('✅ JWT Manager stopped');
+        logger.info('JWT Manager stopped');
         
         // Shutdown game manager
         gameManager.shutdown();
-        console.log('✅ Game Manager stopped');
+        logger.info('Game Manager stopped');
         
         // Disconnect database
         await databaseManager.disconnect();
-        console.log('✅ Database disconnected');
+        logger.info('Database disconnected');
         
-        console.log('🏁 Server shutdown complete');
+        logger.info('Server shutdown complete');
         process.exit(0);
       } catch (error) {
-        console.error('❌ Error during shutdown:', error);
+        logger.error('Error during shutdown:', error);
         process.exit(1);
       }
     });
     
     // Force exit after 10 seconds
     setTimeout(() => {
-      console.log('⏰ Force exit after timeout');
+      logger.warn('Force exit after timeout');
       process.exit(1);
     }, 10000);
   };
@@ -264,6 +262,6 @@ Endpoints:
 
 // Start the server
 startServer().catch(error => {
-  console.error('Failed to start server:', error);
+  logger.error('Failed to start server:', error);
   process.exit(1);
 });
