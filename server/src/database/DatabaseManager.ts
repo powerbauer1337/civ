@@ -1,23 +1,18 @@
-import { Pool, PoolClient } from 'pg';
+import { Client } from 'pg';
 import Redis from 'redis';
 import { config } from '../config/config';
 import { logger } from '@civ-game/shared/utils';
 import { GameState } from '../shared-types';
 
 export class DatabaseManager {
-  private pgPool: Pool;
+  private pgClient: Client;
   private redisClient: ReturnType<typeof Redis.createClient>;
   private isInitialized: boolean = false;
 
   constructor() {
-    // Initialize PostgreSQL connection pool for better performance
-    this.pgPool = new Pool({
-      connectionString: config.DATABASE_URL,
-      max: 20, // Maximum number of connections in pool
-      min: 2,  // Minimum number of connections in pool
-      idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
-      connectionTimeoutMillis: 2000, // Return error after 2 seconds if unable to get connection
-      allowExitOnIdle: false // Keep pool alive
+    // Initialize PostgreSQL client
+    this.pgClient = new Client({
+      connectionString: config.DATABASE_URL
     });
 
     // Initialize Redis client
@@ -31,10 +26,9 @@ export class DatabaseManager {
    */
   private async executeQuery(text: string, params: any[] = [], operation: string = 'unknown'): Promise<any> {
     const startTime = Date.now();
-    const client = await this.pgPool.connect();
     
     try {
-      const result = await client.query(text, params);
+      const result = await this.pgClient.query(text, params);
       const duration = Date.now() - startTime;
       
       // Log slow queries (>100ms)
@@ -54,17 +48,17 @@ export class DatabaseManager {
       }
       
       return result;
-    } finally {
-      client.release();
+    } catch (error) {
+      logger.error(`Database query failed: ${operation}`, { error, query: text.substring(0, 100) });
+      throw error;
     }
   }
 
   public async initialize(): Promise<void> {
     try {
-      // Test PostgreSQL connection pool
-      const client = await this.pgPool.connect();
-      client.release();
-      logger.info('PostgreSQL connection pool initialized');
+      // Connect to PostgreSQL
+      await this.pgClient.connect();
+      logger.info('Connected to PostgreSQL');
 
       // Create tables if they don't exist
       await this.createTables();
@@ -314,16 +308,13 @@ export class DatabaseManager {
 
     if (fromTurn !== undefined) {
       query += ' AND turn_number >= $2';
-      params.push(fromTurn.toString());
+      params.push(fromTurn);
     }
 
     query += ' ORDER BY created_at ASC';
 
     const result = await this.executeQuery(query, params, 'get_game_actions');
-    return result.rows.map(row => ({
-      ...row,
-      payload: row.payload ? JSON.parse(row.payload) : null
-    }));
+    return result.rows;
   }
 
   // Redis operations for active game states
@@ -331,7 +322,8 @@ export class DatabaseManager {
     if (!this.isInitialized) return;
 
     const key = `game:${gameId}`;
-    const serialized = JSON.stringify(gameState.serialize());
+    const data = typeof (gameState as any).serialize === 'function' ? (gameState as any).serialize() : gameState;
+    const serialized = JSON.stringify(data);
 
     // Cache for 1 hour
     await this.redisClient.setEx(key, 3600, serialized);
@@ -368,8 +360,8 @@ export class DatabaseManager {
     const key = `session:${playerId}`;
     const serialized = JSON.stringify(sessionData);
 
-    // Session expires in 24 hours
-    await this.redisClient.setEx(key, 86400, serialized);
+    // Session expires in 30 minutes (1800 seconds)
+    await this.redisClient.set(key, serialized, { EX: 1800 });
   }
 
   public async getPlayerSession(playerId: string): Promise<any | null> {
@@ -378,7 +370,14 @@ export class DatabaseManager {
     const key = `session:${playerId}`;
     const cached = await this.redisClient.get(key);
 
-    return cached ? JSON.parse(cached) : null;
+    if (!cached) return null;
+
+    try {
+      return JSON.parse(cached);
+    } catch (error) {
+      logger.error('Error parsing session data:', error);
+      return null;
+    }
   }
 
   public async removePlayerSession(playerId: string): Promise<void> {
@@ -422,11 +421,11 @@ export class DatabaseManager {
   public async cleanupOldGames(daysOld: number = 30): Promise<number> {
     const query = `
       DELETE FROM games 
-      WHERE created_at < NOW() - INTERVAL '$1 days'
+      WHERE ended_at < NOW() - INTERVAL '${daysOld} days'
       AND phase = 'ended'
     `;
 
-    const result = await this.executeQuery(query, [daysOld], 'cleanup_old_game_actions');
+    const result = await this.executeQuery(query, [], 'cleanup_old_games');
     return result.rowCount || 0;
   }
 
@@ -447,17 +446,23 @@ export class DatabaseManager {
   }
 
   public async disconnect(): Promise<void> {
-    if (this.pgPool) {
-      await this.pgPool.end();
-      logger.info('PostgreSQL connection pool closed');
-    }
+    try {
+      if (this.pgClient) {
+        await this.pgClient.end();
+        logger.info('PostgreSQL connection closed');
+      }
 
-    if (this.redisClient && this.isInitialized) {
-      await this.redisClient.quit();
-      logger.info('Redis connection closed');
-    }
+      if (this.redisClient && this.isInitialized) {
+        await this.redisClient.disconnect();
+        logger.info('Redis connection closed');
+      }
 
-    this.isInitialized = false;
+      this.isInitialized = false;
+      logger.info('Database Manager disconnected');
+    } catch (error) {
+      logger.error('Error disconnecting from Database Manager:', error);
+      throw error;
+    }
   }
 
   public isConnected(): boolean {

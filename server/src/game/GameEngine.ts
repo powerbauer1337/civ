@@ -228,7 +228,10 @@ export class GameEngine {
       }
 
       const hexMap = HexMap.deserialize(gameState.map);
-    const tile = hexMap.getTile(actualLocation.x, actualLocation.y);
+    // Handle both axial (q,r) and cartesian (x,y) coordinate systems
+    const x = actualLocation.x !== undefined ? actualLocation.x : actualLocation.q;
+    const y = actualLocation.y !== undefined ? actualLocation.y : actualLocation.r;
+    const tile = hexMap.getTile(x, y);
     if (!tile) {
       return { success: false, error: 'Invalid location for city', gameState };
     }
@@ -243,7 +246,7 @@ export class GameEngine {
     }
 
     // Check minimum distance from other cities (3 tiles)
-    const nearbyTiles = hexMap.getTilesInRange(actualLocation.x, actualLocation.y, 3);
+    const nearbyTiles = hexMap.getTilesInRange(x, y, 3);
     const hasNearbyCity = nearbyTiles.some(t => t.city !== null);
     if (hasNearbyCity) {
       return { success: false, error: 'Too close to existing city', gameState };
@@ -254,14 +257,14 @@ export class GameEngine {
       id: uuidv4(),
       name: cityName || `${settler.playerId}'s City`,
       playerId: settler.playerId,
-      x: actualLocation.x,
-      y: actualLocation.y,
+      x: x,
+      y: y,
       population: 1,
       health: 100,
       maxHealth: 100,
       production: null,
       buildings: [],
-      workingTiles: [{ x: actualLocation.x, y: actualLocation.y }], // City works its own tile initially
+      workingTiles: [{ x: x, y: y }], // City works its own tile initially
       founded: new Date()
     };
 
@@ -288,7 +291,7 @@ export class GameEngine {
 
       return {
         success: true,
-        message: `Founded city ${newCity.name} at (${actualLocation.x}, ${actualLocation.y})`,
+        message: `Founded city ${newCity.name} at (${x}, ${y}),`,
         gameState
       };
     } catch (error) {
@@ -552,6 +555,8 @@ export class GameEngine {
     // If back to first player, increment turn number
     if (nextPlayerIndex === 0) {
       gameState.turn++;
+      // Also update currentTurn for compatibility
+      (gameState as any).currentTurn = gameState.turn;
 
       // Process turn-based updates
       const turnResult = GameEngine.processTurnEnd(gameState);
@@ -669,10 +674,22 @@ export class GameEngine {
 
       // Add production points
       const cityYield = GameEngine.calculateCityYield(hexMap, city);
-      city.production.productionStored += cityYield.production || 0;
+      // Handle different production property naming conventions
+      const progress = city.production.progress || city.production.productionStored || 0;
+      const cost = city.production.cost || city.production.productionRequired || 0;
+      const productionYield = cityYield.production || 0;
+      
+      // Update progress
+      if (city.production.progress !== undefined) {
+        city.production.progress += productionYield;
+      } else if (city.production.productionStored !== undefined) {
+        city.production.productionStored += productionYield;
+      }
 
       // Check if production is complete
-      if (city.production.productionStored >= city.production.productionRequired) {
+      const currentProgress = city.production.progress || city.production.productionStored || 0;
+      const requiredCost = city.production.cost || city.production.productionRequired || 0;
+      if (currentProgress >= requiredCost) {
         GameEngine.completeProduction(gameState, city, playerState);
       }
     }
@@ -915,7 +932,29 @@ export class GameEngine {
   private static completeProduction(gameState: GameState, city: City, playerState: PlayerState): void {
     if (!city.production) return;
 
-    logger.info(`${city.name} completed production of ${city.production.targetId}`);
+    const productionTarget = city.production.targetId;
+    logger.info(`${city.name} completed production of ${productionTarget}`);
+
+    // Handle unit production
+    if (city.production.productionType === 'unit') {
+      const newUnit: Unit = {
+        id: uuidv4(),
+        type: productionTarget as UnitType,
+        playerId: city.playerId,
+        position: { q: city.x, r: city.y },
+        movement: 2, // Default movement points
+        maxMovement: 2,
+        health: 100,
+        maxHealth: 100,
+        promotions: [],
+        orders: []
+      };
+
+      // Add unit to game state
+      if (gameState.units) {
+        gameState.units[newUnit.id] = newUnit;
+      }
+    }
 
     // Reset production
     city.production = null;

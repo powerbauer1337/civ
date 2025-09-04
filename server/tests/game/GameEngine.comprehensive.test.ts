@@ -31,27 +31,7 @@ describe('GameEngine - Comprehensive Tests', () => {
       civilization: 'Romans',
       resources: { gold: 100, food: 50, production: 30, science: 20 },
       technologies: [TechnologyType.POTTERY],
-      cities: [
-        {
-          id: 'city1',
-          name: 'Rome',
-          playerId: 'player1',
-          x: 5,
-          y: 5,
-          population: 3,
-          health: 200,
-          maxHealth: 200,
-          production: {
-            type: 'unit',
-            unitType: UnitType.WARRIOR,
-            progress: 5,
-            cost: 40,
-            turnsRemaining: 8
-          },
-          buildings: [],
-          workingTiles: []
-        }
-      ],
+      cities: ['city1'], // Array of city IDs, not city objects
       units: [
         {
           id: 'unit1',
@@ -60,6 +40,7 @@ describe('GameEngine - Comprehensive Tests', () => {
           playerId: 'player1',
           x: 3,
           y: 3,
+          position: { q: 3, r: 3 },
           health: 100,
           maxHealth: 100,
           movement: 2,
@@ -74,8 +55,9 @@ describe('GameEngine - Comprehensive Tests', () => {
           type: UnitType.SETTLER,
           name: 'Settler',
           playerId: 'player1',
-          x: 4,
-          y: 4,
+          x: 1,
+          y: 1,
+          position: { q: 1, r: 1 },
           health: 100,
           maxHealth: 100,
           movement: 2,
@@ -104,6 +86,7 @@ describe('GameEngine - Comprehensive Tests', () => {
           playerId: 'player2',
           x: 6,
           y: 6,
+          position: { q: 6, r: 6 },
           health: 80,
           maxHealth: 100,
           movement: 2,
@@ -114,6 +97,27 @@ describe('GameEngine - Comprehensive Tests', () => {
           status: []
         }
       ]
+    };
+
+    // Create the city object separately
+    const romeCity: City = {
+      id: 'city1',
+      name: 'Rome',
+      playerId: 'player1',
+      x: 5,
+      y: 5,
+      population: 3,
+      health: 200,
+      maxHealth: 200,
+      production: {
+        productionType: 'unit',
+        targetId: UnitType.WARRIOR,
+        progress: 5,
+        cost: 40,
+        turnsRemaining: 8
+      },
+      buildings: [],
+      workingTiles: [{ x: 5, y: 5 }] // City works its own tile
     };
     
     testGameState = {
@@ -129,7 +133,7 @@ describe('GameEngine - Comprehensive Tests', () => {
         height: 12,
         tiles: hexMap.tiles
       },
-      cities: { 'city1': player1.cities[0] },
+      cities: { 'city1': romeCity },
       units: { 
         'unit1': player1.units[0], 
         'settler1': player1.units[1],
@@ -137,6 +141,18 @@ describe('GameEngine - Comprehensive Tests', () => {
       },
       lastUpdate: new Date()
     };
+
+    // Place city on the actual hex map for distance checks
+    const cityTile = hexMap.getTile(5, 5);
+    if (cityTile) {
+      cityTile.city = romeCity;
+    }
+
+    // Ensure the settler position (1,1) has land terrain for city foundation
+    const settlerTile = hexMap.getTile(1, 1);
+    if (settlerTile) {
+      settlerTile.terrain = TerrainType.GRASSLAND; // Ensure it's not ocean
+    }
   });
 
   describe('Constructor and Instance Methods', () => {
@@ -330,7 +346,7 @@ describe('GameEngine - Comprehensive Tests', () => {
         payload: {
           playerId: 'player1',
           unitId: 'settler1',
-          position: { x: 4, y: 4 },
+          position: { x: 1, y: 1 },
           cityName: 'New City'
         }
       };
@@ -403,16 +419,28 @@ describe('GameEngine - Comprehensive Tests', () => {
     test('should complete unit production when sufficient progress', () => {
       // Set production close to completion
       const city = testGameState.cities!['city1']!;
-      city.production.progress = 38;
+      city.production.progress = 39;
       city.production.cost = 40;
+      
+      // Ensure city has production yield to complete the unit
+      const hexMap = HexMap.deserialize(testGameState.map);
+      const cityTile = hexMap.getTile(5, 5);
+      if (cityTile) {
+        cityTile.baseYield = { food: 2, production: 2, gold: 1, science: 0 };
+      }
+      testGameState.map = hexMap.serialize();
 
       const result = GameEngine.processTurnEnd(testGameState);
       expect(result.success).toBe(true);
 
       // Check if new unit was created
       const units = Object.values(result.gameState?.units || {});
-      const newWarrior = units.find(u => u.type === UnitType.WARRIOR && u.position.q === 5 && u.position.r === 5);
+      const newWarrior = units.find(u => u.type === UnitType.WARRIOR && u.position && u.position.q === 5 && u.position.r === 5);
       expect(newWarrior).toBeDefined();
+      
+      // Check that production was reset
+      const cityAfter = result.gameState?.cities?.['city1'];
+      expect(cityAfter?.production).toBeNull();
     });
   });
 

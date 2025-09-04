@@ -1,5 +1,5 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
-import { Box, IconButton, Paper, Slider, Typography } from '@mui/material';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { Box, IconButton, Paper, Slider, Typography, Fade, Chip } from '@mui/material';
 import {
   ZoomIn,
   ZoomOut,
@@ -7,7 +7,8 @@ import {
   TouchApp,
   PanTool,
   Visibility,
-  VisibilityOff
+  VisibilityOff,
+  MyLocation
 } from '@mui/icons-material';
 import { MapTile } from '@civ-game/shared';
 
@@ -23,6 +24,11 @@ interface MobileHexMapProps {
   selectedTile?: Position | null;
   highlightedTiles?: Position[];
   isMobile?: boolean;
+  gameStats?: {
+    turn: number;
+    currentPlayer?: string;
+    resources?: Record<string, number>;
+  };
 }
 
 interface TouchState {
@@ -36,7 +42,8 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
   onTileClick,
   selectedTile,
   highlightedTiles = [],
-  isMobile = false
+  isMobile = false,
+  gameStats
 }) => {
   // State management
   const [scale, setScale] = useState(1);
@@ -49,6 +56,9 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
   });
   const [showGrid, setShowGrid] = useState(true);
   const [interactionMode, setInteractionMode] = useState<'pan' | 'select'>('select');
+  const [showControls, setShowControls] = useState(true);
+  const [lastInteraction, setLastInteraction] = useState(Date.now());
+  const [performance, setPerformance] = useState({ fps: 60, renderTime: 0 });
 
   // Refs
   const svgRef = useRef<SVGSVGElement>(null);
@@ -60,9 +70,35 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
   const HEX_SIZE = isMobile ? 25 : 30;
   const HEX_WIDTH = HEX_SIZE * 2;
   const HEX_HEIGHT = Math.sqrt(3) * HEX_SIZE;
-  const MIN_SCALE = 0.5;
-  const MAX_SCALE = 3;
+  const MIN_SCALE = 0.3;
+  const MAX_SCALE = 4;
   const DOUBLE_TAP_DELAY = 300;
+  const CONTROLS_HIDE_DELAY = 3000; // Hide controls after 3 seconds of inactivity
+  
+  // Auto-hide controls on mobile
+  useEffect(() => {
+    if (!isMobile) return;
+    
+    const timer = setTimeout(() => {
+      if (Date.now() - lastInteraction > CONTROLS_HIDE_DELAY) {
+        setShowControls(false);
+      }
+    }, CONTROLS_HIDE_DELAY);
+
+    return () => clearTimeout(timer);
+  }, [lastInteraction, isMobile]);
+
+  // Performance monitoring
+  useEffect(() => {
+    const startTime = performance.now();
+    const endTime = performance.now();
+    const renderTime = endTime - startTime;
+    
+    setPerformance(prev => ({
+      fps: Math.round(1000 / Math.max(renderTime, 16)), // Estimate FPS
+      renderTime: Math.round(renderTime * 100) / 100
+    }));
+  }, [scale, offset, map]);
 
 
   // Convert grid to pixel coordinates
@@ -116,16 +152,32 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
     }
   }, [offset, scale, pixelToHex, map, onTileClick]);
 
-  // Touch event handlers
+  // Touch event handlers with improved gesture detection
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    setLastInteraction(Date.now());
+    setShowControls(true);
+    
     const touches = Array.from(e.touches);
 
     if (touches.length === 1) {
       // Single touch - check for double tap
       const now = Date.now();
       if (now - lastTapTime.current < DOUBLE_TAP_DELAY) {
-        // Double tap - zoom in
-        handleZoom(2);
+        // Double tap - smart zoom to selected tile or zoom in
+        if (selectedTile && containerRef.current) {
+          const { x: tilePixelX, y: tilePixelY } = hexToPixel(selectedTile.x, selectedTile.y);
+          const rect = containerRef.current.getBoundingClientRect();
+          const centerX = rect.width / 2;
+          const centerY = rect.height / 2;
+          
+          setOffset({
+            x: centerX - tilePixelX * scale,
+            y: centerY - tilePixelY * scale
+          });
+          setScale(Math.min(MAX_SCALE, scale * 1.5));
+        } else {
+          handleZoom(1.5);
+        }
         lastTapTime.current = 0;
       } else {
         lastTapTime.current = now;
@@ -155,7 +207,7 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
     }
 
     e.preventDefault();
-  }, [interactionMode, offset, handleZoom]);
+  }, [interactionMode, offset, handleZoom, selectedTile, hexToPixel, scale]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     const touches = Array.from(e.touches);
@@ -264,6 +316,26 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
     setOffset({ x: 0, y: 0 });
   }, []);
 
+  const centerOnTile = useCallback((position: Position) => {
+    if (!containerRef.current) return;
+    
+    const { x: tilePixelX, y: tilePixelY } = hexToPixel(position.x, position.y);
+    const rect = containerRef.current.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    
+    setOffset({
+      x: centerX - tilePixelX * scale,
+      y: centerY - tilePixelY * scale
+    });
+  }, [hexToPixel, scale]);
+
+  const centerOnSelectedTile = useCallback(() => {
+    if (selectedTile) {
+      centerOnTile(selectedTile);
+    }
+  }, [selectedTile, centerOnTile]);
+
   // Calculate viewport for optimization
   const visibleTiles = useMemo(() => {
     if (!containerRef.current) return { minQ: 0, maxQ: map[0].length, minR: 0, maxR: map.length };
@@ -288,59 +360,150 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
     };
   }, [map, scale, offset, pixelToHex, HEX_WIDTH, HEX_HEIGHT]);
 
-  // Mobile control panel
+  // Mobile control panel with improved design
   const renderMobileControls = () => (
-    <Paper
-      sx={{
-        position: 'absolute',
-        bottom: 16,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1,
-        p: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        backdropFilter: 'blur(10px)'
-      }}
-    >
-      <IconButton
-        size="small"
-        onClick={() => setInteractionMode(interactionMode === 'pan' ? 'select' : 'pan')}
-        color={interactionMode === 'pan' ? 'primary' : 'default'}
-      >
-        {interactionMode === 'pan' ? <PanTool /> : <TouchApp />}
-      </IconButton>
+    <Fade in={showControls} timeout={300}>
+      <Box>
+        {/* Game Status Bar */}
+        {gameStats && (
+          <Paper
+            sx={{
+              position: 'absolute',
+              top: 8,
+              left: 8,
+              right: 8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              p: 1,
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
+            <Box display="flex" gap={1}>
+              <Chip label={`Turn ${gameStats.turn}`} size="small" color="primary" />
+              {gameStats.currentPlayer && (
+                <Chip label={gameStats.currentPlayer} size="small" variant="outlined" />
+              )}
+            </Box>
+            
+            {performance.renderTime > 0 && (
+              <Chip 
+                label={`${performance.fps} FPS`} 
+                size="small" 
+                color={performance.fps > 30 ? 'success' : 'warning'} 
+                variant="outlined" 
+              />
+            )}
+          </Paper>
+        )}
 
-      <IconButton size="small" onClick={() => handleZoom(0.8)}>
-        <ZoomOut />
-      </IconButton>
+        {/* Main Control Panel */}
+        <Paper
+          sx={{
+            position: 'absolute',
+            bottom: 16,
+            left: 8,
+            right: 8,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1,
+            p: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            backdropFilter: 'blur(10px)'
+          }}
+        >
+          <Box display="flex" alignItems="center" gap={1}>
+            <IconButton
+              size="small"
+              onClick={() => {
+                setInteractionMode(interactionMode === 'pan' ? 'select' : 'pan');
+                setLastInteraction(Date.now());
+              }}
+              color={interactionMode === 'pan' ? 'primary' : 'default'}
+              sx={{
+                backgroundColor: interactionMode === 'pan' ? 'rgba(25, 118, 210, 0.2)' : 'transparent'
+              }}
+            >
+              {interactionMode === 'pan' ? <PanTool /> : <TouchApp />}
+            </IconButton>
 
-      <Slider
-        value={scale}
-        min={MIN_SCALE}
-        max={MAX_SCALE}
-        step={0.1}
-        onChange={(_, value) => setScale(value as number)}
-        sx={{ width: 100 }}
-      />
+            <IconButton 
+              size="small" 
+              onClick={() => {
+                handleZoom(0.8);
+                setLastInteraction(Date.now());
+              }}
+            >
+              <ZoomOut />
+            </IconButton>
+          </Box>
 
-      <IconButton size="small" onClick={() => handleZoom(1.2)}>
-        <ZoomIn />
-      </IconButton>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Slider
+              value={scale}
+              min={MIN_SCALE}
+              max={MAX_SCALE}
+              step={0.1}
+              onChange={(_, value) => {
+                setScale(value as number);
+                setLastInteraction(Date.now());
+              }}
+              sx={{ width: 80 }}
+            />
+            <Typography variant="caption" color="white" minWidth={40}>
+              {Math.round(scale * 100)}%
+            </Typography>
+          </Box>
 
-      <IconButton size="small" onClick={handleResetView}>
-        <CenterFocusStrong />
-      </IconButton>
+          <Box display="flex" alignItems="center" gap={1}>
+            <IconButton 
+              size="small" 
+              onClick={() => {
+                handleZoom(1.2);
+                setLastInteraction(Date.now());
+              }}
+            >
+              <ZoomIn />
+            </IconButton>
 
-      <IconButton
-        size="small"
-        onClick={() => setShowGrid(!showGrid)}
-        color={showGrid ? 'primary' : 'default'}
-      >
-        {showGrid ? <Visibility /> : <VisibilityOff />}
-      </IconButton>
-    </Paper>
+            <IconButton 
+              size="small" 
+              onClick={() => {
+                centerOnSelectedTile();
+                setLastInteraction(Date.now());
+              }}
+              disabled={!selectedTile}
+              color={selectedTile ? 'primary' : 'default'}
+            >
+              <MyLocation />
+            </IconButton>
+
+            <IconButton 
+              size="small" 
+              onClick={() => {
+                handleResetView();
+                setLastInteraction(Date.now());
+              }}
+            >
+              <CenterFocusStrong />
+            </IconButton>
+
+            <IconButton
+              size="small"
+              onClick={() => {
+                setShowGrid(!showGrid);
+                setLastInteraction(Date.now());
+              }}
+              color={showGrid ? 'primary' : 'default'}
+            >
+              {showGrid ? <Visibility /> : <VisibilityOff />}
+            </IconButton>
+          </Box>
+        </Paper>
+      </Box>
+    </Fade>
   );
 
   return (
@@ -373,6 +536,12 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onClick={() => {
+          if (isMobile) {
+            setShowControls(!showControls);
+            setLastInteraction(Date.now());
+          }
+        }}
       >
         {/* Render only visible tiles for performance */}
         {map.slice(visibleTiles.minR, visibleTiles.maxR).map((row, r) =>
@@ -407,22 +576,6 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
 
       {/* Mobile controls */}
       {isMobile && renderMobileControls()}
-
-      {/* Scale indicator */}
-      <Typography
-        variant="caption"
-        sx={{
-          position: 'absolute',
-          top: 8,
-          right: 8,
-          color: 'white',
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          px: 1,
-          borderRadius: 1
-        }}
-      >
-        {Math.round(scale * 100)}%
-      </Typography>
     </Box>
   );
 };
