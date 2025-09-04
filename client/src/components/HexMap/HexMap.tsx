@@ -201,7 +201,6 @@ const HexMap: React.FC<HexMapProps> = ({ gameState, playerId, onTileClick, onUni
               const isSelected = selectedUnit?.x === x && selectedUnit?.y === y;
 
               const tileProps = {
-                key: `${x}-${y}`,
                 x: pixelX + HEX_WIDTH/2,
                 y: pixelY + HEX_HEIGHT/2,
                 size: HEX_SIZE,

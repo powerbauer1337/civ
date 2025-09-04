@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -15,7 +15,8 @@ import {
   Toolbar,
   IconButton,
   Alert,
-  LinearProgress
+  LinearProgress,
+  CircularProgress
 } from '@mui/material';
 import {
   ArrowBack as BackIcon,
@@ -23,7 +24,8 @@ import {
   People as PeopleIcon
 } from '@mui/icons-material';
 import { io, Socket } from 'socket.io-client';
-import HexMap from '../components/HexMap/HexMap';
+// Lazy load the heavy HexMap component for better performance
+const HexMap = React.lazy(() => import('../components/HexMap/HexMap'));
 
 // Simplified interface to avoid import issues
 interface Unit {
@@ -407,12 +409,24 @@ const SimpleGamePage: React.FC = () => {
             overflow: 'hidden'
           }}>
             {gameState ? (
-              <HexMap
-                gameState={gameState}
-                playerId={playerId}
-                onTileClick={handleTileClick}
-                onUnitClick={handleUnitClick}
-              />
+              <Suspense fallback={
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  minHeight: '400px'
+                }}>
+                  <CircularProgress size={60} />
+                </Box>
+              }>
+                <HexMap
+                  gameState={gameState}
+                  playerId={playerId}
+                  onTileClick={handleTileClick}
+                  onUnitClick={handleUnitClick}
+                />
+              </Suspense>
             ) : (
               <Box sx={{
                 height: '100%',

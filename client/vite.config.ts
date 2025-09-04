@@ -38,12 +38,22 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'phaser': ['phaser'],
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          // Core libraries - load first
+          'react-vendor': ['react', 'react-dom'],
+          'react-router': ['react-router-dom'],
+          
+          // MUI split into smaller chunks for better caching
+          'mui-core': ['@mui/material/styles'],
+          'mui-components': ['@mui/material'],
+          'mui-icons': ['@mui/icons-material'],
+          
+          // Game-specific chunks
           'redux-vendor': ['@reduxjs/toolkit', 'react-redux'],
-          'mui-vendor': ['@mui/material', '@mui/icons-material'],
           'socket': ['socket.io-client'],
-          'shared': ['@civ-game/shared']
+          'shared': ['@civ-game/shared'],
+          
+          // Less critical libraries
+          'phaser': ['phaser']
         }
       }
     },
