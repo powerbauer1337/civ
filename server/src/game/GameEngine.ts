@@ -42,25 +42,25 @@ export class GameEngine {
       // Route to appropriate action handler
       switch (action.type) {
         case GameActionType.MOVE_UNIT:
-          return this.processMoveUnit(gameState, action);
+          return GameEngine.processMoveUnit(gameState, action);
 
         case GameActionType.ATTACK_UNIT:
-          return this.processAttackUnit(gameState, action);
+          return GameEngine.processAttackUnit(gameState, action);
 
         case GameActionType.FOUND_CITY:
-          return this.processFoundCity(gameState, action);
+          return GameEngine.processFoundCity(gameState, action);
 
         case GameActionType.BUILD_IMPROVEMENT:
-          return this.processBuildImprovement(gameState, action);
+          return GameEngine.processBuildImprovement(gameState, action);
 
         case GameActionType.CHANGE_PRODUCTION:
-          return this.processChangeProduction(gameState, action);
+          return GameEngine.processChangeProduction(gameState, action);
 
         case GameActionType.RESEARCH_TECHNOLOGY:
-          return this.processResearchTechnology(gameState, action);
+          return GameEngine.processResearchTechnology(gameState, action);
 
         case GameActionType.END_TURN:
-          return this.processEndTurn(gameState, action);
+          return GameEngine.processEndTurn(gameState, action);
 
         default:
           return { success: false, error: `Unknown action type: ${action.type}`, gameState };
@@ -82,15 +82,20 @@ export class GameEngine {
     }
 
     // Find the unit in the game state
-    const unit = this.findUnit(gameState, unitId);
+    const unit = GameEngine.findUnit(gameState, unitId);
     if (!unit) {
       return { success: false, error: `Unit ${unitId} not found`, gameState };
     }
 
-    // Verify unit belongs to current player
-    const currentPlayer = gameState.players.find(p => p.userId === gameState.currentPlayer);
-    if (!currentPlayer || unit.playerId !== currentPlayer.userId) {
-      return { success: false, error: 'Unit does not belong to current player', gameState };
+    // Verify the action is being performed by the correct player
+    const { playerId } = action.payload;
+    if (playerId !== gameState.currentPlayer) {
+      return { success: false, error: 'Action not performed by current player', gameState };
+    }
+
+    // Verify unit belongs to the player making the action
+    if (unit.playerId !== playerId) {
+      return { success: false, error: 'Unit does not belong to acting player', gameState };
     }
 
     // Check if unit has movement points
@@ -100,12 +105,23 @@ export class GameEngine {
 
     // Validate movement destination
     const hexMap = HexMap.deserialize(gameState.map);
+    
+    // Check for unit collision in gameState.units (for tests and some game state formats)
+    if (gameState.units) {
+      for (const otherUnitId in gameState.units) {
+        const otherUnit = gameState.units[otherUnitId];
+        if (otherUnit && otherUnit.id !== unitId && otherUnit.x === to.x && otherUnit.y === to.y) {
+          return { success: false, error: 'Destination tile is occupied by another unit', gameState };
+        }
+      }
+    }
+    
     if (!hexMap.isValidMoveDestination(to.x, to.y, unit.playerId)) {
       return { success: false, error: 'Invalid movement destination', gameState };
     }
 
     // Calculate movement cost
-    const movementCost = this.calculateMovementCost(hexMap, from, to);
+    const movementCost = GameEngine.calculateMovementCost(hexMap, from, to);
     if (unit.movement < movementCost) {
       return { success: false, error: 'Insufficient movement points', gameState };
     }
@@ -123,7 +139,12 @@ export class GameEngine {
     if (toTile) toTile.unit = unit;
 
     // Update visibility (units reveal surrounding tiles)
-    this.updateVisibilityAroundUnit(hexMap, unit);
+    GameEngine.updateVisibilityAroundUnit(hexMap, unit);
+
+    // Update gameState.units if it exists (for tests and some game state formats)
+    if (gameState.units && gameState.units[unitId]) {
+      gameState.units[unitId] = unit;
+    }
 
     // Update game state map
     gameState.map = hexMap.serialize();
@@ -142,8 +163,8 @@ export class GameEngine {
   private static processAttackUnit(gameState: GameState, action: GameAction): ActionResult {
     const { attackerId, targetId } = action.payload;
 
-    const attacker = this.findUnit(gameState, attackerId);
-    const target = this.findUnit(gameState, targetId);
+    const attacker = GameEngine.findUnit(gameState, attackerId);
+    const target = GameEngine.findUnit(gameState, targetId);
 
     if (!attacker || !target) {
       return { success: false, error: 'Attacker or target unit not found', gameState };
@@ -157,14 +178,22 @@ export class GameEngine {
     }
 
     // Process combat
-    const combatResult = this.resolveCombat(attacker, target, hexMap);
+    const combatResult = GameEngine.resolveCombat(attacker, target, hexMap);
 
     // Apply damage
     target.health -= combatResult.damage;
 
+    // Update gameState.units if it exists (for tests and some game state formats)
+    if (gameState.units && gameState.units[targetId]) {
+      gameState.units[targetId] = target;
+    }
+    if (gameState.units && gameState.units[attackerId]) {
+      gameState.units[attackerId] = attacker;
+    }
+
     // Remove unit if destroyed
     if (target.health <= 0) {
-      this.removeUnit(gameState, target.id);
+      GameEngine.removeUnit(gameState, target.id);
       combatResult.message += ` ${target.type} destroyed!`;
     }
 
@@ -186,7 +215,7 @@ export class GameEngine {
   private static processFoundCity(gameState: GameState, action: GameAction): ActionResult {
     const { settlerId, location, cityName } = action.payload;
 
-    const settler = this.findUnit(gameState, settlerId);
+    const settler = GameEngine.findUnit(gameState, settlerId);
     if (!settler || settler.type !== UnitType.SETTLER) {
       return { success: false, error: 'Valid settler unit required to found city', gameState };
     }
@@ -237,7 +266,7 @@ export class GameEngine {
     }
 
     // Remove settler unit (consumed in founding)
-    this.removeUnit(gameState, settler.id);
+    GameEngine.removeUnit(gameState, settler.id);
 
     // Update map and game state
     gameState.map = hexMap.serialize();
@@ -256,7 +285,7 @@ export class GameEngine {
   private static processBuildImprovement(gameState: GameState, action: GameAction): ActionResult {
     const { workerId, improvementType, location } = action.payload;
 
-    const worker = this.findUnit(gameState, workerId);
+    const worker = GameEngine.findUnit(gameState, workerId);
     if (!worker || worker.type !== UnitType.WORKER) {
       return { success: false, error: 'Valid worker unit required to build improvement', gameState };
     }
@@ -277,7 +306,7 @@ export class GameEngine {
       type: improvementType,
       constructedTurn: gameState.turn,
       isActive: true,
-      yield: this.getImprovementYield(improvementType, tile)
+      yield: GameEngine.getImprovementYield(improvementType, tile)
     };
 
     gameState.map = hexMap.serialize();
@@ -319,9 +348,9 @@ export class GameEngine {
     targetCity.production = {
       type: productionType,
       targetId: targetId,
-      turnsRemaining: this.calculateProductionTime(productionType, targetId),
+      turnsRemaining: GameEngine.calculateProductionTime(productionType, targetId),
       productionStored: 0,
-      productionRequired: this.getProductionCost(productionType, targetId)
+      productionRequired: GameEngine.getProductionCost(productionType, targetId)
     };
 
     gameState.map = hexMap.serialize();
@@ -401,7 +430,7 @@ export class GameEngine {
         
       // Check if research is complete
       if (existingTech.progress >= baseCost) {
-        this.completeTechnologyResearch(techId, playerState, gameState);
+        GameEngine.completeTechnologyResearch(techId, playerState, gameState);
       }
       
       logger.info(`Player ${playerState.userId} continued research of ${techId}: ${existingTech.progress}/${baseCost}`);
@@ -421,7 +450,7 @@ export class GameEngine {
       
       // Check if research completed immediately
       if (newTech.progress >= baseCost) {
-        this.completeTechnologyResearch(techId, playerState, gameState);
+        GameEngine.completeTechnologyResearch(techId, playerState, gameState);
       }
       
       logger.info(`Player ${playerState.userId} started research of ${techId}: ${newTech.progress}/${baseCost}`);
@@ -451,7 +480,7 @@ export class GameEngine {
     
     // Apply technology effects
     if (technology.effects) {
-      this.applyTechnologyEffects(technology.effects, playerState, gameState);
+      GameEngine.applyTechnologyEffects(technology.effects, playerState, gameState);
     }
     
     logger.info(`Player ${playerState.userId} completed research of ${technology.name} with effects applied`);
@@ -504,14 +533,14 @@ export class GameEngine {
       gameState.turn++;
 
       // Process turn-based updates
-      const turnResult = this.processTurnEnd(gameState);
+      const turnResult = GameEngine.processTurnEnd(gameState);
       if (!turnResult.success) {
         return turnResult;
       }
     }
 
     // Reset movement for current player's units
-    this.resetPlayerUnitsMovement(gameState, gameState.currentPlayer);
+    GameEngine.resetPlayerUnitsMovement(gameState, gameState.currentPlayer);
 
     gameState.lastUpdate = new Date();
 
@@ -534,20 +563,20 @@ export class GameEngine {
         if (!playerState.isAlive) continue;
 
         // Generate resources from cities
-        this.processResourceGeneration(gameState, playerState);
+        GameEngine.processResourceGeneration(gameState, playerState);
 
         // Process city production
-        this.processCityProduction(gameState, playerState);
+        GameEngine.processCityProduction(gameState, playerState);
 
         // Process technology research
-        this.processTechnologyResearch(playerState, gameState);
+        GameEngine.processTechnologyResearch(playerState, gameState);
 
         // Update player score
-        playerState.score = this.calculatePlayerScore(gameState, playerState);
+        playerState.score = GameEngine.calculatePlayerScore(gameState, playerState);
       }
 
       // Check victory conditions
-      const victoryResult = this.checkVictoryConditions(gameState);
+      const victoryResult = GameEngine.checkVictoryConditions(gameState);
       if (victoryResult.victory) {
         gameState.phase = 'END_GAME' as any;
         return {
@@ -576,9 +605,9 @@ export class GameEngine {
 
     // Process each city
     for (const cityId of playerState.cities) {
-      const city = this.findCityById(hexMap, cityId);
+      const city = GameEngine.findCityById(hexMap, cityId);
       if (city) {
-        const cityYield = this.calculateCityYield(hexMap, city);
+        const cityYield = GameEngine.calculateCityYield(hexMap, city);
 
         generatedResources.food += cityYield.food || 0;
         generatedResources.production += cityYield.production || 0;
@@ -607,16 +636,16 @@ export class GameEngine {
     const hexMap = HexMap.deserialize(gameState.map);
 
     for (const cityId of playerState.cities) {
-      const city = this.findCityById(hexMap, cityId);
+      const city = GameEngine.findCityById(hexMap, cityId);
       if (!city || !city.production) continue;
 
       // Add production points
-      const cityYield = this.calculateCityYield(hexMap, city);
+      const cityYield = GameEngine.calculateCityYield(hexMap, city);
       city.production.productionStored += cityYield.production || 0;
 
       // Check if production is complete
       if (city.production.productionStored >= city.production.productionRequired) {
-        this.completeProduction(gameState, city, playerState);
+        GameEngine.completeProduction(gameState, city, playerState);
       }
     }
   }
@@ -652,7 +681,7 @@ export class GameEngine {
 
         // Check if research completed this turn
         if (tech.progress >= baseCost && previousProgress < baseCost) {
-          this.completeTechnologyResearch(tech.techId, playerState, gameState);
+          GameEngine.completeTechnologyResearch(tech.techId, playerState, gameState);
         }
 
         logger.debug(`Player ${playerState.userId} research progress: ${tech.techId} - ${tech.progress}/${baseCost}`);
@@ -671,7 +700,7 @@ export class GameEngine {
       const tile = hexMap.getTile(tilePos.x, tilePos.y);
       if (tile) {
         // Base terrain yield
-        const terrainYield = this.getTerrainYield(tile.terrain);
+        const terrainYield = GameEngine.getTerrainYield(tile.terrain);
         baseYield.food += terrainYield.food || 0;
         baseYield.production += terrainYield.production || 0;
         baseYield.gold += terrainYield.gold || 0;
@@ -702,6 +731,12 @@ export class GameEngine {
   // Helper methods
 
   private static findUnit(gameState: GameState, unitId: string): Unit | null {
+    // First check gameState.units object (used by tests and some game state formats)
+    if (gameState.units && gameState.units[unitId]) {
+      return gameState.units[unitId];
+    }
+
+    // Then check units on hex tiles (main game state format)
     const hexMap = HexMap.deserialize(gameState.map);
     for (let y = 0; y < hexMap.height; y++) {
       for (let x = 0; x < hexMap.width; x++) {
@@ -727,20 +762,28 @@ export class GameEngine {
   }
 
   private static removeUnit(gameState: GameState, unitId: string): void {
+    // Remove from gameState.units object (for tests and some game state formats)
+    if (gameState.units && gameState.units[unitId]) {
+      delete gameState.units[unitId];
+    }
+
+    // Remove from hex map tiles
     const hexMap = HexMap.deserialize(gameState.map);
     for (let y = 0; y < hexMap.height; y++) {
       for (let x = 0; x < hexMap.width; x++) {
         const tile = hexMap.getTile(x, y);
         if (tile?.unit && tile.unit.id === unitId) {
           tile.unit = null;
-          // Also remove from player's unit list
-          gameState.players.forEach(player => {
-            player.units = player.units.filter(id => id !== unitId);
-          });
           break;
         }
       }
     }
+
+    // Also remove from player's unit list
+    gameState.players.forEach(player => {
+      player.units = player.units.filter(id => id !== unitId);
+    });
+
     gameState.map = hexMap.serialize();
   }
 

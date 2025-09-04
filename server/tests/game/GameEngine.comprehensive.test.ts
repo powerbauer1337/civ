@@ -276,6 +276,7 @@ describe('GameEngine - Comprehensive Tests', () => {
       const enemy = result.gameState?.units?.['enemy1'];
       expect(enemy).toBeDefined();
       if (enemy) {
+        // Check that damage was dealt (original health was 80)
         expect(enemy.health).toBeLessThan(80);
       }
     });
