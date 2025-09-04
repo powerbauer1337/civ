@@ -283,7 +283,7 @@ export class DatabaseManager {
     const result = await this.pgClient.query(query, params);
     return result.rows.map(row => ({
       ...row,
-      payload: JSON.parse(row.payload)
+      payload: row.payload ? JSON.parse(row.payload) : null
     }));
   }
 

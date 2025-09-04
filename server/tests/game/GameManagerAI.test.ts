@@ -14,6 +14,16 @@ import {
   GameUtils
 } from '@civ-game/shared';
 
+// Mock the shared logger
+jest.mock('@civ-game/shared/utils', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn()
+  }
+}));
+
 // Mock dependencies
 jest.mock('socket.io');
 jest.mock('../../src/game/GameEngine');
@@ -310,7 +320,8 @@ describe('GameManagerAI', () => {
 
       gameManager['handleCreateSinglePlayer'](mockSocket, singlePlayerData);
 
-      expect(consoleErrorSpy).toHaveBeenCalled();
+      const { logger } = require('@civ-game/shared/utils');
+      expect(logger.error).toHaveBeenCalled();
       expect(mockSocket.emit).toHaveBeenCalledWith('error', {
         message: 'Failed to create single player game'
       });
@@ -517,14 +528,16 @@ describe('GameManagerAI', () => {
 
       await gameManager['processAITurn'](gameRoom, gameId, 'ai-player');
 
-      expect(consoleErrorSpy).toHaveBeenCalled();
+      const { logger } = require('@civ-game/shared/utils');
+      expect(logger.error).toHaveBeenCalled();
       expect(processNextTurnSpy).toHaveBeenCalledWith(gameRoom, gameId);
     });
 
     it('should handle missing AI player', async () => {
       await gameManager['processAITurn'](gameRoom, gameId, 'nonexistent-ai');
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith('AI player not found: nonexistent-ai');
+      const { logger } = require('@civ-game/shared/utils');
+      expect(logger.error).toHaveBeenCalledWith('AI player not found: nonexistent-ai');
     });
   });
 
