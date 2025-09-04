@@ -151,7 +151,11 @@ const HexTile: React.FC<HexTileProps> = ({
       aria-label={ariaLabel}
       tabIndex={0}
       onKeyDown={handleKeyDown}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       role="button"
+      style={{ cursor: 'pointer' }}
     >
       {/* Main hex tile */}
       <path
