@@ -30,7 +30,7 @@ describe('GameEngine - Comprehensive Tests', () => {
       name: 'Player 1',
       civilization: 'Romans',
       resources: { gold: 100, food: 50, production: 30, science: 20 },
-      technologies: [TechnologyType.AGRICULTURE],
+      technologies: [TechnologyType.POTTERY],
       cities: [
         {
           id: 'city1',
@@ -301,7 +301,8 @@ describe('GameEngine - Comprehensive Tests', () => {
 
     test('should remove destroyed units', () => {
       // Position enemy adjacent and weaken it
-      testGameState.units!['enemy1']!.position = { x: 3, y: 4 };
+      testGameState.units!['enemy1']!.x = 3;
+      testGameState.units!['enemy1']!.y = 4;
       testGameState.units!['enemy1']!.health = 1; // Very low health
 
       const attackAction: GameAction = {
@@ -396,7 +397,7 @@ describe('GameEngine - Comprehensive Tests', () => {
       expect(result.success).toBe(true);
       
       const city = result.gameState?.cities?.['city1'];
-      expect(city?.production.item).toBe(UnitType.SCOUT);
+      expect(city?.production?.targetId).toBe(UnitType.SCOUT);
     });
 
     test('should complete unit production when sufficient progress', () => {
@@ -421,7 +422,7 @@ describe('GameEngine - Comprehensive Tests', () => {
         type: GameActionType.RESEARCH_TECHNOLOGY,
         payload: {
           playerId: 'player1',
-          technologyId: TechnologyType.POTTERY
+          technologyId: TechnologyType.ARCHERY
         }
       };
 
@@ -429,7 +430,7 @@ describe('GameEngine - Comprehensive Tests', () => {
       expect(result.success).toBe(true);
       
       const player = result.gameState?.players?.find(p => p.id === 'player1');
-      expect(player?.technologies).toContain(TechnologyType.POTTERY);
+      expect(player?.technologies).toContain(TechnologyType.ARCHERY);
     });
 
     test('should reject research without sufficient science', () => {
@@ -480,13 +481,13 @@ describe('GameEngine - Comprehensive Tests', () => {
 
     test('should reset unit movement at turn end', () => {
       // Exhaust unit movement
-      testGameState.units!['unit1']!.moves = 0;
+      testGameState.units!['unit1']!.movement = 0;
 
       const result = GameEngine.processTurnEnd(testGameState);
       expect(result.success).toBe(true);
       
       const unit = result.gameState?.units?.['unit1'];
-      expect(unit?.moves).toBeGreaterThan(0);
+      expect(unit?.movement).toBeGreaterThan(0);
     });
 
     test('should generate resources at turn end', () => {

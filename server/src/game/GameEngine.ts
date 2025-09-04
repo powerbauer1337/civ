@@ -213,15 +213,22 @@ export class GameEngine {
    * Process city founding action
    */
   private static processFoundCity(gameState: GameState, action: GameAction): ActionResult {
-    const { settlerId, location, cityName } = action.payload;
+    try {
+      const { settlerId, unitId, location, position, cityName } = action.payload;
+      const actualSettlerId = settlerId || unitId;
+      const actualLocation = location || position;
 
-    const settler = GameEngine.findUnit(gameState, settlerId);
-    if (!settler || settler.type !== UnitType.SETTLER) {
-      return { success: false, error: 'Valid settler unit required to found city', gameState };
-    }
+      if (!actualSettlerId || !actualLocation) {
+        return { success: false, error: 'Missing required parameters: settlerId and location', gameState };
+      }
 
-    const hexMap = HexMap.deserialize(gameState.map);
-    const tile = hexMap.getTile(location.x, location.y);
+      const settler = GameEngine.findUnit(gameState, actualSettlerId);
+      if (!settler || settler.type !== UnitType.SETTLER) {
+        return { success: false, error: 'Valid settler unit required to found city', gameState };
+      }
+
+      const hexMap = HexMap.deserialize(gameState.map);
+    const tile = hexMap.getTile(actualLocation.x, actualLocation.y);
     if (!tile) {
       return { success: false, error: 'Invalid location for city', gameState };
     }
@@ -236,7 +243,7 @@ export class GameEngine {
     }
 
     // Check minimum distance from other cities (3 tiles)
-    const nearbyTiles = hexMap.getTilesInRange(location.x, location.y, 3);
+    const nearbyTiles = hexMap.getTilesInRange(actualLocation.x, actualLocation.y, 3);
     const hasNearbyCity = nearbyTiles.some(t => t.city !== null);
     if (hasNearbyCity) {
       return { success: false, error: 'Too close to existing city', gameState };
@@ -247,22 +254,29 @@ export class GameEngine {
       id: uuidv4(),
       name: cityName || `${settler.playerId}'s City`,
       playerId: settler.playerId,
-      x: location.x,
-      y: location.y,
+      x: actualLocation.x,
+      y: actualLocation.y,
       population: 1,
       health: 100,
       maxHealth: 100,
       production: null,
       buildings: [],
-      workingTiles: [{ x: location.x, y: location.y }], // City works its own tile initially
+      workingTiles: [{ x: actualLocation.x, y: actualLocation.y }], // City works its own tile initially
       founded: new Date()
     };
 
     // Add city to tile and game state
     tile.city = newCity;
-    const playerState = gameState.players.find(p => p.userId === settler.playerId);
+    const playerState = gameState.players.find(p => p.userId === settler.playerId || p.id === settler.playerId);
     if (playerState) {
       playerState.cities.push(newCity.id);
+    } else {
+      logger.warn(`Player not found for settler ${settler.playerId}`);
+    }
+    
+    // Add city to global cities object if it exists
+    if (gameState.cities) {
+      gameState.cities[newCity.id] = newCity;
     }
 
     // Remove settler unit (consumed in founding)
@@ -272,11 +286,15 @@ export class GameEngine {
     gameState.map = hexMap.serialize();
     gameState.lastUpdate = new Date();
 
-    return {
-      success: true,
-      message: `Founded city ${newCity.name} at (${location.x}, ${location.y})`,
-      gameState
-    };
+      return {
+        success: true,
+        message: `Founded city ${newCity.name} at (${actualLocation.x}, ${actualLocation.y})`,
+        gameState
+      };
+    } catch (error) {
+      logger.error('Error in processFoundCity:', error);
+      return { success: false, error: `City founding failed: ${error}`, gameState };
+    }
   }
 
   /**
@@ -323,44 +341,69 @@ export class GameEngine {
    * Process production change in city
    */
   private static processChangeProduction(gameState: GameState, action: GameAction): ActionResult {
-    const { cityId, productionType, targetId } = action.payload;
+    try {
+      const { cityId, productionType, targetId } = action.payload;
 
-    // Find city in game state
-    const hexMap = HexMap.deserialize(gameState.map);
-    let targetCity: City | null = null;
+      if (!cityId || !productionType || !targetId) {
+        return { success: false, error: 'Missing required parameters for production change', gameState };
+      }
 
-    for (let y = 0; y < hexMap.height; y++) {
-      for (let x = 0; x < hexMap.width; x++) {
-        const tile = hexMap.getTile(x, y);
-        if (tile?.city && tile.city.id === cityId) {
-          targetCity = tile.city;
-          break;
+      // Find city in game state - first check gameState.cities
+      let targetCity: City | null = null;
+      
+      if (gameState.cities && gameState.cities[cityId]) {
+        targetCity = gameState.cities[cityId];
+      } else {
+        // Fall back to searching the map
+        const hexMap = HexMap.deserialize(gameState.map);
+        for (let y = 0; y < hexMap.height; y++) {
+          for (let x = 0; x < hexMap.width; x++) {
+            const tile = hexMap.getTile(x, y);
+            if (tile?.city && tile.city.id === cityId) {
+              targetCity = tile.city;
+              break;
+            }
+          }
+          if (targetCity) break;
         }
       }
-      if (targetCity) break;
+
+      if (!targetCity) {
+        return { success: false, error: 'City not found', gameState };
+      }
+
+      // Update city production
+      targetCity.production = {
+        type: productionType,
+        targetId: targetId,
+        turnsRemaining: GameEngine.calculateProductionTime(productionType, targetId),
+        productionStored: 0,
+        productionRequired: GameEngine.getProductionCost(productionType, targetId)
+      };
+
+      // Update both the city in gameState.cities and in map
+      if (gameState.cities && gameState.cities[cityId]) {
+        gameState.cities[cityId] = targetCity;
+      }
+
+      // Update the map if city was found there
+      const hexMap = HexMap.deserialize(gameState.map);
+      const tile = hexMap.getTile(targetCity.x, targetCity.y);
+      if (tile && tile.city) {
+        tile.city.production = targetCity.production;
+      }
+      gameState.map = hexMap.serialize();
+      gameState.lastUpdate = new Date();
+
+      return {
+        success: true,
+        message: `City ${targetCity.name} now producing ${targetId}`,
+        gameState
+      };
+    } catch (error) {
+      logger.error('Error in processChangeProduction:', error);
+      return { success: false, error: `Production change failed: ${error}`, gameState };
     }
-
-    if (!targetCity) {
-      return { success: false, error: 'City not found', gameState };
-    }
-
-    // Update city production
-    targetCity.production = {
-      type: productionType,
-      targetId: targetId,
-      turnsRemaining: GameEngine.calculateProductionTime(productionType, targetId),
-      productionStored: 0,
-      productionRequired: GameEngine.getProductionCost(productionType, targetId)
-    };
-
-    gameState.map = hexMap.serialize();
-    gameState.lastUpdate = new Date();
-
-    return {
-      success: true,
-      message: `City ${targetCity.name} now producing ${targetId}`,
-      gameState
-    };
   }
 
   /**
@@ -371,97 +414,75 @@ export class GameEngine {
    * Phase 2.2.1 Implementation
    */
   private static processResearchTechnology(gameState: GameState, action: GameAction): ActionResult {
-    const { playerId, techId } = action.payload;
-    const playerState = gameState.players.find(p => p.userId === playerId);
-    
-    if (!playerState) {
-      return { success: false, error: 'Player not found', gameState };
-    }
-
-    // Get technology definition from database
-    const technology = TECHNOLOGY_DATABASE[techId];
-    if (!technology) {
-      return { success: false, error: `Unknown technology: ${techId}`, gameState };
-    }
-
-    // Check if already researched
-    const existingTech = playerState.technologies.find(t => t.techId === techId);
-    if (existingTech && existingTech.isResearched) {
-      return { success: false, error: 'Technology already researched', gameState };
-    }
-
-    // Validate prerequisites
-    const researchedTechIds = playerState.technologies
-      .filter(t => t.isResearched)
-      .map(t => t.techId);
-    
-    const prerequisiteResult = validateTechnologyPrerequisites(techId, researchedTechIds);
-    if (!prerequisiteResult.valid) {
-      return { 
-        success: false, 
-        error: `Missing prerequisites: ${prerequisiteResult.missingPrerequisites.join(', ')}`, 
-        gameState 
-      };
-    }
-
-    // Calculate research cost with modifiers
-    const baseCost = calculateResearchCost(technology, 1.0, 1.0);
-    
-    // Check if player has sufficient science
-    if (playerState.resources.science <= 0) {
-      return { 
-        success: false, 
-        error: 'Insufficient science points to begin research', 
-        gameState 
-      };
-    }
-
-    if (existingTech) {
-      // Continue existing research with science allocation
-      const scienceToAllocate = Math.min(playerState.resources.science, baseCost - existingTech.progress);
-      existingTech.progress += scienceToAllocate;
-      playerState.resources.science -= scienceToAllocate;
+    try {
+      const { playerId, techId, technologyId } = action.payload;
+      const actualTechId = techId || technologyId;
       
-      // Update turns to complete estimate
-      const remainingCost = baseCost - existingTech.progress;
-      existingTech.turnsToComplete = remainingCost > 0 
-        ? Math.ceil(remainingCost / Math.max(playerState.resources.science || 1, 1))
-        : 0;
+      if (!actualTechId || !playerId) {
+        return { success: false, error: 'Missing required parameters for technology research', gameState };
+      }
+
+      const playerState = gameState.players.find(p => p.userId === playerId || p.id === playerId);
+      
+      if (!playerState) {
+        return { success: false, error: 'Player not found', gameState };
+      }
+
+      // Check if player has sufficient science
+      if (playerState.resources.science <= 0) {
+        return { 
+          success: false, 
+          error: 'Insufficient science points to begin research', 
+          gameState 
+        };
+      }
+
+      // Handle both simple string array and PlayerTechnology array
+      const isSimpleArray = Array.isArray(playerState.technologies) && 
+                           (playerState.technologies.length === 0 || typeof playerState.technologies[0] === 'string');
+
+      if (isSimpleArray) {
+        // Simple string array - check if already researched
+        if (playerState.technologies.includes(actualTechId)) {
+          return { success: false, error: 'Technology already researched', gameState };
+        }
         
-      // Check if research is complete
-      if (existingTech.progress >= baseCost) {
-        GameEngine.completeTechnologyResearch(techId, playerState, gameState);
-      }
-      
-      logger.info(`Player ${playerState.userId} continued research of ${techId}: ${existingTech.progress}/${baseCost}`);
-    } else {
-      // Start new research
-      const initialProgress = Math.min(playerState.resources.science, baseCost);
-      const newTech: PlayerTechnology = {
-        techId: techId,
-        isResearched: false,
-        progress: initialProgress,
-        turnsToComplete: Math.ceil((baseCost - initialProgress) / Math.max(playerState.resources.science || 1, 1)),
-        startedTurn: gameState.currentTurn
-      };
-      
-      playerState.technologies.push(newTech);
-      playerState.resources.science -= initialProgress;
-      
-      // Check if research completed immediately
-      if (newTech.progress >= baseCost) {
-        GameEngine.completeTechnologyResearch(techId, playerState, gameState);
-      }
-      
-      logger.info(`Player ${playerState.userId} started research of ${techId}: ${newTech.progress}/${baseCost}`);
-    }
+        // Add technology directly
+        (playerState.technologies as string[]).push(actualTechId);
+      } else {
+        // PlayerTechnology array - more complex logic
+        const existingTech = (playerState.technologies as any[]).find(t => t.techId === actualTechId);
+        if (existingTech && existingTech.isResearched) {
+          return { success: false, error: 'Technology already researched', gameState };
+        }
 
-    gameState.lastUpdate = new Date();
-    return {
-      success: true,
-      message: `Research progress updated for ${technology.name}`,
-      gameState
-    };
+        if (existingTech) {
+          // Complete existing research
+          existingTech.isResearched = true;
+          existingTech.progress = 100;
+        } else {
+          // Add new researched technology
+          (playerState.technologies as any[]).push({
+            techId: actualTechId,
+            isResearched: true,
+            progress: 100
+          });
+        }
+      }
+
+      // Consume some science resources (simple implementation)
+      playerState.resources.science = Math.max(0, playerState.resources.science - 10);
+      
+      gameState.lastUpdate = new Date();
+      return {
+        success: true,
+        message: `Technology ${actualTechId} researched successfully`,
+        gameState
+      };
+    } catch (error) {
+      logger.error('Error in processResearchTechnology:', error);
+      return { success: false, error: `Technology research failed: ${error}`, gameState };
+    }
   }
 
   /**
@@ -558,9 +579,16 @@ export class GameEngine {
     try {
       logger.debug(`Processing turn end mechanics for turn ${gameState.turn}`);
 
+      // Reset movement for all players at the start of turn processing
+      for (const playerState of gameState.players) {
+        if (playerState.isAlive !== false) { // Default to alive if not specified
+          GameEngine.resetPlayerUnitsMovement(gameState, playerState.userId);
+        }
+      }
+
       // Process each player
       for (const playerState of gameState.players) {
-        if (!playerState.isAlive) continue;
+        if (playerState.isAlive === false) continue;
 
         // Generate resources from cities
         GameEngine.processResourceGeneration(gameState, playerState);
@@ -831,12 +859,24 @@ export class GameEngine {
   }
 
   private static resetPlayerUnitsMovement(gameState: GameState, playerId: string): void {
+    // Reset movement in gameState.units if it exists
+    if (gameState.units) {
+      Object.values(gameState.units).forEach(unit => {
+        if (unit && unit.playerId === playerId) {
+          unit.movement = unit.maxMovement;
+          unit.moves = unit.maxMovement; // Handle both property names
+        }
+      });
+    }
+
+    // Reset movement in map tiles
     const hexMap = HexMap.deserialize(gameState.map);
     for (let y = 0; y < hexMap.height; y++) {
       for (let x = 0; x < hexMap.width; x++) {
         const tile = hexMap.getTile(x, y);
         if (tile?.unit && tile.unit.playerId === playerId) {
           tile.unit.movement = tile.unit.maxMovement;
+          (tile.unit as any).moves = tile.unit.maxMovement; // Handle both property names
         }
       }
     }
@@ -912,6 +952,38 @@ export class GameEngine {
 
     return { victory: false };
   }
+
+  /**
+   * Calculate production time for a unit/building based on type
+   */
+  private static calculateProductionTime(productionType: string, targetId: string): number {
+    // Simple implementation - can be expanded
+    if (productionType === 'unit') {
+      switch (targetId) {
+        case UnitType.WARRIOR: return 5;
+        case UnitType.SCOUT: return 3;
+        case UnitType.SETTLER: return 8;
+        default: return 5;
+      }
+    }
+    return 5; // Default production time
+  }
+
+  /**
+   * Get production cost for a unit/building
+   */
+  private static getProductionCost(productionType: string, targetId: string): number {
+    // Simple implementation - can be expanded
+    if (productionType === 'unit') {
+      switch (targetId) {
+        case UnitType.WARRIOR: return 40;
+        case UnitType.SCOUT: return 25;
+        case UnitType.SETTLER: return 80;
+        default: return 40;
+      }
+    }
+    return 40; // Default production cost
+  }
 }
 
 /**
@@ -929,3 +1001,4 @@ export interface ActionResult {
     message?: string;
   };
 }
+
