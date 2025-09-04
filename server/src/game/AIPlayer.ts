@@ -484,7 +484,7 @@ export class AIPlayer {
       if (this.currentStrategy === 'defend' || player.units.length < 3) {
         productionChoice = { type: 'unit', item: UnitType.WARRIOR };
         priority = 8;
-      } else if (this.currentStrategy === 'expand' && player.cities.length < 4) {
+      } else if (this.currentStrategy === 'expand' && player.cities.length < 3) {
         productionChoice = { type: 'unit', item: UnitType.SETTLER };
         priority = 9;
       } else if (this.currentStrategy === 'explore' && !player.units.some(u => u.type === UnitType.SCOUT)) {

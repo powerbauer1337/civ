@@ -822,7 +822,7 @@ export class GameEngine {
     // Simple damage calculation
     const baseDamage = Math.max(1, attackStrength - adjustedDefense);
     const randomMultiplier = 0.8 + Math.random() * 0.4; // 0.8 to 1.2
-    const finalDamage = Math.floor(baseDamage * randomMultiplier);
+    const finalDamage = Math.max(1, Math.floor(baseDamage * randomMultiplier));
 
     return {
       damage: finalDamage,

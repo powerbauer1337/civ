@@ -296,7 +296,7 @@ describe('GameEngine - Comprehensive Tests', () => {
 
       const result = GameEngine.processPlayerAction(testGameState, attackAction);
       expect(result.success).toBe(false);
-      expect(result.error).toContain('range' || 'adjacent');
+      expect(result.error?.toLowerCase()).toMatch(/range|adjacent/);
     });
 
     test('should remove destroyed units', () => {
@@ -376,7 +376,7 @@ describe('GameEngine - Comprehensive Tests', () => {
 
       const result = GameEngine.processPlayerAction(testGameState, foundAction);
       expect(result.success).toBe(false);
-      expect(result.error).toContain('close' || 'distance');
+      expect(result.error?.toLowerCase()).toMatch(/close|distance/);
     });
   });
 
