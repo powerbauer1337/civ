@@ -322,11 +322,14 @@ describe('AIPlayer', () => {
 
   describe('City Decision Making', () => {
     it('should change city production when current production is complete', async () => {
+      // Use insane difficulty to avoid random mistake chance interference
+      const insaneAI = new AIPlayer('test-ai-player', AIPersonality.Balanced, AIDifficulty.Insane);
+      
       // Set production as completed
       mockGameState.players['test-ai-player'].cities[0].production.progress = 15;
       mockGameState.players['test-ai-player'].cities[0].production.cost = 10;
 
-      const actions = await aiPlayer.makeDecisions(mockGameState);
+      const actions = await insaneAI.makeDecisions(mockGameState);
       const productionActions = actions.filter(a => a.type === GameActionType.CHANGE_PRODUCTION);
       
       expect(productionActions.length).toBeGreaterThan(0);
