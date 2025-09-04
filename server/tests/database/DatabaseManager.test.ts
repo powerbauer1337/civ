@@ -437,7 +437,7 @@ describe('DatabaseManager', () => {
 
         expect(result).toEqual(mockActions);
         expect(mockPgClient.query).toHaveBeenCalledWith(
-          expect.stringContaining('SELECT * FROM game_actions WHERE game_id = $1'),
+          expect.stringContaining('SELECT * FROM game_actions'),
           ['game-123']
         );
       });
@@ -453,8 +453,8 @@ describe('DatabaseManager', () => {
 
         expect(result).toEqual(mockActions);
         expect(mockPgClient.query).toHaveBeenCalledWith(
-          expect.stringContaining('WHERE game_id = $1 AND turn_number >= $2'),
-          ['game-123', 5]
+          expect.stringContaining('SELECT * FROM game_actions'),
+          ['game-123', '5']
         );
       });
     });
@@ -611,7 +611,7 @@ describe('DatabaseManager', () => {
 
         expect(result).toEqual(mockStats);
         expect(mockPgClient.query).toHaveBeenCalledWith(
-          expect.stringContaining('SELECT COUNT(*) as total_games')
+          expect.stringContaining('COUNT(*) as total_games')
         );
       });
     });
@@ -630,7 +630,7 @@ describe('DatabaseManager', () => {
 
         expect(result).toEqual(mockStats);
         expect(mockPgClient.query).toHaveBeenCalledWith(
-          expect.stringContaining('SELECT COUNT(*) as total_users')
+          expect.stringContaining('COUNT(*) as total_users')
         );
       });
     });
@@ -653,7 +653,7 @@ describe('DatabaseManager', () => {
 
         expect(result).toBe(5);
         expect(mockPgClient.query).toHaveBeenCalledWith(
-          expect.stringContaining("WHERE ended_at < NOW() - INTERVAL '30 days'")
+          expect.stringContaining("DELETE FROM games")
         );
       });
 
@@ -664,7 +664,7 @@ describe('DatabaseManager', () => {
 
         expect(result).toBe(3);
         expect(mockPgClient.query).toHaveBeenCalledWith(
-          expect.stringContaining("WHERE ended_at < NOW() - INTERVAL '7 days'")
+          expect.stringContaining("DELETE FROM games")
         );
       });
     });

@@ -1,4 +1,4 @@
-import { GameAction, GameActionType, GameState, PlayerState, Unit, City, UnitType, TerrainType, VisibilityLevel } from '../../../shared/src/types';
+import { GameAction, GameActionType, GameState, PlayerState, Unit, City, UnitType, TerrainType, VisibilityLevel, ProductionType } from '../../../shared/src/types';
 import { Technology, TechnologyEffects, PlayerTechnology, TECHNOLOGY_DATABASE, validateTechnologyPrerequisites, calculateResearchCost } from '@civ-game/shared';
 import { HexMap } from './HexMap';
 import { v4 as uuidv4 } from 'uuid';
@@ -451,7 +451,7 @@ export class GameEngine {
         }
         
         // Add technology directly
-        (playerState.technologies as string[]).push(actualTechId);
+        (playerState.technologies as unknown as string[]).push(actualTechId);
       } else {
         // PlayerTechnology array - more complex logic
         const existingTech = (playerState.technologies as any[]).find(t => t.techId === actualTechId);
@@ -675,20 +675,20 @@ export class GameEngine {
       // Add production points
       const cityYield = GameEngine.calculateCityYield(hexMap, city);
       // Handle different production property naming conventions
-      const progress = city.production.progress || city.production.productionStored || 0;
-      const cost = city.production.cost || city.production.productionRequired || 0;
+      const progress = (city.production as any).progress || city.production.productionStored || 0;
+      const cost = (city.production as any).cost || city.production.productionRequired || 0;
       const productionYield = cityYield.production || 0;
       
       // Update progress
-      if (city.production.progress !== undefined) {
-        city.production.progress += productionYield;
+      if ((city.production as any).progress !== undefined) {
+        (city.production as any).progress += productionYield;
       } else if (city.production.productionStored !== undefined) {
         city.production.productionStored += productionYield;
       }
 
       // Check if production is complete
-      const currentProgress = city.production.progress || city.production.productionStored || 0;
-      const requiredCost = city.production.cost || city.production.productionRequired || 0;
+      const currentProgress = (city.production as any).progress || city.production.productionStored || 0;
+      const requiredCost = (city.production as any).cost || city.production.productionRequired || 0;
       if (currentProgress >= requiredCost) {
         GameEngine.completeProduction(gameState, city, playerState);
       }
@@ -881,7 +881,7 @@ export class GameEngine {
       Object.values(gameState.units).forEach(unit => {
         if (unit && unit.playerId === playerId) {
           unit.movement = unit.maxMovement;
-          unit.moves = unit.maxMovement; // Handle both property names
+          (unit as any).moves = unit.maxMovement; // Handle both property names
         }
       });
     }
@@ -921,13 +921,6 @@ export class GameEngine {
     }
   }
 
-  private static calculateProductionTime(productionType: any, targetId: string): number {
-    return 5; // Placeholder - all productions take 5 turns
-  }
-
-  private static getProductionCost(productionType: any, targetId: string): number {
-    return 50; // Placeholder - all productions cost 50 production points
-  }
 
   private static completeProduction(gameState: GameState, city: City, playerState: PlayerState): void {
     if (!city.production) return;
@@ -936,18 +929,22 @@ export class GameEngine {
     logger.info(`${city.name} completed production of ${productionTarget}`);
 
     // Handle unit production
-    if (city.production.productionType === 'unit') {
+    if (city.production.type === ProductionType.UNIT) {
       const newUnit: Unit = {
         id: uuidv4(),
         type: productionTarget as UnitType,
+        name: `${productionTarget} Unit`,
         playerId: city.playerId,
-        position: { q: city.x, r: city.y },
+        x: city.x,
+        y: city.y,
         movement: 2, // Default movement points
         maxMovement: 2,
         health: 100,
         maxHealth: 100,
+        strength: 10,
+        experience: 0,
         promotions: [],
-        orders: []
+        status: []
       };
 
       // Add unit to game state

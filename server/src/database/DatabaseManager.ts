@@ -308,7 +308,7 @@ export class DatabaseManager {
 
     if (fromTurn !== undefined) {
       query += ' AND turn_number >= $2';
-      params.push(fromTurn);
+      params.push(fromTurn.toString());
     }
 
     query += ' ORDER BY created_at ASC';
