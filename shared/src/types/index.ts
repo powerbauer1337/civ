@@ -316,6 +316,11 @@ export interface PlayerState {
   civilization: string;
   resources: Resources;
   technologies: PlayerTechnology[];
+  currentResearch?: {   // Add current research property
+    techId: string;
+    progress: number;
+    totalCost: number;
+  };
   cities: string[]; // city IDs
   units: string[]; // unit IDs
   score: number;

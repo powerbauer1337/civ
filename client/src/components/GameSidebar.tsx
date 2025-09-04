@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, Suspense } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   Box,
@@ -11,14 +11,19 @@ import {
   Tab,
   Paper,
   Chip,
-  Button
+  Button,
+  CircularProgress
 } from '@mui/material';
 import {
   People as PeopleIcon,
   LocationCity as CityIcon,
   Science as ScienceIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  AccountTree as TechTreeIcon
 } from '@mui/icons-material';
+
+// Lazy load the TechnologyTreeModal to maintain bundle optimization
+const TechnologyTreeModal = React.lazy(() => import('./TechnologyTree/TechnologyTreeModal'));
 import { RootState } from '../store/store';
 import { toggleSidebar, setCurrentPanel } from '../store/uiSlice';
 
@@ -31,6 +36,7 @@ const GameSidebar: React.FC<GameSidebarProps> = ({ open }) => {
   const { gameState } = useSelector((state: RootState) => state.game);
   const { currentPanel } = useSelector((state: RootState) => state.ui);
   const { user } = useSelector((state: RootState) => state.auth);
+  const [technologyTreeOpen, setTechnologyTreeOpen] = useState(false);
 
   const handleClose = () => {
     dispatch(toggleSidebar());
@@ -187,30 +193,63 @@ const GameSidebar: React.FC<GameSidebarProps> = ({ open }) => {
 
         {currentPanel === 'tech' && (
           <Box>
-            <Typography variant="h6" sx={{ color: 'white', mb: 2 }}>
-              Technologies
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" sx={{ color: 'white' }}>
+                Technologies
+              </Typography>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<TechTreeIcon />}
+                onClick={() => setTechnologyTreeOpen(true)}
+                sx={{
+                  bgcolor: 'rgba(33, 150, 243, 0.8)',
+                  '&:hover': { bgcolor: 'rgba(33, 150, 243, 1)' }
+                }}
+              >
+                Tech Tree
+              </Button>
+            </Box>
             {currentPlayer && (
               <>
-                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 2 }}>
-                  Researched: {currentPlayer.technologies?.length || 0} technologies
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1 }}>
+                    Science: {currentPlayer.resources?.science || 0} points
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1 }}>
+                    Researched: {currentPlayer.technologies?.length || 0} technologies
+                  </Typography>
+                  {currentPlayer.currentResearch && (
+                    <Paper sx={{ p: 1, bgcolor: 'rgba(255, 152, 0, 0.2)', border: '1px solid rgba(255, 152, 0, 0.5)' }}>
+                      <Typography variant="body2" sx={{ color: 'white', fontWeight: 'bold' }}>
+                        Currently researching:
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+                        {currentPlayer.currentResearch.techId?.replace('_', ' ')}
+                      </Typography>
+                    </Paper>
+                  )}
+                </Box>
+                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1 }}>
+                  Completed Technologies:
                 </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, maxHeight: 200, overflow: 'auto' }}>
                   {currentPlayer.technologies?.map((tech) => (
                     <Chip
                       key={tech.techId}
-                      label={tech.techId.replace('_', ' ')}
+                      label={tech.techId.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                       size="small"
                       sx={{
-                        bgcolor: 'rgba(33, 150, 243, 0.3)',
-                        color: 'white'
+                        bgcolor: 'rgba(76, 175, 80, 0.3)',
+                        color: 'white',
+                        border: '1px solid rgba(76, 175, 80, 0.5)'
                       }}
                     />
                   ))}
                 </Box>
                 {(!currentPlayer.technologies || currentPlayer.technologies.length === 0) && (
-                  <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center' }}>
-                    No technologies researched yet.
+                  <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center', py: 2 }}>
+                    No technologies researched yet. Click "Tech Tree" to start researching!
                   </Typography>
                 )}
               </>
@@ -218,6 +257,14 @@ const GameSidebar: React.FC<GameSidebarProps> = ({ open }) => {
           </Box>
         )}
       </Box>
+      
+      {/* Technology Tree Modal */}
+      <Suspense fallback={<CircularProgress />}>
+        <TechnologyTreeModal
+          open={technologyTreeOpen}
+          onClose={() => setTechnologyTreeOpen(false)}
+        />
+      </Suspense>
     </Box>
   );
 };
