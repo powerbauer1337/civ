@@ -353,7 +353,7 @@ describe('SocketHandler', () => {
 
       chatMessageHandler(messageData);
 
-      expect(console.error).toHaveBeenCalledWith('Error processing chat message:', expect.any(Error));
+      expect(logger.error).toHaveBeenCalledWith('Error processing chat message:', expect.any(Error));
       expect(mockSocket.emit).toHaveBeenCalledWith('error', {
         message: 'Failed to send message',
         type: 'chat_error'
@@ -391,7 +391,7 @@ describe('SocketHandler', () => {
 
       playerActivityHandler(activityData);
 
-      expect(console.error).toHaveBeenCalledWith('Error updating player activity:', expect.any(Error));
+      expect(logger.error).toHaveBeenCalledWith('Error updating player activity:', expect.any(Error));
       // Should not emit any error to socket - fails silently
       expect(mockSocket.emit).not.toHaveBeenCalled();
     });
@@ -410,7 +410,7 @@ describe('SocketHandler', () => {
     test('should log client disconnection', () => {
       disconnectHandler('transport close');
 
-      expect(console.log).toHaveBeenCalledWith(
+      expect(logger.info).toHaveBeenCalledWith(
         '🔌 WebSocket client disconnected: test-socket-id, reason: transport close'
       );
     });
@@ -422,7 +422,7 @@ describe('SocketHandler', () => {
         jest.clearAllMocks();
         disconnectHandler(reason);
         
-        expect(console.log).toHaveBeenCalledWith(
+        expect(logger.info).toHaveBeenCalledWith(
           `🔌 WebSocket client disconnected: test-socket-id, reason: ${reason}`
         );
       });
@@ -448,7 +448,7 @@ describe('SocketHandler', () => {
 
       socketHandler.broadcastToPlayer('player-1', 'notification', testData);
 
-      expect(console.log).toHaveBeenCalledWith(
+      expect(logger.debug).toHaveBeenCalledWith(
         'Broadcasting notification to player player-1:',
         testData
       );
@@ -477,7 +477,7 @@ describe('SocketHandler', () => {
       // Simulate second connection
       mockSocketSetupCallback(mockSocket2 as Socket);
 
-      expect(console.log).toHaveBeenCalledWith('🔌 WebSocket client connected: test-socket-id-2');
+      expect(logger.info).toHaveBeenCalledWith('🔌 WebSocket client connected: test-socket-id-2');
       expect(mockSocket2.emit).toHaveBeenCalledWith('welcome', expect.objectContaining({
         socketId: 'test-socket-id-2'
       }));

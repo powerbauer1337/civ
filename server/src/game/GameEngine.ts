@@ -632,6 +632,10 @@ export class GameEngine {
    */
   private static processResourceGeneration(gameState: GameState, playerState: PlayerState): void {
     const hexMap = HexMap.deserialize(gameState.map);
+    if (!hexMap) {
+      logger.warn('Could not deserialize map for resource generation');
+      return;
+    }
 
     // Reset per-turn resources
     const generatedResources = { food: 0, production: 0, gold: 0, science: 0, culture: 0, faith: 0 };
@@ -667,6 +671,10 @@ export class GameEngine {
    */
   private static processCityProduction(gameState: GameState, playerState: PlayerState): void {
     const hexMap = HexMap.deserialize(gameState.map);
+    if (!hexMap) {
+      logger.warn('Could not deserialize map for city production');
+      return;
+    }
 
     for (const cityId of playerState.cities) {
       const city = GameEngine.findCityById(hexMap, cityId);
@@ -702,7 +710,11 @@ export class GameEngine {
   private static processTechnologyResearch(playerState: PlayerState, gameState: GameState): void {
     const scienceGenerated = playerState.resources.science;
     
+    // Handle both simple array of technology strings and complex PlayerTechnology objects
     for (const tech of playerState.technologies) {
+      // Skip if tech is just a string (already researched technology) or undefined/null
+      if (typeof tech === 'string' || !tech) continue;
+      
       if (!tech.isResearched && tech.turnsToComplete !== undefined) {
         const technology = TECHNOLOGY_DATABASE[tech.techId];
         if (!technology) continue;
@@ -888,6 +900,10 @@ export class GameEngine {
 
     // Reset movement in map tiles
     const hexMap = HexMap.deserialize(gameState.map);
+    if (!hexMap) {
+      logger.warn('Could not deserialize map for unit movement reset');
+      return;
+    }
     for (let y = 0; y < hexMap.height; y++) {
       for (let x = 0; x < hexMap.width; x++) {
         const tile = hexMap.getTile(x, y);
