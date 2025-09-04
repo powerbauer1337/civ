@@ -937,6 +937,7 @@ export class GameEngine {
         playerId: city.playerId,
         x: city.x,
         y: city.y,
+        position: { q: city.x, r: city.y }, // Add position property for compatibility
         movement: 2, // Default movement points
         maxMovement: 2,
         health: 100,
@@ -949,6 +950,10 @@ export class GameEngine {
 
       // Add unit to game state
       if (gameState.units) {
+        gameState.units[newUnit.id] = newUnit;
+      } else {
+        // Initialize units if it doesn't exist
+        gameState.units = {};
         gameState.units[newUnit.id] = newUnit;
       }
     }

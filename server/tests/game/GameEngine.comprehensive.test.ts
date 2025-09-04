@@ -8,6 +8,7 @@ import {
   UnitType,
   TerrainType,
   Unit,
+  ProductionType,
   City,
   PlayerState,
   TechnologyType
@@ -110,7 +111,7 @@ describe('GameEngine - Comprehensive Tests', () => {
       health: 200,
       maxHealth: 200,
       production: {
-        productionType: 'unit',
+        type: ProductionType.UNIT,
         targetId: UnitType.WARRIOR,
         progress: 5,
         cost: 40,

@@ -129,11 +129,25 @@ All major GameEngine static methods have been successfully implemented:
   - Enhanced test initialization and error handling for edge cases
 - [x] **Overall Test Improvement**: Server test success rate improved from 361/420 (86.0%) to 365/420 (86.9%)
 
+#### ✅ Completed (September 4, 2025 - Phase 2.3 Critical Test Fixes)
+
+##### 🔧 Critical Test Suite Fixes - COMPLETE
+- [x] **AIPlayer Test Fix**: Fixed "should prioritize settlers for expansion strategy" test
+  - Root cause: Test setup had incorrect production property format (`productionType` vs `type`)
+  - Solution: Updated test to use correct property names to match production interface
+  - Test now properly detects expansion strategy and production changes
+- [x] **GameEngine Production Test Fix**: Fixed "should complete unit production when sufficient progress" test  
+  - Root cause: Production completion failed due to property mismatch (`productionType` vs `type`)
+  - Solution: Corrected test setup to use `type: ProductionType.UNIT` and added missing imports
+  - Added proper unit positioning with both `x,y` and `position: {q,r}` for compatibility
+  - Production completion now works correctly and creates units at expected positions
+- [x] **Test Success Rate Improvement**: Fixed 2 major failing tests, improving overall stability
+
 #### 🚀 In Progress
 
-##### 🔧 Remaining Test Stabilization
-- [ ] Fix remaining AIPlayer tests (warrior attack, pathfinding)
-- [ ] Investigate GameEngine comprehensive test failures
+##### 🔧 Remaining Test Stabilization  
+- [ ] Fix remaining GameEngine.fixed.test.ts turn management tests (2 failing)
+- [ ] Fix SocketHandler console.error mocking issues (5 failing tests)
 - [ ] Achieve target 90%+ server test success rate
 
 #### 🚀 Technology & Gameplay Expansion
