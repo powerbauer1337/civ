@@ -1,4 +1,5 @@
 import { GameAction, GameActionType, GameState, PlayerState, Unit, City, UnitType, TerrainType, VisibilityLevel } from '../../../shared/src/types';
+import { Technology, TechnologyEffects, PlayerTechnology, TECHNOLOGY_DATABASE, validateTechnologyPrerequisites, calculateResearchCost } from '@civ-game/shared';
 import { HexMap } from './HexMap';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@civ-game/shared/utils';
@@ -336,12 +337,22 @@ export class GameEngine {
   /**
    * Process technology research action
    */
+  /**
+   * Enhanced technology research processing with prerequisites and effects
+   * Phase 2.2.1 Implementation
+   */
   private static processResearchTechnology(gameState: GameState, action: GameAction): ActionResult {
     const { playerId, techId } = action.payload;
-
     const playerState = gameState.players.find(p => p.userId === playerId);
+    
     if (!playerState) {
       return { success: false, error: 'Player not found', gameState };
+    }
+
+    // Get technology definition from database
+    const technology = TECHNOLOGY_DATABASE[techId];
+    if (!technology) {
+      return { success: false, error: `Unknown technology: ${techId}`, gameState };
     }
 
     // Check if already researched
@@ -350,27 +361,131 @@ export class GameEngine {
       return { success: false, error: 'Technology already researched', gameState };
     }
 
-    // Set as current research (simplified - full game would check prerequisites)
+    // Validate prerequisites
+    const researchedTechIds = playerState.technologies
+      .filter(t => t.isResearched)
+      .map(t => t.techId);
+    
+    const prerequisiteResult = validateTechnologyPrerequisites(techId, researchedTechIds);
+    if (!prerequisiteResult.valid) {
+      return { 
+        success: false, 
+        error: `Missing prerequisites: ${prerequisiteResult.missingPrerequisites.join(', ')}`, 
+        gameState 
+      };
+    }
+
+    // Calculate research cost with modifiers
+    const baseCost = calculateResearchCost(technology, 1.0, 1.0);
+    
+    // Check if player has sufficient science
+    if (playerState.resources.science <= 0) {
+      return { 
+        success: false, 
+        error: 'Insufficient science points to begin research', 
+        gameState 
+      };
+    }
+
     if (existingTech) {
-      // Continue existing research
-      existingTech.turnsToComplete = 5; // Placeholder
+      // Continue existing research with science allocation
+      const scienceToAllocate = Math.min(playerState.resources.science, baseCost - existingTech.progress);
+      existingTech.progress += scienceToAllocate;
+      playerState.resources.science -= scienceToAllocate;
+      
+      // Update turns to complete estimate
+      const remainingCost = baseCost - existingTech.progress;
+      existingTech.turnsToComplete = remainingCost > 0 
+        ? Math.ceil(remainingCost / Math.max(playerState.resources.science || 1, 1))
+        : 0;
+        
+      // Check if research is complete
+      if (existingTech.progress >= baseCost) {
+        this.completeTechnologyResearch(techId, playerState, gameState);
+      }
+      
+      logger.info(`Player ${playerState.userId} continued research of ${techId}: ${existingTech.progress}/${baseCost}`);
     } else {
       // Start new research
-      playerState.technologies.push({
+      const initialProgress = Math.min(playerState.resources.science, baseCost);
+      const newTech: PlayerTechnology = {
         techId: techId,
         isResearched: false,
-        progress: 0,
-        turnsToComplete: 5
-      });
+        progress: initialProgress,
+        turnsToComplete: Math.ceil((baseCost - initialProgress) / Math.max(playerState.resources.science || 1, 1)),
+        startedTurn: gameState.currentTurn
+      };
+      
+      playerState.technologies.push(newTech);
+      playerState.resources.science -= initialProgress;
+      
+      // Check if research completed immediately
+      if (newTech.progress >= baseCost) {
+        this.completeTechnologyResearch(techId, playerState, gameState);
+      }
+      
+      logger.info(`Player ${playerState.userId} started research of ${techId}: ${newTech.progress}/${baseCost}`);
     }
 
     gameState.lastUpdate = new Date();
-
     return {
       success: true,
-      message: `Started researching ${techId}`,
+      message: `Research progress updated for ${technology.name}`,
       gameState
     };
+  }
+
+  /**
+   * Complete technology research and apply effects
+   * Phase 2.2.1 Implementation
+   */
+  private static completeTechnologyResearch(techId: string, playerState: PlayerState, gameState: GameState): void {
+    const tech = playerState.technologies.find(t => t.techId === techId);
+    const technology = TECHNOLOGY_DATABASE[techId];
+    
+    if (!tech || !technology) return;
+
+    // Mark as researched
+    tech.isResearched = true;
+    tech.turnsToComplete = undefined;
+    
+    // Apply technology effects
+    if (technology.effects) {
+      this.applyTechnologyEffects(technology.effects, playerState, gameState);
+    }
+    
+    logger.info(`Player ${playerState.userId} completed research of ${technology.name} with effects applied`);
+  }
+
+  /**
+   * Apply technology effects to player and game state
+   * Phase 2.2.1 Implementation
+   */
+  private static applyTechnologyEffects(effects: TechnologyEffects, playerState: PlayerState, gameState: GameState): void {
+    // Apply resource bonuses
+    if (effects.resourceBonus) {
+      Object.entries(effects.resourceBonus).forEach(([resource, bonus]) => {
+        if (bonus && playerState.resources[resource as keyof typeof playerState.resources] !== undefined) {
+          (playerState.resources as any)[resource] += bonus;
+        }
+      });
+    }
+
+    // Apply research speed bonus (stored for future calculations)
+    if (effects.researchSpeed) {
+      // This would be applied during science generation calculations
+      (playerState as any).modifiers = (playerState as any).modifiers || {};
+      (playerState as any).modifiers.researchSpeedMultiplier = ((playerState as any).modifiers.researchSpeedMultiplier || 1.0) * effects.researchSpeed;
+    }
+
+    // Apply trade bonuses (stored for future calculations)
+    if (effects.tradeBonus) {
+      (playerState as any).modifiers = (playerState as any).modifiers || {};
+      (playerState as any).modifiers.tradeMultiplier = ((playerState as any).modifiers.tradeMultiplier || 1.0) * effects.tradeBonus;
+    }
+
+    // Log effects application
+    logger.debug(`Applied technology effects for player ${playerState.userId}:`, effects);
   }
 
   /**
@@ -425,7 +540,7 @@ export class GameEngine {
         this.processCityProduction(gameState, playerState);
 
         // Process technology research
-        this.processTechnologyResearch(playerState);
+        this.processTechnologyResearch(playerState, gameState);
 
         // Update player score
         playerState.score = this.calculatePlayerScore(gameState, playerState);
@@ -507,19 +622,40 @@ export class GameEngine {
   }
 
   /**
-   * Process technology research progress
+   * Enhanced technology research progress during end turn processing
+   * Phase 2.2.1 Implementation
    */
-  private static processTechnologyResearch(playerState: PlayerState): void {
+  private static processTechnologyResearch(playerState: PlayerState, gameState: GameState): void {
+    const scienceGenerated = playerState.resources.science;
+    
     for (const tech of playerState.technologies) {
       if (!tech.isResearched && tech.turnsToComplete !== undefined) {
-        tech.progress += playerState.resources.science;
-        tech.turnsToComplete--;
+        const technology = TECHNOLOGY_DATABASE[tech.techId];
+        if (!technology) continue;
 
-        if (tech.turnsToComplete <= 0) {
-          tech.isResearched = true;
-          tech.turnsToComplete = undefined;
-          logger.info(`Player ${playerState.userId} completed research of ${tech.techId}`);
+        // Calculate research cost with current modifiers
+        const baseCost = calculateResearchCost(technology, 1.0, 1.0);
+        
+        // Apply research speed multipliers from technologies
+        const researchSpeedMultiplier = (playerState as any).modifiers?.researchSpeedMultiplier || 1.0;
+        const effectiveScience = scienceGenerated * researchSpeedMultiplier;
+        
+        // Add science progress
+        const previousProgress = tech.progress;
+        tech.progress += effectiveScience;
+
+        // Update turns to complete
+        const remainingCost = baseCost - tech.progress;
+        tech.turnsToComplete = remainingCost > 0 
+          ? Math.ceil(remainingCost / Math.max(effectiveScience, 1))
+          : 0;
+
+        // Check if research completed this turn
+        if (tech.progress >= baseCost && previousProgress < baseCost) {
+          this.completeTechnologyResearch(tech.techId, playerState, gameState);
         }
+
+        logger.debug(`Player ${playerState.userId} research progress: ${tech.techId} - ${tech.progress}/${baseCost}`);
       }
     }
   }

@@ -302,40 +302,10 @@ export interface Building {
   isActive: boolean;
 }
 
-// Technology Types
-export interface Technology {
-  id: string;
-  name: string;
-  description: string;
-  cost: number;
-  era: TechEra;
-  prerequisites: string[];
-  unlocks: TechUnlock[];
-}
-
-export enum TechEra {
-  ANCIENT = 'ancient',
-  CLASSICAL = 'classical',
-  MEDIEVAL = 'medieval',
-  RENAISSANCE = 'renaissance',
-  INDUSTRIAL = 'industrial',
-  MODERN = 'modern',
-  ATOMIC = 'atomic',
-  INFORMATION = 'information'
-}
-
-export interface TechUnlock {
-  type: UnlockType;
-  id: string;
-}
-
-export enum UnlockType {
-  UNIT = 'unit',
-  BUILDING = 'building',
-  IMPROVEMENT = 'improvement',
-  CIVIC = 'civic',
-  RESOURCE = 'resource'
-}
+// Technology Types - Enhanced for Phase 2.2.1
+// Import comprehensive technology types from dedicated module
+import { PlayerTechnology } from './TechnologyTypes';
+export * from './TechnologyTypes';
 
 // Player State
 export interface PlayerState {
@@ -353,12 +323,7 @@ export interface PlayerState {
   isActive: boolean;    // Add for client compatibility
 }
 
-export interface PlayerTechnology {
-  techId: string;
-  isResearched: boolean;
-  progress: number;
-  turnsToComplete?: number;
-}
+// PlayerTechnology interface now imported from TechnologyTypes.ts
 
 // Add method for PlayerTechnology arrays to support Set-like operations
 declare global {
@@ -423,6 +388,14 @@ export enum GameActionType {
   BUILD_IMPROVEMENT = 'build_improvement',
   CHANGE_PRODUCTION = 'change_production',
   RESEARCH_TECHNOLOGY = 'research_technology',
+  // Phase 2.2.1 Technology Trading Actions
+  TECH_TRADE_OFFER = 'tech_trade_offer',
+  TECH_TRADE_ACCEPT = 'tech_trade_accept',
+  TECH_TRADE_REJECT = 'tech_trade_reject',
+  TECH_TRADE_CANCEL = 'tech_trade_cancel',
+  TECH_COLLABORATION_REQUEST = 'tech_collaboration_request',
+  TECH_COLLABORATION_JOIN = 'tech_collaboration_join',
+  TECH_COLLABORATION_LEAVE = 'tech_collaboration_leave',
   END_TURN = 'end_turn'
 }
 

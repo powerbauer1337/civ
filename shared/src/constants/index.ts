@@ -129,6 +129,21 @@ export const WEBSOCKET_EVENTS = {
   TURN_END: 'turn:end',
   TURN_TIMEOUT: 'turn:timeout',
 
+  // Technology events - Phase 2.2.1 Enhancement
+  TECH_TRADE_OFFER: 'tech:trade:offer',
+  TECH_TRADE_RESPONSE: 'tech:trade:response',
+  TECH_TRADE_COMPLETE: 'tech:trade:complete',
+  TECH_TRADE_CANCELLED: 'tech:trade:cancelled',
+  TECH_COLLABORATION_REQUEST: 'tech:collaboration:request',
+  TECH_COLLABORATION_JOIN: 'tech:collaboration:join',
+  TECH_COLLABORATION_LEAVE: 'tech:collaboration:leave',
+  TECH_COLLABORATION_COMPLETE: 'tech:collaboration:complete',
+  TECH_RESEARCH_START: 'tech:research:start',
+  TECH_RESEARCH_PROGRESS: 'tech:research:progress',
+  TECH_RESEARCH_COMPLETE: 'tech:research:complete',
+  TECH_TREE_UPDATE: 'tech:tree:update',
+  TECH_AVAILABLE_UPDATE: 'tech:available:update',
+
   // Chat events
   CHAT_MESSAGE: 'chat:message',
   CHAT_SYSTEM: 'chat:system',

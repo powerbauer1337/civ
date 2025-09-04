@@ -1,7 +1,9 @@
 // Shared package barrel exports
 export * from './types';
+export * from './types/TechnologyTypes';
 export * from './utils';
 export * from './constants';
+export * from './constants/technologies';
 export * from './validation';
 
 // Ensure critical types are available
