@@ -1,6 +1,7 @@
 import { DatabaseManager } from '../../src/database/DatabaseManager';
 import { GameState } from '../../src/shared-types';
 import { Client } from 'pg';
+import { logger } from '@civ-game/shared/utils';
 
 // Mock dependencies
 jest.mock('pg');
@@ -11,6 +12,16 @@ jest.mock('../../src/config/config', () => ({
   config: {
     DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
     REDIS_URL: 'redis://localhost:6379'
+  }
+}));
+
+// Mock logger from shared utils
+jest.mock('@civ-game/shared/utils', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn()
   }
 }));
 
@@ -43,19 +54,11 @@ Redis.createClient.mockReturnValue(mockRedisClient);
 
 describe('DatabaseManager', () => {
   let databaseManager: DatabaseManager;
-  let consoleLogSpy: jest.SpyInstance;
-  let consoleErrorSpy: jest.SpyInstance;
+  const mockLogger = logger as jest.Mocked<typeof logger>;
 
   beforeEach(() => {
     jest.clearAllMocks();
     databaseManager = new DatabaseManager();
-    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-  });
-
-  afterEach(() => {
-    consoleLogSpy.mockRestore();
-    consoleErrorSpy.mockRestore();
   });
 
   describe('Constructor', () => {
@@ -79,9 +82,9 @@ describe('DatabaseManager', () => {
 
       expect(mockPgClient.connect).toHaveBeenCalled();
       expect(mockRedisClient.connect).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith('Connected to PostgreSQL');
-      expect(consoleLogSpy).toHaveBeenCalledWith('Connected to Redis');
-      expect(consoleLogSpy).toHaveBeenCalledWith('Database Manager initialized successfully');
+      expect(mockLogger.info).toHaveBeenCalledWith('Connected to PostgreSQL');
+      expect(mockLogger.info).toHaveBeenCalledWith('Connected to Redis');
+      expect(mockLogger.info).toHaveBeenCalledWith('Database Manager initialized successfully');
     });
 
     it('should handle PostgreSQL connection failure', async () => {
@@ -89,7 +92,7 @@ describe('DatabaseManager', () => {
       mockPgClient.connect.mockRejectedValue(error);
 
       await expect(databaseManager.initialize()).rejects.toThrow(error);
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to initialize Database Manager:', error);
+      expect(mockLogger.error).toHaveBeenCalledWith('Failed to initialize Database Manager:', error);
     });
 
     it('should handle Redis connection failure', async () => {
@@ -99,7 +102,7 @@ describe('DatabaseManager', () => {
       mockRedisClient.connect.mockRejectedValue(error);
 
       await expect(databaseManager.initialize()).rejects.toThrow(error);
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to initialize Database Manager:', error);
+      expect(mockLogger.error).toHaveBeenCalledWith('Failed to initialize Database Manager:', error);
     });
 
     it('should create all required database tables', async () => {
@@ -111,7 +114,7 @@ describe('DatabaseManager', () => {
 
       // Should call query 5 times: users, games, game_players, game_actions, indexes
       expect(mockPgClient.query).toHaveBeenCalledTimes(5);
-      expect(consoleLogSpy).toHaveBeenCalledWith('Database tables created successfully');
+      expect(mockLogger.info).toHaveBeenCalledWith('Database tables created successfully');
     });
   });
 
@@ -694,7 +697,7 @@ describe('DatabaseManager', () => {
 
       expect(mockPgClient.end).toHaveBeenCalled();
       expect(mockRedisClient.disconnect).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith('Database Manager disconnected');
+      expect(mockLogger.info).toHaveBeenCalledWith('Database Manager disconnected');
     });
 
     it('should handle errors during disconnect', async () => {
@@ -707,7 +710,7 @@ describe('DatabaseManager', () => {
       mockPgClient.end.mockRejectedValue(error);
 
       await expect(databaseManager.disconnect()).rejects.toThrow(error);
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error disconnecting from Database Manager:', error);
+      expect(mockLogger.error).toHaveBeenCalledWith('Error disconnecting from Database Manager:', error);
     });
   });
 
