@@ -8,7 +8,7 @@ const app = express();
 // Basic middleware
 app.use(helmet());
 app.use(cors({
-  origin: config.CLIENT_URL || "http://localhost:5173"
+  origin: config.CLIENT_URL || 'http://localhost:5173'
 }));
 app.use(express.json());
 
@@ -50,7 +50,7 @@ app.get('/api/status', (req, res) => {
 const PORT = config.PORT || 3001;
 
 app.listen(PORT, () => {
-  console.log(`🚀 Civilization Game Server - Simple Mode`);
+  console.log('🚀 Civilization Game Server - Simple Mode');
   console.log(`🌐 Server running on port ${PORT}`);
   console.log(`📊 Environment: ${config.NODE_ENV}`);
   console.log(`🔗 Client URL: ${config.CLIENT_URL}`);

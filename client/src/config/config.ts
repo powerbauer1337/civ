@@ -1,4 +1,6 @@
 // Client configuration
+import { logger } from '@civ-game/shared';
+
 const isDevelopment = import.meta.env.MODE === 'development';
 const isProduction = import.meta.env.MODE === 'production';
 
@@ -48,7 +50,7 @@ if (isProduction) {
 
   for (const envVar of requiredEnvVars) {
     if (!import.meta.env[envVar as keyof ImportMetaEnv]) {
-      console.warn(`Missing required environment variable: ${envVar}`);
+      logger.warn(`Missing required environment variable: ${envVar}`);
     }
   }
 }

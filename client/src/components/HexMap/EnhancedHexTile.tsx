@@ -74,7 +74,7 @@ const EnhancedHexTile: React.FC<EnhancedHexTileProps> = ({
       'grassland', 'plains', 'hills', 'mountains', 'desert',
       'ocean', 'coast', 'tundra', 'snow', 'forest', 'jungle'
     ];
-    
+
     if (validPatterns.includes(terrainType)) {
       return `url(#${terrainType})`;
     }
@@ -107,7 +107,7 @@ const EnhancedHexTile: React.FC<EnhancedHexTileProps> = ({
   const getUnitColor = (unitData: Unit): string => {
     const playerColors: { [key: string]: string } = {
       'player_1': '#FF4444',
-      'player_2': '#4444FF', 
+      'player_2': '#4444FF',
       'player_3': '#44FF44',
       'player_4': '#FFFF44',
       'player_ai': '#FF8800'
@@ -162,7 +162,7 @@ const EnhancedHexTile: React.FC<EnhancedHexTileProps> = ({
   };
 
   // Calculate visual effects
-  let fillPattern = getTerrainPattern(terrain);
+  const fillPattern = getTerrainPattern(terrain);
   let strokeColor = '#333';
   let strokeWidth = 1;
   let opacity = 1;
@@ -185,7 +185,7 @@ const EnhancedHexTile: React.FC<EnhancedHexTileProps> = ({
     <g>
       {/* Include terrain texture definitions */}
       <TerrainTextures />
-      
+
       {/* Main hex tile with pattern fill */}
       <path
         d={getHexPath(x, y, size)}
@@ -219,7 +219,7 @@ const EnhancedHexTile: React.FC<EnhancedHexTileProps> = ({
               pointerEvents="none"
             />
           )}
-          
+
           {/* Resource symbol */}
           <text
             x={x + size * 0.6}
@@ -279,7 +279,7 @@ const EnhancedHexTile: React.FC<EnhancedHexTileProps> = ({
               <stop offset="100%" stopColor={getUnitColor(unit)} stopOpacity="1" />
             </radialGradient>
           </defs>
-          
+
           <circle
             cx={x}
             cy={y}
@@ -310,8 +310,8 @@ const EnhancedHexTile: React.FC<EnhancedHexTileProps> = ({
             fill="#FFF"
             stroke="#000"
             strokeWidth={0.8}
-            style={{ 
-              userSelect: 'none', 
+            style={{
+              userSelect: 'none',
               pointerEvents: 'none',
               filter: 'drop-shadow(1px 1px 1px rgba(0,0,0,0.5))'
             }}

@@ -136,7 +136,7 @@ const HexTile: React.FC<HexTileProps> = ({
   ] : [];
 
   const ariaLabel = `Hex tile at ${x}, ${y} with ${terrain}${unit ? ` and ${unit.type} unit` : ''}`;
-  
+
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
@@ -145,7 +145,7 @@ const HexTile: React.FC<HexTileProps> = ({
   };
 
   return (
-    <g 
+    <g
       data-testid={`hex-tile-${x}-${y}`}
       className={`hex-tile terrain-${terrain} ${isHighlighted ? 'highlighted' : ''} ${isHovered ? 'hovered' : ''} ${isSelected ? 'selected' : ''}`}
       aria-label={ariaLabel}
@@ -249,7 +249,7 @@ const HexTile: React.FC<HexTileProps> = ({
           >
             {getUnitSymbol(unit.type)}
           </text>
-          
+
           {/* Unit type text */}
           <text
             x={x}
@@ -269,15 +269,15 @@ const HexTile: React.FC<HexTileProps> = ({
             y={y - size * 0.6}
             width={size * 0.6 * (unit.health / unit.maxHealth)}
             height={3}
-            fill={unit.health < unit.maxHealth * 0.3 ? "#FF0000" : "#00FF00"}
+            fill={unit.health < unit.maxHealth * 0.3 ? '#FF0000' : '#00FF00'}
             stroke="#000"
             strokeWidth={0.5}
             style={{width: `${(unit.health / unit.maxHealth) * 100}%`}}
           />
 
           {/* Movement points indicator */}
-          <g 
-            data-testid="unit-movement" 
+          <g
+            data-testid="unit-movement"
             className={unit.movement === 0 ? 'no-movement' : ''}
           >
             <text

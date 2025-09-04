@@ -290,7 +290,7 @@ export class SecureJWTManager {
       clockTolerance: 30, // 30 seconds clock tolerance
       ...options
     };
-    
+
     // Only set default audience if no custom audience is provided and token has audience
     if (!options.audience && decoded.payload.aud) {
       verifyOptions.audience = 'civilization-game-client';

@@ -17,15 +17,15 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: config.CLIENT_URL || "http://localhost:5173",
-    methods: ["GET", "POST"]
+    origin: config.CLIENT_URL || 'http://localhost:5173',
+    methods: ['GET', 'POST']
   }
 });
 
 // Basic middleware
 app.use(helmet());
 app.use(cors({
-  origin: config.CLIENT_URL || "http://localhost:5173"
+  origin: config.CLIENT_URL || 'http://localhost:5173'
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));

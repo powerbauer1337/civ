@@ -76,7 +76,7 @@ const gameSlice = createSlice({
           state.playerList = state.gameState.players || [];
         }
       } catch (error) {
-        console.error('Error updating game state:', error);
+        logger.error('Error updating game state:', error);
       }
     },
 

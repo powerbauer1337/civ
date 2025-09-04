@@ -320,7 +320,7 @@ const GameHelp: React.FC<GameHelpProps> = ({ open, onClose }) => {
               <Box display="flex" alignItems="center" gap={1}>
                 <CheckCircle color="success" />
                 <Typography>
-                  Tutorial completed! You're ready to start playing.
+                  Tutorial completed! You&apos;re ready to start playing.
                 </Typography>
               </Box>
               <Button
@@ -470,7 +470,7 @@ const GameHelp: React.FC<GameHelpProps> = ({ open, onClose }) => {
                     Domination Victory
                   </Typography>
                   <Typography variant="body2" paragraph>
-                    Conquer all other civilizations' capitals
+                    Conquer all other civilizations&apos; capitals
                   </Typography>
                   <List dense>
                     <ListItem>

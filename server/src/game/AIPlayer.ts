@@ -829,8 +829,8 @@ export class AIPlayer {
       ];
 
       for (const neighbor of neighbors) {
-        if (neighbor.x >= 0 && neighbor.y >= 0 && 
-            neighbor.y < gameState.board.length && 
+        if (neighbor.x >= 0 && neighbor.y >= 0 &&
+            neighbor.y < gameState.board.length &&
             neighbor.x < gameState.board[0].length) {
           const tile = gameState.board[neighbor.y][neighbor.x];
           if (tile && tile.terrain !== TerrainType.OCEAN && !tile.unit) {

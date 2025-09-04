@@ -20,11 +20,11 @@ async function startServer() {
   const io = new Server(server, {
     cors: {
       origin: config.CLIENT_URL,
-      methods: ["GET", "POST"],
+      methods: ['GET', 'POST'],
       credentials: config.ENABLE_CORS_CREDENTIALS
     }
   });
-  
+
   // Initialize secure JWT manager
   try {
     await secureJWTManager.initialize();
@@ -39,17 +39,17 @@ async function startServer() {
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
-        defaultSrc: ["'self'"],
-        connectSrc: ["'self'", "ws:", "wss:"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "https:"],
-        fontSrc: ["'self'"]
+        defaultSrc: ['\'self\''],
+        connectSrc: ['\'self\'', 'ws:', 'wss:'],
+        scriptSrc: ['\'self\'', '\'unsafe-inline\''],
+        styleSrc: ['\'self\'', '\'unsafe-inline\''],
+        imgSrc: ['\'self\'', 'data:', 'https:'],
+        fontSrc: ['\'self\'']
       }
     },
     crossOriginEmbedderPolicy: false
   }));
-  
+
   // CORS with security configuration
   app.use(cors({
     origin: config.CLIENT_URL,
@@ -58,11 +58,11 @@ async function startServer() {
     allowedHeaders: ['Content-Type', 'Authorization'],
     maxAge: 86400 // 24 hours
   }));
-  
+
   // Request processing middleware
   app.use(timeout(`${config.REQUEST_TIMEOUT_MS}ms`));
   app.use(sanitizeRequest());
-  app.use(express.json({ 
+  app.use(express.json({
     limit: '1mb', // Reduced from 10mb for security
     verify: (req, res, buf) => {
       // Verify JSON payload integrity
@@ -73,8 +73,8 @@ async function startServer() {
       }
     }
   }));
-  app.use(express.urlencoded({ 
-    extended: true, 
+  app.use(express.urlencoded({
+    extended: true,
     limit: '1mb',
     parameterLimit: 100 // Limit URL parameters
   }));
@@ -97,7 +97,7 @@ async function startServer() {
   // API routes with error handling
   app.use('/api/auth', authController.router);
   app.use('/api/games', gameController.router);
-  
+
   // Security info endpoint (development only)
   if (config.ENABLE_DEBUG_ENDPOINTS && config.NODE_ENV === 'development') {
     app.get('/api/security/info', (req, res) => {
@@ -111,9 +111,9 @@ async function startServer() {
   // Enhanced health check with security status
   app.get('/health', (req, res) => {
     const jwtInfo = secureJWTManager.getKeyInfo();
-    
-    res.json({ 
-      status: 'ok', 
+
+    res.json({
+      status: 'ok',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: config.NODE_ENV,
@@ -153,7 +153,7 @@ async function startServer() {
         websocket: {
           events: [
             'create_game',
-            'join_game', 
+            'join_game',
             'leave_game',
             'start_game',
             'game_action',
@@ -168,10 +168,10 @@ async function startServer() {
   // Socket.IO connection handling
   io.on('connection', (socket) => {
     logger.debug(`Client connected: ${socket.id}`);
-    
+
     // Handle game events
     gameManager.handleConnection(socket);
-    
+
     socket.on('disconnect', () => {
       logger.debug(`Client disconnected: ${socket.id}`);
       gameManager.handleDisconnection(socket);
@@ -183,7 +183,7 @@ async function startServer() {
   app.use(authErrorHandler());
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     logger.error('Unhandled error:', err);
-    
+
     // Don't expose internal errors in production
     if (config.NODE_ENV === 'production') {
       res.status(500).json({
@@ -197,12 +197,12 @@ async function startServer() {
       });
     }
   });
-  
+
   const PORT = config.PORT;
 
   server.listen(PORT, () => {
     const summary = getConfigSummary();
-    
+
     logger.info('SPARC Civilization Game Server Started!');
     logger.info(`Server running on port ${PORT}`);
     logger.info(`Environment: ${summary.environment}`);
@@ -226,21 +226,21 @@ async function startServer() {
   // Enhanced graceful shutdown
   const shutdown = async () => {
     logger.warn('Shutting down gracefully...');
-    
+
     server.close(async () => {
       try {
         // Stop JWT key rotation
         secureJWTManager.stop();
         logger.info('JWT Manager stopped');
-        
+
         // Shutdown game manager
         gameManager.shutdown();
         logger.info('Game Manager stopped');
-        
+
         // Disconnect database
         await databaseManager.disconnect();
         logger.info('Database disconnected');
-        
+
         logger.info('Server shutdown complete');
         process.exit(0);
       } catch (error) {
@@ -248,7 +248,7 @@ async function startServer() {
         process.exit(1);
       }
     });
-    
+
     // Force exit after 10 seconds
     setTimeout(() => {
       logger.warn('Force exit after timeout');

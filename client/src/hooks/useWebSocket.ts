@@ -69,7 +69,7 @@ export const useWebSocket = (
     });
 
     newSocket.on('connect_error', (error) => {
-      console.error('🚨 WebSocket connection error:', error);
+      logger.error('WebSocket connection error:', error);
       setState(prev => ({
         ...prev,
         connecting: false,
@@ -99,7 +99,7 @@ export const useWebSocket = (
     if (state.socket?.connected) {
       state.socket.emit(event, data);
     } else {
-      console.warn('WebSocket not connected, cannot emit:', event);
+      logger.warn('WebSocket not connected, cannot emit:', event);
     }
   }, [state.socket]);
 

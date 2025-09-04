@@ -18,7 +18,7 @@ class Logger {
 
   constructor(config?: Partial<LoggerConfig>) {
     // Check for development mode across different environments
-    const isDev = 
+    const isDev =
       (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') ||
       (typeof globalThis !== 'undefined' && (globalThis as any).__DEV__) ||
       false;
@@ -37,7 +37,7 @@ class Logger {
 
   private formatMessage(level: string, message: any, ...args: any[]): string {
     const timestamp = new Date().toISOString();
-    const formattedArgs = args.length > 0 ? ' ' + args.map(arg => 
+    const formattedArgs = args.length > 0 ? ' ' + args.map(arg =>
       typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
     ).join(' ') : '';
     return `[${timestamp}] ${level}: ${message}${formattedArgs}`;
@@ -45,30 +45,35 @@ class Logger {
 
   error(message: any, ...args: any[]): void {
     if (this.shouldLog(LogLevel.ERROR) && this.config.enableConsole) {
+      // eslint-disable-next-line no-console
       console.error(this.formatMessage('ERROR', message, ...args));
     }
   }
 
   warn(message: any, ...args: any[]): void {
     if (this.shouldLog(LogLevel.WARN) && this.config.enableConsole) {
+      // eslint-disable-next-line no-console
       console.warn(this.formatMessage('WARN', message, ...args));
     }
   }
 
   info(message: any, ...args: any[]): void {
     if (this.shouldLog(LogLevel.INFO) && this.config.enableConsole) {
+      // eslint-disable-next-line no-console
       console.info(this.formatMessage('INFO', message, ...args));
     }
   }
 
   debug(message: any, ...args: any[]): void {
     if (this.shouldLog(LogLevel.DEBUG) && this.config.enableConsole) {
+      // eslint-disable-next-line no-console
       console.log(this.formatMessage('DEBUG', message, ...args));
     }
   }
 
   trace(message: any, ...args: any[]): void {
     if (this.shouldLog(LogLevel.TRACE) && this.config.enableConsole) {
+      // eslint-disable-next-line no-console
       console.log(this.formatMessage('TRACE', message, ...args));
     }
   }

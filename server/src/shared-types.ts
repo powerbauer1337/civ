@@ -20,19 +20,19 @@ export class GameState {
     this.config = config;
     this.createdAt = new Date();
     this.lastUpdate = new Date();
-    
+
     // Create real hex map instead of empty board
     const hexMap = new HexMap(config.mapSize.width, config.mapSize.height);
     hexMap.generateProceduralMap();
     this.board = hexMap.serialize();
-    
+
     console.log(`Created real game state with ${config.mapSize.width}x${config.mapSize.height} hex map`);
   }
 
   addPlayer(playerInfo: PlayerInfo): void {
     this.players.push(playerInfo as any);
     this.lastUpdate = new Date();
-    
+
     // If this is the first player to be added after game creation, create starting units
     if (this.players.length === 1) {
       this.createStartingUnitsForPlayer(playerInfo);
@@ -46,29 +46,29 @@ export class GameState {
 
   startGame(): void {
     this.phase = GamePhase.ACTIVE;
-    
+
     // Create starting units for all players when game starts
     this.players.forEach(player => this.createStartingUnitsForPlayer(player as any));
-    
+
     this.lastUpdate = new Date();
     console.log(`Game ${this.id} started with real hex map and starting units`);
   }
 
   private createStartingUnitsForPlayer(playerInfo: any): void {
     if (!this.board || !this.board.tiles) return;
-    
+
     const hexMap = HexMap.deserialize(this.board);
-    
+
     // Find a good starting position
     let startX, startY;
     let attempts = 0;
-    
+
     do {
       startX = Math.floor(Math.random() * hexMap.width);
       startY = Math.floor(Math.random() * hexMap.height);
       attempts++;
     } while (attempts < 50 && !hexMap.isValidMoveDestination(startX, startY, playerInfo.id));
-    
+
     if (attempts < 50) {
       // Create starter units (simplified - just place them in player's units array for now)
       const settler = {
@@ -79,22 +79,22 @@ export class GameState {
         health: 100,
         movement: 2
       };
-      
+
       const warrior = {
         id: uuidv4(),
-        type: 'warrior', 
+        type: 'warrior',
         position: { x: startX + 1, y: startY },
         owner: playerInfo.id,
         health: 100,
         movement: 2
       };
-      
+
       playerInfo.units = playerInfo.units || [];
       playerInfo.units.push(settler, warrior);
-      
+
       console.log(`Created starting units for player ${playerInfo.id} at (${startX}, ${startY})`);
     }
-    
+
     this.board = hexMap.serialize();
   }
 
@@ -105,7 +105,7 @@ export class GameState {
   executeAction(action: GameAction): boolean {
     try {
       console.log(`Executing action: ${action.type} for player ${action.playerId}`);
-      
+
       // For now, handle end_turn and log other actions
       if (action.type === 'end_turn') {
         this.currentPlayer = (this.currentPlayer + 1) % this.players.length;
@@ -117,7 +117,7 @@ export class GameState {
         // Log the action - future integration point for GameEngine
         console.log(`Action ${action.type} received - integration with GameEngine coming soon`);
       }
-      
+
       this.lastUpdate = new Date();
       return true;
     } catch (error) {

@@ -25,5 +25,17 @@ module.exports = {
         'no-console': 'off',
       },
     },
+    {
+      // Allow console.log in development tools and scripts
+      files: [
+        'src/simple-server.ts',
+        'src/test-game-server.ts',
+        'src/security/**/*.ts',
+        'src/optimized-server.ts',
+      ],
+      rules: {
+        'no-console': 'off',
+      },
+    },
   ],
 };

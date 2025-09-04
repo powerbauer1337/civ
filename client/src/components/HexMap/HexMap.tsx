@@ -218,6 +218,7 @@ const HexMap: React.FC<HexMapProps> = ({ gameState, playerId, onTileClick, onUni
               if (enhancedTextures) {
                 return (
                   <EnhancedHexTile
+                    key={`${x}-${y}`}
                     {...tileProps}
                     resource={tile.resources}
                   />
@@ -225,6 +226,7 @@ const HexMap: React.FC<HexMapProps> = ({ gameState, playerId, onTileClick, onUni
               } else {
                 return (
                   <HexTile
+                    key={`${x}-${y}`}
                     {...tileProps}
                     hasResource={!!tile.resources}
                   />

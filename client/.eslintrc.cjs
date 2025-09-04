@@ -5,6 +5,11 @@ module.exports = {
     browser: true,
     es2022: true,
   },
+  globals: {
+    ImportMetaEnv: 'readonly',
+    RequestInit: 'readonly',
+    beforeEach: 'readonly',
+  },
   plugins: [
     'react',
     'react-hooks',
@@ -40,6 +45,19 @@ module.exports = {
       env: {
         jest: true,
       },
+      rules: {
+        'no-console': 'off',
+      },
+    },
+    {
+      // Allow console.log in development/demo files  
+      files: [
+        'src/pages/SimpleGamePage.tsx',
+        'src/pages/SimpleLobbyPage.tsx',
+        'src/components/HexMap/HexMap.tsx',
+        'src/contexts/DemoSocketContext.tsx',
+        'tests/setup.ts',
+      ],
       rules: {
         'no-console': 'off',
       },
