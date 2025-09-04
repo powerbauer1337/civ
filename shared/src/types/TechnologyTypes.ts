@@ -24,7 +24,7 @@ export interface Technology {
  */
 export enum TechEra {
   ANCIENT = 'ancient',
-  CLASSICAL = 'classical', 
+  CLASSICAL = 'classical',
   MEDIEVAL = 'medieval',
   RENAISSANCE = 'renaissance',
   INDUSTRIAL = 'industrial',
@@ -55,7 +55,7 @@ export enum UnlockType {
 export interface TechnologyEffects {
   // Resource production bonuses
   resourceBonus?: Partial<Resources>;
-  
+
   // Unit-related bonuses
   unitBonuses?: {
     movementBonus?: number;       // Multiplier for unit movement
@@ -66,7 +66,7 @@ export interface TechnologyEffects {
     militaryStrength?: number;    // Overall military effectiveness
     automationBonus?: number;    // Automated unit efficiency
   };
-  
+
   // City development bonuses
   cityBonuses?: {
     growthRate?: number;          // Population growth multiplier
@@ -76,26 +76,26 @@ export interface TechnologyEffects {
     defensiveBonus?: number;      // City defensive strength
     economicGrowth?: number;      // Economic development rate
   };
-  
+
   // Research and development
   researchSpeed?: number;         // Science generation multiplier
-  
+
   // Trade and economics
   tradeBonus?: number;            // Trade route value multiplier
   tradeRange?: number;            // Trade route range multiplier
-  
+
   // Cultural and social
   culturalInfluence?: number;     // Cultural pressure on other civs
   communicationRange?: number;    // Diplomatic/cultural reach
   globalConnectivity?: number;    // Information age connectivity bonus
-  
+
   // Production and industry
   industrialOutput?: number;      // Manufacturing efficiency
   energyOutput?: number;          // Energy generation multiplier
-  
+
   // Unlocked capabilities
   enablesImprovements?: string[]; // Terrain improvements unlocked
-  enablesUnits?: string[];        // Military/civilian units unlocked  
+  enablesUnits?: string[];        // Military/civilian units unlocked
   enablesBuildings?: string[];    // City buildings unlocked
 }
 
@@ -130,7 +130,7 @@ export interface TechnologyTradeOffer {
 
 export enum TradeOfferStatus {
   PENDING = 'pending',
-  ACCEPTED = 'accepted', 
+  ACCEPTED = 'accepted',
   REJECTED = 'rejected',
   EXPIRED = 'expired',
   CANCELLED = 'cancelled'
@@ -168,21 +168,21 @@ export interface TechnologyPrerequisite {
 export const TECH_TRADING_EVENTS = {
   // Technology trading
   TECH_TRADE_OFFER: 'tech:trade:offer',
-  TECH_TRADE_RESPONSE: 'tech:trade:response', 
+  TECH_TRADE_RESPONSE: 'tech:trade:response',
   TECH_TRADE_COMPLETE: 'tech:trade:complete',
   TECH_TRADE_CANCELLED: 'tech:trade:cancelled',
-  
+
   // Collaborative research
   TECH_COLLABORATION_REQUEST: 'tech:collaboration:request',
   TECH_COLLABORATION_JOIN: 'tech:collaboration:join',
   TECH_COLLABORATION_LEAVE: 'tech:collaboration:leave',
   TECH_COLLABORATION_COMPLETE: 'tech:collaboration:complete',
-  
+
   // Technology progress
   TECH_RESEARCH_START: 'tech:research:start',
   TECH_RESEARCH_PROGRESS: 'tech:research:progress',
   TECH_RESEARCH_COMPLETE: 'tech:research:complete',
-  
+
   // Technology tree updates
   TECH_TREE_UPDATE: 'tech:tree:update',
   TECH_AVAILABLE_UPDATE: 'tech:available:update'

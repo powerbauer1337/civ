@@ -10,7 +10,6 @@ import { Technology, TechEra, UnlockType, TechnologyEffects } from '../types/Tec
  */
 export const TECHNOLOGY_DATABASE: Record<string, Technology> = {
   // === ANCIENT ERA (4000 BC - 500 BC) ===
-  
   agriculture: {
     id: 'agriculture',
     name: 'Agriculture',
@@ -689,7 +688,7 @@ export const TECHNOLOGY_DATABASE: Record<string, Technology> = {
  * Technology prerequisite validation helper
  */
 export function validateTechnologyPrerequisites(
-  techId: string, 
+  techId: string,
   playerTechnologies: string[]
 ): { valid: boolean; missingPrerequisites: string[] } {
   const tech = TECHNOLOGY_DATABASE[techId];
@@ -716,7 +715,7 @@ export function getAvailableTechnologies(playerTechnologies: string[]): Technolo
     if (playerTechnologies.includes(tech.id)) {
       return false;
     }
-    
+
     // Check if all prerequisites are met
     return tech.prerequisites.every(prereq => playerTechnologies.includes(prereq));
   });
@@ -726,7 +725,7 @@ export function getAvailableTechnologies(playerTechnologies: string[]): Technolo
  * Calculate research cost with era and civilization modifiers
  */
 export function calculateResearchCost(
-  tech: Technology, 
+  tech: Technology,
   baseModifier: number = 1.0,
   eraModifier: number = 1.0
 ): number {

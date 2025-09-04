@@ -184,7 +184,7 @@ export class AdvancedRateLimiter {
       }
 
       try {
-        await this.authLimiter.consume(req.ip);
+        await this.authLimiter.consume(req.ip || 'unknown');
         next();
       } catch (rejRes: any) {
         const remainingPoints = rejRes?.remainingPoints || 0;
@@ -214,7 +214,7 @@ export class AdvancedRateLimiter {
       }
 
       try {
-        await this.apiLimiter.consume(req.ip);
+        await this.apiLimiter.consume(req.ip || 'unknown');
         next();
       } catch (rejRes: any) {
         const remainingPoints = rejRes?.remainingPoints || 0;
@@ -244,7 +244,7 @@ export class AdvancedRateLimiter {
       }
 
       try {
-        await this.strictLimiter.consume(req.ip);
+        await this.strictLimiter.consume(req.ip || 'unknown');
         next();
       } catch (rejRes: any) {
         const remainingPoints = rejRes?.remainingPoints || 0;

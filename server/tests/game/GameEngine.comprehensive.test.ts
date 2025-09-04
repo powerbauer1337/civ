@@ -451,7 +451,7 @@ describe('GameEngine - Comprehensive Tests', () => {
         type: GameActionType.RESEARCH_TECHNOLOGY,
         payload: {
           playerId: 'player1',
-          technologyId: TechnologyType.ARCHERY
+          technologyId: TechnologyType.BRONZE_WORKING
         }
       };
 
@@ -459,7 +459,7 @@ describe('GameEngine - Comprehensive Tests', () => {
       expect(result.success).toBe(true);
       
       const player = result.gameState?.players?.find(p => p.id === 'player1');
-      expect(player?.technologies).toContain(TechnologyType.ARCHERY);
+      expect(player?.technologies).toContain(TechnologyType.BRONZE_WORKING);
     });
 
     test('should reject research without sufficient science', () => {

@@ -252,7 +252,7 @@ export class GameUtils {
   }
 
   static validatePlayerName(name: string): boolean {
-    return name && name.length >= 2 && name.length <= 20 && /^[a-zA-Z0-9_-]+$/.test(name);
+    return !!(name && name.length >= 2 && name.length <= 20 && /^[a-zA-Z0-9_-]+$/.test(name));
   }
 
   static getCivilizationColors(): string[] {
