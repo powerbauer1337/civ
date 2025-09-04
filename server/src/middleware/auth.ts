@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { config } from '../config/config';
 import { secureJWTManager } from '../security/SecureJWTManager';
+import { logger } from '@civ-game/shared/utils';
 
 /**\n * Enhanced authentication middleware with secure JWT handling
  * Supports both access and refresh tokens with proper validation
@@ -113,7 +114,7 @@ export class AuthService {
         refreshExpiresIn: config.JWT_REFRESH_EXPIRES_IN
       };
     } catch (error) {
-      console.error('Token generation failed:', error);
+      logger.error('Token generation failed:', error);
       throw new Error('Failed to generate authentication tokens');
     }
   }
@@ -166,7 +167,7 @@ export class AuthService {
       };
     } catch (error) {
       this.refreshTokens.delete(refreshToken);
-      console.error('Token refresh failed:', error);
+      logger.error('Token refresh failed:', error);
       throw new Error('Failed to refresh access token');
     }
   }
@@ -182,7 +183,7 @@ export class AuthService {
    * Revoke all refresh tokens for user (logout all devices)
    */
   async revokeAllUserTokens(userId: string): Promise<void> {
-    // In a production system, you'd want to store refresh tokens with user IDs\n    // For now, we'll clear all tokens (not ideal but simple for demo)\n    console.log(`Revoking all tokens for user ${userId}`);\n    // this.refreshTokens.clear(); // Don't actually do this in production
+    // In a production system, you'd want to store refresh tokens with user IDs\n    // For now, we'll clear all tokens (not ideal but simple for demo)\n    logger.info(`Revoking all tokens for user ${userId}`);\n    // this.refreshTokens.clear(); // Don't actually do this in production
   }
 }
 
@@ -230,7 +231,7 @@ export function createAuthMiddleware(authService: AuthService, userLookup: (user
       req.token = token;
       next();
     } catch (error: any) {
-      console.warn('Authentication failed:', error.message);
+      logger.warn('Authentication failed:', error.message);
 
       if (error.message.includes('blacklisted')) {
         res.status(401).json({
@@ -305,7 +306,7 @@ export function createAuthMiddleware(authService: AuthService, userLookup: (user
         message: 'Logout successful'
       });
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
       res.status(500).json({
         error: 'Logout failed'
       });

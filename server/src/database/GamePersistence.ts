@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import { PlayerInfo } from '@civ-game/shared';
 import { GameState, GameAction } from '../shared-types';
+import { logger } from '@civ-game/shared/utils';
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
@@ -94,9 +95,9 @@ export class GamePersistence {
       // Initialize default achievements
       await this.initializeAchievements();
 
-      console.log('✅ Game persistence database initialized');
+      logger.info('✅ Game persistence database initialized');
     } catch (error) {
-      console.error('Failed to initialize database:', error);
+      logger.error('Failed to initialize database:', error);
       throw error;
     }
   }
@@ -144,7 +145,7 @@ export class GamePersistence {
 
       return saveResult.lastID!;
     } catch (error) {
-      console.error('Failed to save game:', error);
+      logger.error('Failed to save game:', error);
       throw error;
     }
   }
@@ -190,7 +191,7 @@ export class GamePersistence {
 
       return gameState;
     } catch (error) {
-      console.error('Failed to load game:', error);
+      logger.error('Failed to load game:', error);
       throw error;
     }
   }
@@ -248,7 +249,7 @@ export class GamePersistence {
         await this.addGameParticipant(gameState.id, playerId, playerInfo);
       }
     } catch (error) {
-      console.error('Failed to create game record:', error);
+      logger.error('Failed to create game record:', error);
       throw error;
     }
   }
@@ -616,7 +617,7 @@ export class GamePersistence {
   private async performAutoSaves(): Promise<void> {
     // This would be called by GameManager to save active games
     // Implementation depends on game manager integration
-    console.log('Performing auto-saves for active games...');
+    logger.info('Performing auto-saves for active games...');
   }
 
   private async updateEloRating(playerId: string, won: boolean): Promise<void> {

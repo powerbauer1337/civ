@@ -5,6 +5,7 @@ import { config } from '../config/config';
 import { GameUtils } from '../shared-types';
 import { validateRequest, commonSchemas } from '../middleware/validation';
 import type { StringValue } from 'ms';
+import { logger } from '@civ-game/shared/utils';
 
 interface User {
   id: string;
@@ -111,7 +112,7 @@ export class AuthController {
         token
       });
     } catch (error) {
-      console.error('Registration error:', error);
+      logger.error('Registration error:', error);
       res.status(500).json({ success: false, error: 'Internal server error' });
     }
   }
@@ -165,7 +166,7 @@ export class AuthController {
         token
       });
     } catch (error) {
-      console.error('Login error:', error);
+      logger.error('Login error:', error);
       res.status(500).json({ success: false, error: 'Internal server error' });
     }
   }
@@ -245,7 +246,7 @@ export class AuthController {
         }
       });
     } catch (error) {
-      console.error('Profile update error:', error);
+      logger.error('Profile update error:', error);
       res.status(500).json({ success: false, error: 'Internal server error' });
     }
   }

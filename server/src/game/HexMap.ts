@@ -1,4 +1,5 @@
 import { GameMap, MapTile, TerrainType, TerrainFeature, VisibilityLevel, ResourceType, ResourceCategory, Resource } from '@civ-game/shared';
+import { logger } from '@civ-game/shared/utils';
 
 /**
  * HexMap class for managing hexagonal game maps with coordinate systems and procedural generation
@@ -64,7 +65,7 @@ export class HexMap implements GameMap {
     // Fourth pass: Ensure balanced starting positions
     this.balanceStartingPositions(random);
 
-    console.log(`Generated ${this.width}x${this.height} hex map with procedural generation`);
+    logger.info(`Generated ${this.width}x${this.height} hex map with procedural generation`);
   }
 
   /**

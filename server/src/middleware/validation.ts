@@ -3,6 +3,7 @@ import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { RateLimiterMemory } from 'rate-limiter-flexible';
 import { config } from '../config/config';
+import { logger } from '@civ-game/shared/utils';
 
 /**
  * Comprehensive input validation middleware using Zod schemas
@@ -135,7 +136,7 @@ export function validateRequest<T extends z.ZodTypeAny>(schema: T) {
         });
       }
 
-      console.error('Validation middleware error:', error);
+      logger.error('Validation middleware error:', error);
       return res.status(500).json({
         success: false,
         error: 'Internal server error during validation'
@@ -352,7 +353,7 @@ export function validationErrorHandler() {
 
     // Don't expose internal errors in production
     if (config.NODE_ENV === 'production') {
-      console.error('Internal server error:', error);
+      logger.error('Internal server error:', error);
       return res.status(500).json({
         error: 'Internal server error'
       });

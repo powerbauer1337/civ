@@ -17,6 +17,7 @@ import { GameEngine } from './GameEngine';
 import { HexMap } from './HexMap';
 import { AIPlayer, AIPersonality, AIDifficulty } from './AIPlayer';
 import { config } from '../config/config';
+import { logger } from '@civ-game/shared/utils';
 
 export interface GameRoom {
   gameState: GameState;
@@ -58,7 +59,7 @@ export class GameManagerAI {
   }
 
   public handleConnection(socket: Socket): void {
-    console.log(`Game Manager: Client connected ${socket.id}`);
+    logger.info(`Game Manager: Client connected ${socket.id}`);
 
     // Register event handlers
     socket.on('create_game', (data) => this.handleCreateGame(socket, data));
@@ -201,9 +202,9 @@ export class GameManagerAI {
         aiPlayers: Array.from(aiPlayerMap.keys())
       });
 
-      console.log(`Single player game created: ${gameId} with ${aiOpponents} AI opponents`);
+      logger.info(`Single player game created: ${gameId} with ${aiOpponents} AI opponents`);
     } catch (error) {
-      console.error('Error creating single player game:', error);
+      logger.error('Error creating single player game:', error);
       socket.emit('error', { message: 'Failed to create single player game' });
     }
   }
@@ -277,7 +278,7 @@ export class GameManagerAI {
         });
       }
     } catch (error) {
-      console.error('Error processing game action:', error);
+      logger.error('Error processing game action:', error);
       socket.emit('error', { message: 'Failed to process action' });
     }
   }
@@ -324,7 +325,7 @@ export class GameManagerAI {
     try {
       const aiPlayer = gameRoom.aiPlayers.get(aiPlayerId);
       if (!aiPlayer) {
-        console.error(`AI player not found: ${aiPlayerId}`);
+        logger.error(`AI player not found: ${aiPlayerId}`);
         return;
       }
 
@@ -381,7 +382,7 @@ export class GameManagerAI {
         }
       }
     } catch (error) {
-      console.error('Error processing AI turn:', error);
+      logger.error('Error processing AI turn:', error);
       // Continue to next player on error
       this.processNextTurn(gameRoom, gameId);
     }
@@ -672,7 +673,7 @@ export class GameManagerAI {
         });
 
         this.games.delete(gameId);
-        console.log(`Cleaned up inactive game: ${gameId}`);
+        logger.info(`Cleaned up inactive game: ${gameId}`);
       }
     });
   }

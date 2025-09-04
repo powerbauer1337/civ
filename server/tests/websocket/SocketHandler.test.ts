@@ -27,18 +27,25 @@ const mockGameService = {
   updatePlayerActivity: jest.fn()
 } as jest.Mocked<GameService>;
 
-// Mock console.log to avoid cluttering test output
-const originalConsoleLog = console.log;
-const originalConsoleError = console.error;
+// Mock logger to avoid cluttering test output and match implementation
+jest.mock('@civ-game/shared/utils', () => ({
+  logger: {
+    info: jest.fn(),
+    debug: jest.fn(), 
+    error: jest.fn(),
+    warn: jest.fn(),
+    log: jest.fn()
+  }
+}));
+
+const { logger } = require('@civ-game/shared/utils');
 
 beforeEach(() => {
-  console.log = jest.fn();
-  console.error = jest.fn();
+  jest.clearAllMocks();
 });
 
 afterEach(() => {
-  console.log = originalConsoleLog;
-  console.error = originalConsoleError;
+  // Logger mocks are automatically restored by Jest
 });
 
 describe('SocketHandler', () => {
@@ -70,7 +77,7 @@ describe('SocketHandler', () => {
     });
 
     test('should log client connection', () => {
-      expect(console.log).toHaveBeenCalledWith('🔌 WebSocket client connected: test-socket-id');
+      expect(logger.info).toHaveBeenCalledWith('🔌 WebSocket client connected: test-socket-id');
     });
 
     test('should send welcome message on connection', () => {
@@ -185,7 +192,7 @@ describe('SocketHandler', () => {
 
       joinGameHandler({ gameId: 'game-123', playerId: 'player-1' });
 
-      expect(console.error).toHaveBeenCalledWith('Error joining game:', expect.any(Error));
+      expect(logger.error).toHaveBeenCalledWith('Error joining game:', expect.any(Error));
       expect(mockSocket.emit).toHaveBeenCalledWith('error', {
         message: 'Failed to join game',
         type: 'join_game_error'
@@ -274,7 +281,7 @@ describe('SocketHandler', () => {
 
       gameActionHandler(actionData);
 
-      expect(console.error).toHaveBeenCalledWith('Error processing game action:', expect.any(Error));
+      expect(logger.error).toHaveBeenCalledWith('Error processing game action:', expect.any(Error));
       expect(mockSocket.emit).toHaveBeenCalledWith('action_acknowledged', {
         action: 'move_unit',
         success: false,

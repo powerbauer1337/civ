@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { GameManager } from '../game/GameManager';
 import { GameConfig, VictoryType, ResourceType } from '../shared-types';
+import { logger } from '@civ-game/shared/utils';
 
 export class GameController {
   public router: Router;
@@ -79,7 +80,7 @@ export class GameController {
         hasMore: endIndex < games.length
       });
     } catch (error) {
-      console.error('Error getting game list:', error);
+      logger.error('Error getting game list:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -107,7 +108,7 @@ export class GameController {
         timestamp: new Date().toISOString()
       });
     } catch (error) {
-      console.error('Error getting game stats:', error);
+      logger.error('Error getting game stats:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -144,7 +145,7 @@ export class GameController {
         }))
       });
     } catch (error) {
-      console.error('Error getting game details:', error);
+      logger.error('Error getting game details:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -165,7 +166,7 @@ export class GameController {
         gameState: gameState.serialize()
       });
     } catch (error) {
-      console.error('Error getting game state:', error);
+      logger.error('Error getting game state:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -181,7 +182,7 @@ export class GameController {
         warnings: validation.warnings
       });
     } catch (error) {
-      console.error('Error validating game config:', error);
+      logger.error('Error validating game config:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -260,13 +261,13 @@ export class GameController {
 
   private cleanupTestGames(req: Request, res: Response): void {
     try {
-      console.log('Starting cleanup of test games...');
+      logger.info('Starting cleanup of test games...');
 
       const beforeCount = this.gameManager.getGameCount();
       const removedGames = this.gameManager.cleanupTestGames();
       const afterCount = this.gameManager.getGameCount();
 
-      console.log(`Test games cleanup completed. Removed ${removedGames.length} games.`);
+      logger.info(`Test games cleanup completed. Removed ${removedGames.length} games.`);
 
       res.json({
         success: true,
@@ -276,7 +277,7 @@ export class GameController {
         gameCountAfter: afterCount
       });
     } catch (error) {
-      console.error('Error cleaning up test games:', error);
+      logger.error('Error cleaning up test games:', error);
       res.status(500).json({ error: 'Failed to cleanup test games' });
     }
   }
@@ -286,13 +287,13 @@ export class GameController {
       const { olderThanHours = '24' } = req.query;
       const hours = parseInt(olderThanHours as string);
 
-      console.log(`Starting cleanup of games older than ${hours} hours...`);
+      logger.info(`Starting cleanup of games older than ${hours} hours...`);
 
       const beforeCount = this.gameManager.getGameCount();
       const removedGames = this.gameManager.cleanupOldGames(hours);
       const afterCount = this.gameManager.getGameCount();
 
-      console.log(`Old games cleanup completed. Removed ${removedGames.length} games.`);
+      logger.info(`Old games cleanup completed. Removed ${removedGames.length} games.`);
 
       res.json({
         success: true,
@@ -303,7 +304,7 @@ export class GameController {
         hoursThreshold: hours
       });
     } catch (error) {
-      console.error('Error cleaning up old games:', error);
+      logger.error('Error cleaning up old games:', error);
       res.status(500).json({ error: 'Failed to cleanup old games' });
     }
   }

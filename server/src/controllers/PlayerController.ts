@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import GameService from '../services/GameService';
+import { logger } from '@civ-game/shared/utils';
 
 export class PlayerController {
   constructor(private gameService: GameService) {}
@@ -18,7 +19,7 @@ export class PlayerController {
 
       res.json(playerList);
     } catch (error) {
-      console.error('Error getting players:', error);
+      logger.error('Error getting players:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   };
@@ -43,7 +44,7 @@ export class PlayerController {
         lastActivity: player.lastActivity
       });
     } catch (error) {
-      console.error('Error getting player:', error);
+      logger.error('Error getting player:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   };
@@ -60,7 +61,7 @@ export class PlayerController {
         res.status(404).json({ error: 'Player not found' });
       }
     } catch (error) {
-      console.error('Error updating activity:', error);
+      logger.error('Error updating activity:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   };
@@ -84,7 +85,7 @@ export class PlayerController {
         res.status(404).json({ error: 'Player not found' });
       }
     } catch (error) {
-      console.error('Error updating status:', error);
+      logger.error('Error updating status:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   };

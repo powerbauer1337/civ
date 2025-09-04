@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
 import crypto from 'crypto';
+import { logger } from '@civ-game/shared/utils';
 
 dotenv.config();
 
@@ -85,10 +86,10 @@ function generateDevelopmentSecrets(env: any) {
   }
 
   if (warnings.length > 0) {
-    console.warn('⚠️  DEVELOPMENT MODE WARNINGS:');
-    warnings.forEach(warning => console.warn(`   - ${warning}`));
-    console.warn('   - These secrets will change on each restart');
-    console.warn('   - Set proper environment variables for production\n');
+    logger.warn('⚠️  DEVELOPMENT MODE WARNINGS:');
+    warnings.forEach(warning => logger.warn(`   - ${warning}`));
+    logger.warn('   - These secrets will change on each restart');
+    logger.warn('   - Set proper environment variables for production\n');
   }
 
   return env;
@@ -117,22 +118,22 @@ function validateEnvironment() {
 
       const failedChecks = productionChecks.filter(check => !check.check);
       if (failedChecks.length > 0) {
-        console.error('🚨 PRODUCTION SECURITY ERRORS:');
-        failedChecks.forEach(check => console.error(`   - ${check.message}`));
+        logger.error('🚨 PRODUCTION SECURITY ERRORS:');
+        failedChecks.forEach(check => logger.error(`   - ${check.message}`));
         throw new Error('Production environment validation failed - check security configuration');
       }
 
-      console.log('✅ Production environment validation passed');
+      logger.info('✅ Production environment validation passed');
     }
 
     return validatedEnv;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('🚨 ENVIRONMENT CONFIGURATION ERRORS:');
+      logger.error('🚨 ENVIRONMENT CONFIGURATION ERRORS:');
       error.errors.forEach(err => {
-        console.error(`   - ${err.path.join('.')}: ${err.message}`);
+        logger.error(`   - ${err.path.join('.')}: ${err.message}`);
       });
-      console.error('\n💡 Check your .env file and environment variables\n');
+      logger.error('\n💡 Check your .env file and environment variables\n');
     }
     throw error;
   }

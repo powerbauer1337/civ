@@ -1,4 +1,5 @@
 import { TestGame, TestPlayer, GameStats, CreateGameRequest, JoinGameRequest } from '../types/game';
+import { logger } from '@civ-game/shared/utils';
 
 export class GameService {
   private games = new Map<string, TestGame>();
@@ -147,7 +148,7 @@ export class GameService {
         this.processTechResearch(game, player, payload);
         break;
       default:
-        console.warn(`Unknown action type: ${action}`);
+        logger.warn(`Unknown action type: ${action}`);
     }
 
     return true;
@@ -203,17 +204,17 @@ export class GameService {
   // Private helper methods
   private processUnitMove(game: TestGame, player: TestPlayer, payload: any): void {
     // Placeholder for unit movement logic
-    console.log(`Player ${player.username} moved unit in game ${game.id}:`, payload);
+    logger.debug(`Player ${player.username} moved unit in game ${game.id}:`, payload);
   }
 
   private processCityBuild(game: TestGame, player: TestPlayer, payload: any): void {
     // Placeholder for city building logic
-    console.log(`Player ${player.username} built city in game ${game.id}:`, payload);
+    logger.debug(`Player ${player.username} built city in game ${game.id}:`, payload);
   }
 
   private processTechResearch(game: TestGame, player: TestPlayer, payload: any): void {
     // Placeholder for technology research logic
-    console.log(`Player ${player.username} researched tech in game ${game.id}:`, payload);
+    logger.debug(`Player ${player.username} researched tech in game ${game.id}:`, payload);
   }
 }
 

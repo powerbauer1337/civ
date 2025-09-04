@@ -1,7 +1,7 @@
 import { Socket } from 'socket.io';
 import { GamePersistence } from '../database/GamePersistence';
 import { GameManager } from '../game/GameManager';
-// import { logger } from '../utils/logger'; // Logger not implemented yet
+import { logger } from '@civ-game/shared/utils';
 
 export class SaveLoadHandlers {
   private gamePersistence: GamePersistence;
@@ -66,9 +66,9 @@ export class SaveLoadHandlers {
           playerName: room.gameState.players.find((p: any) => p.id === playerId)?.username || 'Unknown Player'
         });
 
-        console.info(`Game saved: ${gameId} by player ${playerId}`);
+        logger.info(`Game saved: ${gameId} by player ${playerId}`);
       } catch (error) {
-        console.error('Error saving game:', error);
+        logger.error('Error saving game:', error);
         socket.emit('save_error', {
           message: error instanceof Error ? error.message : 'Failed to save game'
         });
@@ -145,9 +145,9 @@ export class SaveLoadHandlers {
           loadedBy: playerId
         });
 
-        console.info(`Game loaded: ${saveMetadata.game_id} by player ${playerId}`);
+        logger.info(`Game loaded: ${saveMetadata.game_id} by player ${playerId}`);
       } catch (error) {
-        console.error('Error loading game:', error);
+        logger.error('Error loading game:', error);
         socket.emit('load_error', {
           message: error instanceof Error ? error.message : 'Failed to load game'
         });
@@ -183,7 +183,7 @@ export class SaveLoadHandlers {
 
         socket.emit('saves_list', { saves: formattedSaves });
       } catch (error) {
-        console.error('Error getting saves:', error);
+        logger.error('Error getting saves:', error);
         socket.emit('error', {
           message: error instanceof Error ? error.message : 'Failed to get saves'
         });
@@ -212,9 +212,9 @@ export class SaveLoadHandlers {
         await this.gamePersistence.deleteSave(saveId, playerId);
         socket.emit('save_deleted', { saveId });
 
-        console.info(`Save deleted: ${saveId} by player ${playerId}`);
+        logger.info(`Save deleted: ${saveId} by player ${playerId}`);
       } catch (error) {
-        console.error('Error deleting save:', error);
+        logger.error('Error deleting save:', error);
         socket.emit('error', {
           message: error instanceof Error ? error.message : 'Failed to delete save'
         });
@@ -266,9 +266,9 @@ export class SaveLoadHandlers {
           turnNumber: gameState.currentTurn
         });
 
-        console.info(`Auto-save completed for game: ${gameId}`);
+        logger.info(`Auto-save completed for game: ${gameId}`);
       } catch (error) {
-        console.error('Error during auto-save:', error);
+        logger.error('Error during auto-save:', error);
       }
     });
 
@@ -286,7 +286,7 @@ export class SaveLoadHandlers {
 
         socket.emit('player_stats', { stats });
       } catch (error) {
-        console.error('Error getting player stats:', error);
+        logger.error('Error getting player stats:', error);
         socket.emit('error', {
           message: error instanceof Error ? error.message : 'Failed to get stats'
         });
@@ -302,7 +302,7 @@ export class SaveLoadHandlers {
 
         socket.emit('leaderboard', { leaderboard });
       } catch (error) {
-        console.error('Error getting leaderboard:', error);
+        logger.error('Error getting leaderboard:', error);
         socket.emit('error', {
           message: error instanceof Error ? error.message : 'Failed to get leaderboard'
         });
@@ -343,12 +343,12 @@ export class SaveLoadHandlers {
               room.lastSaveId = saveId;
               room.lastSaveTime = now;
 
-              console.info(`Auto-saved game ${room.id} at turn ${gameState.currentTurn}`);
+              logger.info(`Auto-saved game ${room.id} at turn ${gameState.currentTurn}`);
             }
           }
         }
       } catch (error) {
-        console.error('Error in auto-save timer:', error);
+        logger.error('Error in auto-save timer:', error);
       }
     }, AUTO_SAVE_INTERVAL);
   }

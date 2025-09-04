@@ -1,6 +1,7 @@
 import { Client } from 'pg';
 import Redis from 'redis';
 import { config } from '../config/config';
+import { logger } from '@civ-game/shared/utils';
 import { GameState } from '../shared-types';
 
 export class DatabaseManager {
@@ -24,19 +25,19 @@ export class DatabaseManager {
     try {
       // Connect to PostgreSQL
       await this.pgClient.connect();
-      console.log('Connected to PostgreSQL');
+      logger.info('Connected to PostgreSQL');
 
       // Create tables if they don't exist
       await this.createTables();
 
       // Connect to Redis
       await this.redisClient.connect();
-      console.log('Connected to Redis');
+      logger.info('Connected to Redis');
 
       this.isInitialized = true;
-      console.log('Database Manager initialized successfully');
+      logger.info('Database Manager initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize Database Manager:', error);
+      logger.error('Failed to initialize Database Manager:', error);
       throw error;
     }
   }
@@ -110,7 +111,7 @@ export class DatabaseManager {
     await this.pgClient.query(createGameActionsTable);
     await this.pgClient.query(createIndexes);
 
-    console.log('Database tables created successfully');
+    logger.info('Database tables created successfully');
   }
 
   // User operations
@@ -309,7 +310,7 @@ export class DatabaseManager {
       const data = JSON.parse(cached);
       return GameState.deserialize(data);
     } catch (error) {
-      console.error('Error deserializing cached game state:', error);
+      logger.error('Error deserializing cached game state:', error);
       return null;
     }
   }
@@ -409,12 +410,12 @@ export class DatabaseManager {
   public async disconnect(): Promise<void> {
     if (this.pgClient) {
       await this.pgClient.end();
-      console.log('PostgreSQL connection closed');
+      logger.info('PostgreSQL connection closed');
     }
 
     if (this.redisClient && this.isInitialized) {
       await this.redisClient.quit();
-      console.log('Redis connection closed');
+      logger.info('Redis connection closed');
     }
 
     this.isInitialized = false;

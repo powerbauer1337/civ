@@ -1,5 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import GameService from '../services/GameService';
+import { logger } from '@civ-game/shared/utils';
 
 export class SocketHandler {
   constructor(
@@ -11,7 +12,7 @@ export class SocketHandler {
 
   private setupSocketEvents(): void {
     this.io.on('connection', (socket: Socket) => {
-      console.log(`🔌 WebSocket client connected: ${socket.id}`);
+      logger.info(`🔌 WebSocket client connected: ${socket.id}`);
 
       this.sendWelcome(socket);
       this.setupGameEvents(socket);
@@ -109,7 +110,7 @@ export class SocketHandler {
       }
 
     } catch (error) {
-      console.error('Error joining game:', error);
+      logger.error('Error joining game:', error);
       socket.emit('error', {
         message: 'Failed to join game',
         type: 'join_game_error'
@@ -143,7 +144,7 @@ export class SocketHandler {
           timestamp: new Date().toISOString()
         });
 
-        console.log(`🎮 Game action processed: ${action} from ${playerId} in game ${gameId}`);
+        logger.debug(`🎮 Game action processed: ${action} from ${playerId} in game ${gameId}`);
       } else {
         socket.emit('action_acknowledged', {
           action,
@@ -153,7 +154,7 @@ export class SocketHandler {
         });
       }
     } catch (error) {
-      console.error('Error processing game action:', error);
+      logger.error('Error processing game action:', error);
       socket.emit('action_acknowledged', {
         action,
         success: false,
@@ -188,7 +189,7 @@ export class SocketHandler {
       });
 
     } catch (error) {
-      console.error('Error processing chat message:', error);
+      logger.error('Error processing chat message:', error);
       socket.emit('error', {
         message: 'Failed to send message',
         type: 'chat_error'
@@ -203,13 +204,13 @@ export class SocketHandler {
     try {
       this.gameService.updatePlayerActivity(data.playerId);
     } catch (error) {
-      console.error('Error updating player activity:', error);
+      logger.error('Error updating player activity:', error);
     }
   }
 
   private setupDisconnectHandler(socket: Socket): void {
     socket.on('disconnect', (reason: string) => {
-      console.log(`🔌 WebSocket client disconnected: ${socket.id}, reason: ${reason}`);
+      logger.info(`🔌 WebSocket client disconnected: ${socket.id}, reason: ${reason}`);
 
       // In a more advanced implementation, you might want to:
       // 1. Track which player this socket belonged to
@@ -227,7 +228,7 @@ export class SocketHandler {
   broadcastToPlayer(playerId: string, event: string, data: any): void {
     // This would require tracking socket-to-player mapping
     // For now, we'll just log it
-    console.log(`Broadcasting ${event} to player ${playerId}:`, data);
+    logger.debug(`Broadcasting ${event} to player ${playerId}:`, data);
   }
 
   broadcastToAll(event: string, data: any): void {

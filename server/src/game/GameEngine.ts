@@ -1,6 +1,7 @@
 import { GameAction, GameActionType, GameState, PlayerState, Unit, City, UnitType, TerrainType, VisibilityLevel } from '../../../shared/src/types';
 import { HexMap } from './HexMap';
 import { v4 as uuidv4 } from 'uuid';
+import { logger } from '@civ-game/shared/utils';
 
 /**
  * GameEngine handles all game logic, action processing, and state management
@@ -29,7 +30,7 @@ export class GameEngine {
    * Process any player action and update game state accordingly
    */
   public static processPlayerAction(gameState: GameState, action: GameAction): ActionResult {
-    console.log(`Processing action: ${action.type} for player ${action.payload?.playerId || 'unknown'}`);
+    logger.debug(`Processing action: ${action.type} for player ${action.payload?.playerId || 'unknown'}`);
 
     try {
       // Validate basic action structure
@@ -64,7 +65,7 @@ export class GameEngine {
           return { success: false, error: `Unknown action type: ${action.type}`, gameState };
       }
     } catch (error) {
-      console.error('Error processing action:', error);
+      logger.error('Error processing action:', error);
       return { success: false, error: `Action processing failed: ${error}`, gameState };
     }
   }
@@ -376,7 +377,7 @@ export class GameEngine {
    * Process end turn action and advance game state
    */
   private static processEndTurn(gameState: GameState, action: GameAction): ActionResult {
-    console.log(`Processing end turn for player ${gameState.currentPlayer}`);
+    logger.debug(`Processing end turn for player ${gameState.currentPlayer}`);
 
     // Advance to next player
     const currentPlayerIndex = gameState.players.findIndex(p => p.userId === gameState.currentPlayer);
@@ -411,7 +412,7 @@ export class GameEngine {
    */
   public static processTurnEnd(gameState: GameState): ActionResult {
     try {
-      console.log(`Processing turn end mechanics for turn ${gameState.turn}`);
+      logger.debug(`Processing turn end mechanics for turn ${gameState.turn}`);
 
       // Process each player
       for (const playerState of gameState.players) {
@@ -444,7 +445,7 @@ export class GameEngine {
 
       return { success: true, message: 'Turn processed successfully', gameState };
     } catch (error) {
-      console.error('Error processing turn end:', error);
+      logger.error('Error processing turn end:', error);
       return { success: false, error: `Turn processing failed: ${error}`, gameState };
     }
   }
@@ -481,7 +482,7 @@ export class GameEngine {
     playerState.resources.culture += generatedResources.culture;
     playerState.resources.faith += generatedResources.faith;
 
-    console.log(`Player ${playerState.userId} generated:`, generatedResources);
+    logger.debug(`Player ${playerState.userId} generated:`, generatedResources);
   }
 
   /**
@@ -517,7 +518,7 @@ export class GameEngine {
         if (tech.turnsToComplete <= 0) {
           tech.isResearched = true;
           tech.turnsToComplete = undefined;
-          console.log(`Player ${playerState.userId} completed research of ${tech.techId}`);
+          logger.info(`Player ${playerState.userId} completed research of ${tech.techId}`);
         }
       }
     }
@@ -695,7 +696,7 @@ export class GameEngine {
   private static completeProduction(gameState: GameState, city: City, playerState: PlayerState): void {
     if (!city.production) return;
 
-    console.log(`${city.name} completed production of ${city.production.targetId}`);
+    logger.info(`${city.name} completed production of ${city.production.targetId}`);
 
     // Reset production
     city.production = null;

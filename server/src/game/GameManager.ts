@@ -133,7 +133,7 @@ export class GameManager {
 
       logger.info(`Game created: ${gameState.id} by player: ${playerId}`);
     } catch (error) {
-      console.error('Error creating game:', error);
+      logger.error('Error creating game:', error);
       socket.emit('error', { message: 'Failed to create game' });
     }
   }
@@ -199,7 +199,7 @@ export class GameManager {
 
       logger.info(`Player ${playerId} joined game ${gameId}`);
     } catch (error) {
-      console.error('Error joining game:', error);
+      logger.error('Error joining game:', error);
       socket.emit('error', { message: 'Failed to join game' });
     }
   }
@@ -258,7 +258,7 @@ export class GameManager {
 
       logger.info(`Game ${gameId} started`);
     } catch (error) {
-      console.error('Error starting game:', error);
+      logger.error('Error starting game:', error);
       socket.emit('error', { message: 'Failed to start game' });
     }
   }
@@ -339,7 +339,7 @@ export class GameManager {
         });
       }
     } catch (error) {
-      console.error('Error handling game action:', error);
+      logger.error('Error handling game action:', error);
       socket.emit('error', { message: 'Failed to execute action' });
     }
   }
