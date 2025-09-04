@@ -26,6 +26,15 @@ const defaultProps = {
   onMouseLeave: vi.fn()
 };
 
+// Helper function to render HexTile within SVG context
+const renderHexTile = (props: any = {}) => {
+  return render(
+    <svg>
+      <HexTile {...defaultProps} {...props} />
+    </svg>
+  );
+};
+
 describe('HexTile', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -33,25 +42,33 @@ describe('HexTile', () => {
 
   describe('Basic Rendering', () => {
     test('should render without crashing', () => {
-      render(<HexTile {...defaultProps} />);
+      render(
+        <svg>
+          <HexTile {...defaultProps} />
+        </svg>
+      );
 
       const hexTile = screen.getByTestId('hex-tile-5-7');
       expect(hexTile).toBeInTheDocument();
     });
 
     test('should render with correct coordinates', () => {
-      render(<HexTile {...defaultProps} />);
+      renderHexTile();
 
       expect(screen.getByTestId('hex-tile-5-7')).toBeInTheDocument();
     });
 
     test('should apply correct terrain styling', () => {
-      const { rerender } = render(<HexTile {...defaultProps} terrain="grassland" />);
+      const { rerender } = renderHexTile({ terrain: "grassland" });
 
       let hexTile = screen.getByTestId('hex-tile-5-7');
       expect(hexTile).toHaveClass('terrain-grassland');
 
-      rerender(<HexTile {...defaultProps} terrain="mountains" />);
+      rerender(
+        <svg>
+          <HexTile {...defaultProps} terrain="mountains" />
+        </svg>
+      );
       hexTile = screen.getByTestId('hex-tile-5-7');
       expect(hexTile).toHaveClass('terrain-mountains');
     });

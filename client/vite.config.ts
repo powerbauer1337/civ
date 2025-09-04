@@ -2,10 +2,19 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { visualizer } from 'rollup-plugin-visualizer';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    visualizer({
+      filename: 'dist/stats.html',
+      open: false,
+      gzipSize: true,
+      brotliSize: true
+    })
+  ],
   base: '/civ/', // GitHub Pages repository name
   resolve: {
     alias: {
@@ -37,27 +46,54 @@ export default defineConfig({
     minify: 'terser',
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Core libraries - load first
-          'react-vendor': ['react', 'react-dom'],
-          'react-router': ['react-router-dom'],
+        manualChunks: (id) => {
+          // Core React libraries
+          if (id.includes('react') || id.includes('react-dom')) {
+            return 'react-vendor';
+          }
+          if (id.includes('react-router')) {
+            return 'react-router';
+          }
           
-          // MUI split into smaller chunks for better caching
-          'mui-core': ['@mui/material/styles'],
-          'mui-components': ['@mui/material'],
-          'mui-icons': ['@mui/icons-material'],
+          // MUI packages - split for better caching
+          if (id.includes('@mui/material/styles') || id.includes('@mui/system')) {
+            return 'mui-core';
+          }
+          if (id.includes('@mui/material')) {
+            return 'mui-components';
+          }
+          if (id.includes('@mui/icons-material')) {
+            return 'mui-icons';
+          }
           
-          // Game-specific chunks
-          'redux-vendor': ['@reduxjs/toolkit', 'react-redux'],
-          'socket': ['socket.io-client'],
-          'shared': ['@civ-game/shared'],
+          // Game libraries
+          if (id.includes('@reduxjs/toolkit') || id.includes('react-redux')) {
+            return 'redux-vendor';
+          }
+          if (id.includes('socket.io-client')) {
+            return 'socket';
+          }
+          if (id.includes('@civ-game/shared')) {
+            return 'shared';
+          }
+          if (id.includes('phaser')) {
+            return 'phaser';
+          }
           
-          // Less critical libraries
-          'phaser': ['phaser']
+          // Keep game components together
+          if (id.includes('/components/HexMap/') || id.includes('/components/GameRenderer')) {
+            return 'game-components';
+          }
         }
       }
     },
-    chunkSizeWarningLimit: 1000
+    chunkSizeWarningLimit: 1000,
+    terserOptions: {
+      compress: {
+        drop_console: true, // Remove console logs in production
+        drop_debugger: true
+      }
+    }
   },
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
