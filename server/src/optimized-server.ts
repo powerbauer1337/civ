@@ -19,6 +19,20 @@ const io = new Server(server, {
   cors: {
     origin: config.CLIENT_URL || 'http://localhost:5173',
     methods: ['GET', 'POST']
+  },
+  // Optimize transport options for multiplayer gaming
+  transports: ['websocket', 'polling'],
+  // Performance tuning for real-time gaming
+  pingTimeout: 60000, // 60 seconds
+  pingInterval: 25000, // 25 seconds
+  // Enable all available compression and optimization
+  allowEIO3: true,
+  // Maximum payload size for large game states
+  maxHttpBufferSize: 1e6, // 1MB
+  // Connection state recovery for better reliability  
+  connectionStateRecovery: {
+    maxDisconnectionDuration: 2 * 60 * 1000, // 2 minutes
+    skipMiddlewares: true,
   }
 });
 
