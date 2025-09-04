@@ -1,18 +1,23 @@
-import { Client } from 'pg';
+import { Pool, PoolClient } from 'pg';
 import Redis from 'redis';
 import { config } from '../config/config';
 import { logger } from '@civ-game/shared/utils';
 import { GameState } from '../shared-types';
 
 export class DatabaseManager {
-  private pgClient: Client;
+  private pgPool: Pool;
   private redisClient: ReturnType<typeof Redis.createClient>;
   private isInitialized: boolean = false;
 
   constructor() {
-    // Initialize PostgreSQL client
-    this.pgClient = new Client({
-      connectionString: config.DATABASE_URL
+    // Initialize PostgreSQL connection pool for better performance
+    this.pgPool = new Pool({
+      connectionString: config.DATABASE_URL,
+      max: 20, // Maximum number of connections in pool
+      min: 2,  // Minimum number of connections in pool
+      idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
+      connectionTimeoutMillis: 2000, // Return error after 2 seconds if unable to get connection
+      allowExitOnIdle: false // Keep pool alive
     });
 
     // Initialize Redis client
@@ -21,11 +26,45 @@ export class DatabaseManager {
     });
   }
 
+  /**
+   * Execute a query with performance monitoring
+   */
+  private async executeQuery(text: string, params: any[] = [], operation: string = 'unknown'): Promise<any> {
+    const startTime = Date.now();
+    const client = await this.pgPool.connect();
+    
+    try {
+      const result = await client.query(text, params);
+      const duration = Date.now() - startTime;
+      
+      // Log slow queries (>100ms)
+      if (duration > 100) {
+        logger.warn(`Slow database query detected`, {
+          operation,
+          duration: `${duration}ms`,
+          query: text.substring(0, 100) + '...',
+          rowCount: result.rows.length
+        });
+      } else if (duration > 50) {
+        logger.info(`Database query performance`, {
+          operation,
+          duration: `${duration}ms`,
+          rowCount: result.rows.length
+        });
+      }
+      
+      return result;
+    } finally {
+      client.release();
+    }
+  }
+
   public async initialize(): Promise<void> {
     try {
-      // Connect to PostgreSQL
-      await this.pgClient.connect();
-      logger.info('Connected to PostgreSQL');
+      // Test PostgreSQL connection pool
+      const client = await this.pgPool.connect();
+      client.release();
+      logger.info('PostgreSQL connection pool initialized');
 
       // Create tables if they don't exist
       await this.createTables();
@@ -105,11 +144,11 @@ export class DatabaseManager {
       CREATE INDEX IF NOT EXISTS idx_game_actions_turn ON game_actions(game_id, turn_number);
     `;
 
-    await this.pgClient.query(createUsersTable);
-    await this.pgClient.query(createGamesTable);
-    await this.pgClient.query(createGamePlayersTable);
-    await this.pgClient.query(createGameActionsTable);
-    await this.pgClient.query(createIndexes);
+    await this.executeQuery(createUsersTable, [], 'create_users_table');
+    await this.executeQuery(createGamesTable, [], 'create_games_table');
+    await this.executeQuery(createGamePlayersTable, [], 'create_game_players_table');
+    await this.executeQuery(createGameActionsTable, [], 'create_game_actions_table');
+    await this.executeQuery(createIndexes, [], 'create_indexes');
 
     logger.info('Database tables created successfully');
   }
@@ -126,12 +165,12 @@ export class DatabaseManager {
       VALUES ($1, $2, $3, $4)
     `;
 
-    await this.pgClient.query(query, [
+    await this.executeQuery(query, [
       userData.id,
       userData.username,
       userData.email,
       userData.passwordHash
-    ]);
+    ], 'create_user');
   }
 
   public async getUserByUsername(username: string): Promise<any> {
@@ -140,13 +179,13 @@ export class DatabaseManager {
       WHERE username = $1 OR email = $1
     `;
 
-    const result = await this.pgClient.query(query, [username]);
+    const result = await this.executeQuery(query, [username], 'get_user_by_username');
     return result.rows[0];
   }
 
   public async getUserById(userId: string): Promise<any> {
     const query = 'SELECT * FROM users WHERE id = $1';
-    const result = await this.pgClient.query(query, [userId]);
+    const result = await this.executeQuery(query, [userId], 'get_user_by_id');
     return result.rows[0];
   }
 
@@ -159,7 +198,7 @@ export class DatabaseManager {
       WHERE id = $1
     `;
 
-    await this.pgClient.query(query, [userId, won ? 1 : 0]);
+    await this.executeQuery(query, [userId, won ? 1 : 0], 'update_user_stats');
   }
 
   // Game operations
@@ -175,7 +214,7 @@ export class DatabaseManager {
         updated_at = $7
     `;
 
-    await this.pgClient.query(query, [
+    await this.executeQuery(query, [
       gameState.id,
       JSON.stringify(gameState.config),
       gameState.phase,
@@ -183,7 +222,7 @@ export class DatabaseManager {
       gameState.currentPlayer,
       gameState.createdAt,
       gameState.lastUpdate
-    ]);
+    ], 'save_game');
 
     // Save players
     for (let i = 0; i < gameState.players.length; i++) {
@@ -201,14 +240,14 @@ export class DatabaseManager {
         final_score = $6
     `;
 
-    await this.pgClient.query(query, [
+    await this.executeQuery(query, [
       gameId,
       player.id,
       index,
       player.civilization,
       player.color,
       player.score
-    ]);
+    ], 'save_game_player');
   }
 
   public async getGameById(gameId: string): Promise<any> {
@@ -221,8 +260,8 @@ export class DatabaseManager {
       ORDER BY gp.player_index
     `;
 
-    const gameResult = await this.pgClient.query(gameQuery, [gameId]);
-    const playersResult = await this.pgClient.query(playersQuery, [gameId]);
+    const gameResult = await this.executeQuery(gameQuery, [gameId], 'get_game_by_id');
+    const playersResult = await this.executeQuery(playersQuery, [gameId], 'get_game_players');
 
     if (gameResult.rows.length === 0) {
       return null;
@@ -245,7 +284,7 @@ export class DatabaseManager {
       LIMIT $2
     `;
 
-    const result = await this.pgClient.query(query, [userId, limit]);
+    const result = await this.executeQuery(query, [userId, limit], 'get_game_history');
     return result.rows;
   }
 
@@ -256,14 +295,14 @@ export class DatabaseManager {
       VALUES ($1, $2, $3, $4, $5, $6)
     `;
 
-    await this.pgClient.query(query, [
+    await this.executeQuery(query, [
       action.actionId,
       action.gameId,
       action.playerId,
       action.type,
       JSON.stringify(action.payload),
       action.turnNumber || 1
-    ]);
+    ], 'save_game_action');
   }
 
   public async getGameActions(gameId: string, fromTurn?: number): Promise<any[]> {
@@ -280,7 +319,7 @@ export class DatabaseManager {
 
     query += ' ORDER BY created_at ASC';
 
-    const result = await this.pgClient.query(query, params);
+    const result = await this.executeQuery(query, params, 'get_game_actions');
     return result.rows.map(row => ({
       ...row,
       payload: row.payload ? JSON.parse(row.payload) : null
@@ -361,7 +400,7 @@ export class DatabaseManager {
       FROM games
     `;
 
-    const result = await this.pgClient.query(query);
+    const result = await this.executeQuery(query, [], 'get_game_stats');
     return result.rows[0];
   }
 
@@ -375,7 +414,7 @@ export class DatabaseManager {
       FROM users
     `;
 
-    const result = await this.pgClient.query(query);
+    const result = await this.executeQuery(query, [], 'get_user_stats');
     return result.rows[0];
   }
 
@@ -387,7 +426,7 @@ export class DatabaseManager {
       AND phase = 'ended'
     `;
 
-    const result = await this.pgClient.query(query, [daysOld]);
+    const result = await this.executeQuery(query, [daysOld], 'cleanup_old_game_actions');
     return result.rowCount || 0;
   }
 
@@ -408,9 +447,9 @@ export class DatabaseManager {
   }
 
   public async disconnect(): Promise<void> {
-    if (this.pgClient) {
-      await this.pgClient.end();
-      logger.info('PostgreSQL connection closed');
+    if (this.pgPool) {
+      await this.pgPool.end();
+      logger.info('PostgreSQL connection pool closed');
     }
 
     if (this.redisClient && this.isInitialized) {
