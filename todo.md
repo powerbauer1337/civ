@@ -76,6 +76,11 @@
   - Change: Added `list_games` and `lobby_stats` helpers in `SocketContext`. Lobby now prefers WebSocket for pagination and stats, with HTTP fallback. Header shows live counts and connection status; Refresh triggers both list + stats.
   - Acceptance: On `/lobby`, games list renders via `games_list` when connected; chips show counts from `lobby_stats`; pagination works; no console errors.
 
+- [x] Socket acks for create/join
+  - Files: `client/src/contexts/SocketContext.tsx`, `client/src/pages/SimpleLobbyPage.tsx`
+  - Change: Implemented `createGameWithAck` (listens for `game_created`) and `joinGameWithAck` (resolves on `player_joined` for self). Lobby uses these when online; stores `currentGameId`/`currentPlayerId` and navigates.
+  - Acceptance: Creating or joining from lobby completes via WebSocket without HTTP; navigation to `/game/:id` occurs on ack.
+
 ## Notes (September 5, 2025)
 
 - AI tests fixed: eliminated randomness/delay under test env in `AIPlayer.makeDecisions` so actions deterministically include adjacent attacks and settler expansion. Suite `server/tests/game/AIPlayer.test.ts` now passes fully.
