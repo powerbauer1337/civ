@@ -349,6 +349,103 @@ describe('GameManager', () => {
     });
   });
 
+  describe('Turn Timer', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    test('starts a turn timer when scheduled', () => {
+      const shortConfig = {
+        maxPlayers: 2,
+        mapSize: { width: 12, height: 12 },
+        turnTimeLimit: 1, // seconds
+        victoryConditions: [VictoryType.DOMINATION],
+        startingResources: { gold: 100, science: 0, culture: 0 } as any
+      };
+
+      const handleCreateGame = (gameManager as any).handleCreateGame.bind(gameManager);
+      handleCreateGame(mockSocket, { playerName: 'Host', gameConfig: shortConfig });
+
+      const created = (mockSocket.emit as jest.Mock).mock.calls.find((c: any[]) => c[0] === 'game_created');
+      const gameId = created[1].gameId as string;
+
+      const room = (gameManager as any).games.get(gameId);
+      // Directly schedule timer to avoid relying on mocked startGame
+      (gameManager as any).startTurnTimer(gameId);
+      expect(room.turnTimer).toBeDefined();
+    });
+
+    test('emits turn_timeout when timer expires and restarts timer', () => {
+      const shortConfig = {
+        maxPlayers: 2,
+        mapSize: { width: 12, height: 12 },
+        turnTimeLimit: 1,
+        victoryConditions: [VictoryType.DOMINATION],
+        startingResources: { gold: 100, science: 0, culture: 0 } as any
+      };
+
+      const handleCreateGame = (gameManager as any).handleCreateGame.bind(gameManager);
+      handleCreateGame(mockSocket, { playerName: 'Host', gameConfig: shortConfig });
+      const created = (mockSocket.emit as jest.Mock).mock.calls.find((c: any[]) => c[0] === 'game_created');
+      const gameId = created[1].gameId as string;
+
+      const joiner = { ...mockSocket, id: 'sock-joiner', emit: jest.fn(), join: jest.fn(), on: jest.fn() } as any;
+      const handleJoinGame = (gameManager as any).handleJoinGame.bind(gameManager);
+      handleJoinGame(joiner, { gameId, playerName: 'P2' });
+
+      const spyStart = jest.spyOn(gameManager as any, 'startTurnTimer');
+      const room = (gameManager as any).games.get(gameId);
+      room.gameState.phase = GamePhase.ACTIVE;
+      (gameManager as any).startTurnTimer(gameId);
+
+      // Advance time to trigger timeout
+      jest.advanceTimersByTime(1000);
+
+      expect((mockIo.to as jest.Mock)).toHaveBeenCalledWith(gameId);
+      expect((mockIo.emit as jest.Mock)).toHaveBeenCalledWith('turn_timeout', expect.any(Object));
+      // Timer should be scheduled again for next turn
+      expect(spyStart).toHaveBeenCalled();
+    });
+
+    test('non-END_TURN successful action resets timer', () => {
+      const shortConfig = {
+        maxPlayers: 2,
+        mapSize: { width: 12, height: 12 },
+        turnTimeLimit: 5,
+        victoryConditions: [VictoryType.DOMINATION],
+        startingResources: { gold: 100, science: 0, culture: 0 } as any
+      };
+
+      const handleCreateGame = (gameManager as any).handleCreateGame.bind(gameManager);
+      handleCreateGame(mockSocket, { playerName: 'Host', gameConfig: shortConfig });
+      const created = (mockSocket.emit as jest.Mock).mock.calls.find((c: any[]) => c[0] === 'game_created');
+      const gameId = created[1].gameId as string;
+
+      const joiner = { ...mockSocket, id: 'sock-joiner', emit: jest.fn(), join: jest.fn(), on: jest.fn() } as any;
+      const handleJoinGame = (gameManager as any).handleJoinGame.bind(gameManager);
+      handleJoinGame(joiner, { gameId, playerName: 'P2' });
+
+      const room = (gameManager as any).games.get(gameId);
+      room.gameState.phase = GamePhase.ACTIVE;
+      (gameManager as any).startTurnTimer(gameId);
+
+      const spyReset = jest.spyOn(gameManager as any, 'resetTurnTimer');
+
+      // Fabricate a non-END_TURN action that "succeeds" under mocked GameState
+      const playerId = 'player-1';
+      (gameManager as any).socketToPlayer.set(mockSocket.id, playerId);
+      (gameManager as any).playerToGame.set(playerId, gameId);
+      const moveAction = { type: (GameActionType as any).MOVE_UNIT, playerId, data: { unitId: 'u1', from: { x: 0, y: 0 }, to: { x: 0, y: 1 } } } as any;
+
+      (gameManager as any).handleGameAction(mockSocket as any, moveAction);
+
+      expect(spyReset).toHaveBeenCalledWith(gameId);
+    });
+  });
   describe('Game Action Processing', () => {
     let gameId: string;
     let playerId: string;

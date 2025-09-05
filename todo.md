@@ -967,7 +967,7 @@ Goal: Get to a stable, enjoyable “playable” state for 1–4 players with cor
   - Tasks:
     - [ ] Validate `GameManager` start/turn sequencing (start → currentPlayer rotation → end_turn).
     - [ ] Ensure `game_updated` payloads always include `gameState.serialize()` and action metadata.
-    - [ ] Add end-turn timeout coverage tests; verify timer reset semantics.
+    - [x] Add end-turn timeout coverage tests; verify timer reset semantics.
   - Acceptance:
     - 2-player game can run 5+ full turns using MOVE/FOUND_CITY/RESEARCH/END_TURN without errors.
 
