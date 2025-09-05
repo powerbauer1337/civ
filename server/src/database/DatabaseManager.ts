@@ -26,27 +26,27 @@ export class DatabaseManager {
    */
   private async executeQuery(text: string, params: any[] = [], operation: string = 'unknown'): Promise<any> {
     const startTime = Date.now();
-    
+
     try {
       const result = await this.pgClient.query(text, params);
       const duration = Date.now() - startTime;
-      
+
       // Log slow queries (>100ms)
       if (duration > 100) {
-        logger.warn(`Slow database query detected`, {
+        logger.warn('Slow database query detected', {
           operation,
           duration: `${duration}ms`,
           query: text.substring(0, 100) + '...',
           rowCount: result.rows.length
         });
       } else if (duration > 50) {
-        logger.info(`Database query performance`, {
+        logger.info('Database query performance', {
           operation,
           duration: `${duration}ms`,
           rowCount: result.rows.length
         });
       }
-      
+
       return result;
     } catch (error) {
       logger.error(`Database query failed: ${operation}`, { error, query: text.substring(0, 100) });

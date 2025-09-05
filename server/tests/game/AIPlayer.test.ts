@@ -246,6 +246,7 @@ describe('AIPlayer', () => {
         owner: 'enemy-player'
       };
 
+
       const actions = await aiPlayer.makeDecisions(mockGameState);
       const attackActions = actions.filter(a => a.type === GameActionType.ATTACK_UNIT);
       
