@@ -1037,8 +1037,8 @@ Goal: Get to a stable, enjoyable “playable” state for 1–4 players with cor
 - [ ] Server/Game: Victory and end-of-game broadcast
   - Tasks:
     - [x] Domination/END_GAME glue: GameManager now triggers game end when GameEngine sets phase 'END_GAME' (or 'ended').
-    - [x] Ensure `game_ended` includes winner and final scores; prevent further actions (existing handleGameEnd used).
-    - [ ] Tests for victory detection and late action rejection.
+    - [x] Ensure `game_ended` includes winner and final scores; prevent further actions (existing handleGameEnd used + status=completed).
+    - [x] Tests: Victory broadcast via manager and late action rejection covered in `tests/integration/VictoryFlow.integration.test.ts`.
   - Acceptance:
     - Ending conditions trigger reliably; clients return to a results screen.
 
