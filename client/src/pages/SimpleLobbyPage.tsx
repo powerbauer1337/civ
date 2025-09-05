@@ -41,6 +41,8 @@ import {
   CheckCircle as CheckIcon,
   Info as InfoIcon
 } from '@mui/icons-material';
+import { useSocket } from '../contexts/SocketContext';
+import { apiConfig } from '../config/api';
 
 interface Game {
   id: string
@@ -65,6 +67,7 @@ interface GameListResponse {
 
 const SimpleLobbyPage: React.FC = () => {
   const navigate = useNavigate();
+  const { connected, listGames, getLobbyStats } = useSocket();
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [createGameOpen, setCreateGameOpen] = useState(false);
@@ -79,6 +82,7 @@ const SimpleLobbyPage: React.FC = () => {
   const [gameFilter, setGameFilter] = useState<'all' | 'waiting' | 'active' | 'ended'>('all');
   const [hideTestGames, setHideTestGames] = useState(true);
   const [isCleaningUp, setIsCleaningUp] = useState(false);
+  const [lobbyStats, setLobbyStats] = useState<{ activeGames: number; activePlayers: number }>({ activeGames: 0, activePlayers: 0 });
 
   const [gameForm, setGameForm] = useState({
     name: '',
@@ -92,41 +96,86 @@ const SimpleLobbyPage: React.FC = () => {
 
   useEffect(() => {
     fetchGames(1);
-  }, [gameFilter, hideTestGames]);
+    refreshStats();
+  }, [gameFilter, hideTestGames, connected]);
 
   useEffect(() => {
-    // Refresh games every 10 seconds (reduced frequency for better UX)
-    const interval = setInterval(() => fetchGames(), 10000);
+    // Refresh games and lobby stats every 10 seconds
+    const interval = setInterval(() => {
+      fetchGames();
+      refreshStats();
+    }, 10000);
     return () => clearInterval(interval);
-  }, [currentPage, gameFilter, hideTestGames]);
+  }, [currentPage, gameFilter, hideTestGames, connected]);
 
   const fetchGames = async (page = currentPage) => {
     try {
-      const queryParams = new URLSearchParams({
-        page: page.toString(),
-        limit: '10',
-        filter: gameFilter,
-        hideTestGames: hideTestGames.toString()
-      });
-
-      const response = await fetch(
-        `${process.env.VITE_API_BASE_URL || 'http://localhost:4002'}/api/games?${queryParams}`
-      );
-
-      if (response.ok) {
-        const data: GameListResponse = await response.json();
-        setGames(data.games || data as any); // Fallback for old API format
-        setTotalGames(data.totalGames || data.games?.length || 0);
-        setCurrentPage(data.currentPage || page);
-        setTotalPages(data.totalPages || Math.ceil((data.totalGames || 0) / 10));
+      if (connected) {
+        const { games: socketGames, totalGames: total } = await listGames({
+          page,
+          limit: 10,
+          filter: gameFilter,
+          hideTestGames
+        });
+        const mapped: Game[] = socketGames.map((g: any) => {
+          const status: 'waiting' | 'active' | 'ended' =
+            g.phase === 'active' ? 'active' : g.phase === 'ended' ? 'ended' : 'waiting';
+          return {
+            id: String(g.id),
+            name: String(g.name || `Game ${String(g.id).slice(0, 6)}`),
+            status,
+            playerCount: Number(g.playerCount ?? 0),
+            maxPlayers: Number(g.maxPlayers ?? 8),
+            currentTurn: Number(g.currentTurn ?? 1),
+            createdAt: g.createdAt ?? new Date().toISOString(),
+            joinable: g.phase === 'lobby' || g.phase === 'waiting'
+          };
+        });
+        setGames(mapped);
+        setTotalGames(total);
+        setCurrentPage(page);
+        setTotalPages(Math.max(1, Math.ceil(total / 10)));
       } else {
-        throw new Error('Failed to fetch games');
+        const queryParams = new URLSearchParams({
+          page: page.toString(),
+          limit: '10',
+          filter: gameFilter,
+          hideTestGames: String(hideTestGames)
+        });
+        const response = await fetch(`${apiConfig.baseURL}/api/games?${queryParams}`);
+        if (response.ok) {
+          const data: GameListResponse = await response.json();
+          const total = data.totalGames || (data as any).games?.length || 0;
+          setGames((data as any).games || (data as any));
+          setTotalGames(total);
+          setCurrentPage((data as any).currentPage || page);
+          setTotalPages((data as any).totalPages || Math.ceil(total / 10));
+        } else {
+          throw new Error('Failed to fetch games');
+        }
       }
     } catch (error) {
       console.error('Error fetching games:', error);
       setError('Failed to connect to server');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshStats = async () => {
+    try {
+      if (connected) {
+        const stats = await getLobbyStats();
+        setLobbyStats(stats);
+      } else {
+        const res = await fetch(`${apiConfig.baseURL}/api/games/stats`);
+        if (res.ok) {
+          const data = await res.json();
+          setLobbyStats({ activeGames: data.totalGames ?? 0, activePlayers: data.activePlayers ?? 0 });
+        }
+      }
+    } catch (e) {
+      // ignore
     }
   };
 
@@ -355,8 +404,10 @@ const SimpleLobbyPage: React.FC = () => {
       <AppBar position="static" sx={{ background: 'rgba(0, 0, 0, 0.3)' }}>
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
-            🎮 Civilization Game - Live Multiplayer
+            🎮 Civilization Game - Live Multiplayer {connected ? '• Online' : '• Offline'}
           </Typography>
+          <Chip color="secondary" label={`Games: ${lobbyStats.activeGames}`} sx={{ mr: 1 }} />
+          <Chip color="secondary" label={`Players: ${lobbyStats.activePlayers}`} sx={{ mr: 2 }} />
           <Button
             startIcon={<AddIcon />}
             variant="contained"
@@ -370,7 +421,7 @@ const SimpleLobbyPage: React.FC = () => {
             startIcon={<RefreshIcon />}
             variant="outlined"
             color="inherit"
-            onClick={() => fetchGames()}
+            onClick={() => { fetchGames(); refreshStats(); }}
           >
             Refresh
           </Button>

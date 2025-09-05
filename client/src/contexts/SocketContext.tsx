@@ -24,6 +24,8 @@ interface SocketContextValue {
   startGame: () => void
   sendGameAction: (action: any) => void
   requestGameState: () => void
+  listGames: (options?: { page?: number; limit?: number; filter?: 'all' | 'active' | 'waiting' | 'ended'; hideTestGames?: boolean }) => Promise<{ games: any[]; totalGames: number; hasMore: boolean }>
+  getLobbyStats: () => Promise<{ activeGames: number; activePlayers: number }>
 }
 
 const SocketContext = createContext<SocketContextValue>({
@@ -34,7 +36,9 @@ const SocketContext = createContext<SocketContextValue>({
   leaveGame: () => {},
   startGame: () => {},
   sendGameAction: () => {},
-  requestGameState: () => {}
+  requestGameState: () => {},
+  listGames: async () => ({ games: [], totalGames: 0, hasMore: false }),
+  getLobbyStats: async () => ({ activeGames: 0, activePlayers: 0 })
 });
 
 export const useSocket = () => {
@@ -210,6 +214,45 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     }
   };
 
+  // Lobby helpers
+  const listGames = (options: { page?: number; limit?: number; filter?: 'all' | 'active' | 'waiting' | 'ended'; hideTestGames?: boolean } = {}) => {
+    return new Promise<{ games: any[]; totalGames: number; hasMore: boolean }>((resolve, reject) => {
+      if (!socket) return resolve({ games: [], totalGames: 0, hasMore: false });
+      try {
+        socket.emit('list_games', options);
+        socket.once('games_list', (payload: any) => {
+          resolve({
+            games: payload.games || [],
+            totalGames: payload.totalGames ?? (payload.games ? payload.games.length : 0),
+            hasMore: !!payload.hasMore
+          });
+        });
+        // Basic safety timeout
+        setTimeout(() => resolve({ games: [], totalGames: 0, hasMore: false }), 5000);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  };
+
+  const getLobbyStats = () => {
+    return new Promise<{ activeGames: number; activePlayers: number }>((resolve, reject) => {
+      if (!socket) return resolve({ activeGames: 0, activePlayers: 0 });
+      try {
+        socket.emit('lobby_stats');
+        socket.once('lobby_stats', (payload: any) => {
+          resolve({
+            activeGames: payload.activeGames ?? 0,
+            activePlayers: payload.activePlayers ?? 0
+          });
+        });
+        setTimeout(() => resolve({ activeGames: 0, activePlayers: 0 }), 3000);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  };
+
   const contextValue: SocketContextValue = {
     socket,
     connected,
@@ -218,7 +261,9 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     leaveGame,
     startGame,
     sendGameAction,
-    requestGameState
+    requestGameState,
+    listGames,
+    getLobbyStats
   };
 
   return (

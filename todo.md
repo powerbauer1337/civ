@@ -69,6 +69,13 @@
   - Change: Added `list_games` and `lobby_stats` Socket.IO events. `list_games` supports pagination and filtering via `getFilteredGameList`; emits `games_list { games, totalGames, hasMore }`. `lobby_stats` emits `{ activeGames, activePlayers }`.
   - Acceptance: Client can request lobby listings and stats without HTTP; server tests updated and passing.
 
+### ✅ Client Lobby Wiring (September 5, 2025)
+
+- [x] Consume lobby socket events in client
+  - Files: `client/src/contexts/SocketContext.tsx`, `client/src/pages/SimpleLobbyPage.tsx`
+  - Change: Added `list_games` and `lobby_stats` helpers in `SocketContext`. Lobby now prefers WebSocket for pagination and stats, with HTTP fallback. Header shows live counts and connection status; Refresh triggers both list + stats.
+  - Acceptance: On `/lobby`, games list renders via `games_list` when connected; chips show counts from `lobby_stats`; pagination works; no console errors.
+
 ## Notes (September 5, 2025)
 
 - AI tests fixed: eliminated randomness/delay under test env in `AIPlayer.makeDecisions` so actions deterministically include adjacent attacks and settler expansion. Suite `server/tests/game/AIPlayer.test.ts` now passes fully.
