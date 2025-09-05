@@ -169,6 +169,7 @@ npm run dev
 npm run dev          # Start all development servers
 npm run build        # Build all packages for production
 npm run test         # Run test suites
+npm run test:server:game-loop  # Run focused server game-loop test
 npm run lint         # Run linting and formatting
 
 # Individual packages
@@ -176,6 +177,13 @@ cd client && npm run dev     # Frontend only
 cd server && npm run dev     # Backend only
 cd shared && npm run build   # Shared types only
 ```
+
+### Quickstart: Two-Tab Local Play (10 Turns)
+- Start dev stack: `npm run dev` (server on :3001, client on :5173).
+- Open two tabs at `http://localhost:5173`.
+- Tab A: Create a game. Tab B: Join it.
+- Start the game (Tab A). Alternate End Turn and simple actions for ~10 turns.
+- You can open a third tab as spectator via the lobby; spectators are read-only.
 
 ### **Adding Features**
 1. **New Units**: Add to `UnitType` enum and implement in `GameEngine.ts`

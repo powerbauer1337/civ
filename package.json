@@ -23,6 +23,7 @@
     "test": "npm run test:shared && npm run test:server",
     "test:shared": "cd shared && npm test",
     "test:server": "cd server && npm test",
+    "test:server:game-loop": "cd server && npm run test:game-loop",
     "lint": "npm run lint:shared && npm run lint:server",
     "lint:shared": "cd shared && npm run lint",
     "lint:server": "cd server && npm run lint",

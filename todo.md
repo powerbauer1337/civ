@@ -992,10 +992,10 @@ Goal: Get to a stable, enjoyable “playable” state for 1–4 players with cor
   - Acceptance:
     - From lobby → game: a user can move a unit, found first city, start research, and end their turn; UI reflects state updates in near real time.
 
-- [ ] Client/Server: Spectator-readonly enforcement
+- [x] Client/Server: Spectator-readonly enforcement
   - Tasks:
     - [ ] Disable action buttons when spectating; hide unit selection affordances.
-    - [ ] Ensure server rejects actions from sockets not mapped to a player in room.
+    - [x] Ensure server rejects actions from sockets not mapped to a player in room.
   - Acceptance:
     - Spectators see updates but cannot perform actions; attempted actions are rejected with an error toast.
 
@@ -1081,8 +1081,8 @@ Goal: Get to a stable, enjoyable “playable” state for 1–4 players with cor
 - [ ] Wire error/info toasts for action acks/failures
 
 ### QA/DevEx
-- [ ] Add `npm run test:server:game-loop` (focused suite)
-- [ ] Update docs: quickstart to launch two tabs and play 10 turns
+- [x] Add `npm run test:server:game-loop` (focused suite)
+- [x] Update docs: quickstart to launch two tabs and play 10 turns
 - [ ] CI gates on server tests + lint (already) and new suites
 
 ### P0 Bug List (tracking)
