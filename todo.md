@@ -323,9 +323,12 @@ All major GameEngine static methods have been successfully implemented:
 
 #### 🌐 Multiplayer Features
 - [ ] Design enhanced multiplayer lobby system
-- [ ] Implement spectator mode
+- [x] Implement spectator mode
 - [ ] Add tournament/ranked game modes
 - [ ] Enhance real-time communication features
+  - Files: `server/src/game/GameManager.ts`
+  - Details: Added `spectate_game`, `stop_spectating`, and allowed `request_game_state` for spectators. Tracks spectators per room; emits `spectator_joined`/`spectator_left` events. Spectators cannot perform `game_action` (enforced by existing player checks).
+  - Acceptance: Spectator can join a game read-only, receive current state, and leave cleanly; players are notified.
 
 ### 📊 Development Metrics
 

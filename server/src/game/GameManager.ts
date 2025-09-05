@@ -37,6 +37,7 @@ export class GameManager {
   private games: Map<string, GameRoom>;
   private playerToGame: Map<string, string>; // playerId -> gameId
   private socketToPlayer: Map<string, string>; // socketId -> playerId
+  private spectatorToGame: Map<string, string>; // socketId -> gameId (spectators)
   private cleanupInterval: NodeJS.Timeout;
   private rooms: Map<string, GameRoom>;
 
@@ -46,6 +47,7 @@ export class GameManager {
     this.rooms = new Map();
     this.playerToGame = new Map();
     this.socketToPlayer = new Map();
+    this.spectatorToGame = new Map();
 
     // Start cleanup interval
     this.cleanupInterval = setInterval(() => {
@@ -64,6 +66,8 @@ export class GameManager {
     socket.on('game_action', (data) => this.handleGameAction(socket, data));
     socket.on('player_ready', () => this.handlePlayerReady(socket));
     socket.on('request_game_state', () => this.handleRequestGameState(socket));
+    socket.on('spectate_game', (data) => this.handleSpectateGame(socket, data));
+    socket.on('stop_spectating', () => this.handleStopSpectating(socket));
   }
 
   public handleDisconnection(socket: Socket): void {
@@ -71,6 +75,17 @@ export class GameManager {
     if (playerId) {
       this.handlePlayerDisconnect(playerId);
       this.socketToPlayer.delete(socket.id);
+    }
+
+    // Handle spectator disconnection
+    const spectatingGameId = this.spectatorToGame.get(socket.id);
+    if (spectatingGameId) {
+      const gameRoom = this.games.get(spectatingGameId) || this.rooms.get(spectatingGameId);
+      if (gameRoom) {
+        gameRoom.spectators.delete(socket);
+        this.io.to(spectatingGameId).emit('spectator_left', { socketId: socket.id });
+      }
+      this.spectatorToGame.delete(socket.id);
     }
   }
 
@@ -356,15 +371,68 @@ export class GameManager {
 
   private handleRequestGameState(socket: Socket): void {
     const playerId = this.socketToPlayer.get(socket.id);
+    let gameId: string | undefined;
+
     if (playerId) {
-      const gameId = this.playerToGame.get(playerId);
-      if (gameId) {
-        const gameRoom = this.games.get(gameId);
-        if (gameRoom) {
-          socket.emit('game_state', gameRoom.gameState.serialize());
-        }
+      gameId = this.playerToGame.get(playerId);
+    } else {
+      gameId = this.spectatorToGame.get(socket.id);
+    }
+
+    if (gameId) {
+      const gameRoom = this.games.get(gameId) || this.rooms.get(gameId);
+      if (gameRoom) {
+        socket.emit('game_state', gameRoom.gameState.serialize());
       }
     }
+  }
+
+  private handleSpectateGame(socket: Socket, data: { gameId: string }): void {
+    try {
+      const { gameId } = data || ({} as any);
+      if (!gameId) {
+        socket.emit('error', { message: 'Game ID required' });
+        return;
+      }
+
+      const gameRoom = this.games.get(gameId) || this.rooms.get(gameId);
+      if (!gameRoom) {
+        socket.emit('error', { message: 'Game not found' });
+        return;
+      }
+
+      // Add spectator
+      gameRoom.spectators.add(socket);
+      this.spectatorToGame.set(socket.id, gameId);
+      socket.join(gameId);
+
+      // Acknowledge and send current state
+      socket.emit('spectating_started', {
+        gameId,
+        gameState: gameRoom.gameState.serialize(),
+        players: Array.from(gameRoom.players.keys())
+      });
+
+      // Notify players
+      this.io.to(gameId).emit('spectator_joined', { socketId: socket.id });
+    } catch (error) {
+      logger.error('Error starting spectating:', error);
+      socket.emit('error', { message: 'Failed to start spectating' });
+    }
+  }
+
+  private handleStopSpectating(socket: Socket): void {
+    const gameId = this.spectatorToGame.get(socket.id);
+    if (!gameId) return;
+
+    const gameRoom = this.games.get(gameId) || this.rooms.get(gameId);
+    if (gameRoom) {
+      gameRoom.spectators.delete(socket);
+      socket.leave(gameId);
+      this.io.to(gameId).emit('spectator_left', { socketId: socket.id });
+    }
+    this.spectatorToGame.delete(socket.id);
+    socket.emit('spectating_stopped', { gameId });
   }
 
   private handlePlayerDisconnect(playerId: string): void {
