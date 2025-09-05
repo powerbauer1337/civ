@@ -235,9 +235,12 @@ describe('AIPlayer', () => {
 
   describe('Unit Decision Making', () => {
     it('should make warrior attack adjacent enemies', async () => {
+      // Create isolated test state to avoid test interdependency
+      const testGameState = JSON.parse(JSON.stringify(mockGameState));
+      
       // Place enemy unit adjacent to AI warrior at (3,2)
       const neighborPos = { x: 3, y: 2 };
-      mockGameState.board[neighborPos.y][neighborPos.x].unit = {
+      testGameState.board[neighborPos.y][neighborPos.x].unit = {
         id: 'enemy-unit-2',
         type: UnitType.WARRIOR,
         position: neighborPos,
@@ -246,8 +249,7 @@ describe('AIPlayer', () => {
         owner: 'enemy-player'
       };
 
-
-      const actions = await aiPlayer.makeDecisions(mockGameState);
+      const actions = await aiPlayer.makeDecisions(testGameState);
       const attackActions = actions.filter(a => a.type === GameActionType.ATTACK_UNIT);
       
       expect(attackActions.length).toBeGreaterThan(0);
@@ -411,12 +413,15 @@ describe('AIPlayer', () => {
 
   describe('Technology Decision Making', () => {
     it('should research technology when science is available', async () => {
+      // Create isolated test state to avoid test interdependency
+      const testGameState = JSON.parse(JSON.stringify(mockGameState));
+      
       // Ensure enough science and limited techs
-      mockGameState.players['test-ai-player'].resources.science = 25;
-      mockGameState.players['test-ai-player'].technologies = [TechnologyType.AGRICULTURE];
-      mockGameState.players['test-ai-player'].currentResearch = null; // Not currently researching
+      testGameState.players['test-ai-player'].resources.science = 25;
+      testGameState.players['test-ai-player'].technologies = [TechnologyType.AGRICULTURE];
+      testGameState.players['test-ai-player'].currentResearch = null; // Not currently researching
 
-      const actions = await aiPlayer.makeDecisions(mockGameState);
+      const actions = await aiPlayer.makeDecisions(testGameState);
       const techActions = actions.filter(a => a.type === GameActionType.RESEARCH_TECHNOLOGY);
       
       expect(techActions.length).toBeGreaterThan(0);
