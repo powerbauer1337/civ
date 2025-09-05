@@ -67,7 +67,7 @@ interface GameListResponse {
 
 const SimpleLobbyPage: React.FC = () => {
   const navigate = useNavigate();
-  const { connected, listGames, getLobbyStats } = useSocket();
+  const { connected, listGames, getLobbyStats, createGameWithAck, joinGameWithAck } = useSocket();
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [createGameOpen, setCreateGameOpen] = useState(false);
@@ -186,26 +186,38 @@ const SimpleLobbyPage: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${process.env.VITE_API_BASE_URL || 'http://localhost:4002'}/api/games`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: gameForm.name.trim(),
-          maxPlayers: gameForm.maxPlayers
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setSuccess(`Game "${result.game.name}" created successfully!`);
+      if (connected) {
+        const playerName = playerForm.username || 'Player';
+        const gameConfig = {
+          maxPlayers: gameForm.maxPlayers,
+          mapSize: { width: 20, height: 20 },
+          turnTimeLimit: 60,
+          victoryConditions: ['domination'],
+          startingResources: { gold: 100, science: 50, culture: 25 }
+        };
+        const ack = await createGameWithAck(playerName, gameConfig);
+        localStorage.setItem('currentGameId', ack.gameId);
+        localStorage.setItem('currentPlayerId', ack.playerId);
+        setSuccess(`Game "${gameForm.name.trim()}" created!`);
         setCreateGameOpen(false);
         setGameForm({ name: '', maxPlayers: 4 });
-        fetchGames(); // Refresh the games list
+        navigate(`/game/${ack.gameId}`);
       } else {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create game');
+        const response = await fetch(`${apiConfig.baseURL}/api/games`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: gameForm.name.trim(), maxPlayers: gameForm.maxPlayers })
+        });
+        if (response.ok) {
+          const result = await response.json();
+          setSuccess(`Game "${result.game.name}" created successfully!`);
+          setCreateGameOpen(false);
+          setGameForm({ name: '', maxPlayers: 4 });
+          fetchGames();
+        } else {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to create game');
+        }
       }
     } catch (error) {
       console.error('Error creating game:', error);
@@ -223,31 +235,28 @@ const SimpleLobbyPage: React.FC = () => {
     localStorage.setItem('playerName', playerForm.username.trim());
 
     try {
-      const response = await fetch(`${process.env.VITE_API_BASE_URL || 'http://localhost:4002'}/api/games/${gameId}/join`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          username: playerForm.username.trim(),
-          civilization: playerForm.civilization
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setSuccess(`Joined "${gameName}" as ${result.playerId}!`);
-        // Store player info for game session
-        localStorage.setItem('currentGameId', gameId);
-        localStorage.setItem('currentPlayerId', result.playerId);
-
-        // Navigate to game (we'll create this route)
-        setTimeout(() => {
-          navigate(`/game/${gameId}`);
-        }, 1000);
+      if (connected) {
+        const ack = await joinGameWithAck(gameId, playerForm.username.trim());
+        localStorage.setItem('currentGameId', ack.gameId);
+        localStorage.setItem('currentPlayerId', ack.playerId);
+        setSuccess(`Joined "${gameName}" as ${playerForm.username.trim()}!`);
+        navigate(`/game/${gameId}`);
       } else {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to join game');
+        const response = await fetch(`${apiConfig.baseURL}/api/games/${gameId}/join`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: playerForm.username.trim(), civilization: playerForm.civilization })
+        });
+        if (response.ok) {
+          const result = await response.json();
+          setSuccess(`Joined "${gameName}" as ${result.playerId}!`);
+          localStorage.setItem('currentGameId', gameId);
+          localStorage.setItem('currentPlayerId', result.playerId);
+          setTimeout(() => navigate(`/game/${gameId}`), 1000);
+        } else {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to join game');
+        }
       }
     } catch (error) {
       console.error('Error joining game:', error);

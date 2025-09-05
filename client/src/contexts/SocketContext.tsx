@@ -19,7 +19,9 @@ interface SocketContextValue {
   socket: Socket | null
   connected: boolean
   createGame: (playerName: string, gameConfig: any) => void
+  createGameWithAck: (playerName: string, gameConfig: any, opts?: { timeoutMs?: number }) => Promise<{ gameId: string; playerId: string; gameState: any }>
   joinGame: (gameId: string, playerName: string) => void
+  joinGameWithAck: (gameId: string, playerName: string, opts?: { timeoutMs?: number }) => Promise<{ gameId: string; playerId: string; gameState: any }>
   leaveGame: () => void
   startGame: () => void
   sendGameAction: (action: any) => void
@@ -32,7 +34,9 @@ const SocketContext = createContext<SocketContextValue>({
   socket: null,
   connected: false,
   createGame: () => {},
+  createGameWithAck: async () => { throw new Error('socket not connected'); },
   joinGame: () => {},
+  joinGameWithAck: async () => { throw new Error('socket not connected'); },
   leaveGame: () => {},
   startGame: () => {},
   sendGameAction: () => {},
@@ -184,10 +188,57 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     }
   };
 
+  const createGameWithAck = (playerName: string, gameConfig: any, opts: { timeoutMs?: number } = {}) => {
+    return new Promise<{ gameId: string; playerId: string; gameState: any }>((resolve, reject) => {
+      if (!socket) return reject(new Error('Socket not connected'));
+      try {
+        const timeout = setTimeout(() => reject(new Error('create_game timeout')), opts.timeoutMs ?? 5000);
+        socket.emit('create_game', { playerName, gameConfig });
+        socket.once('game_created', (data: any) => {
+          clearTimeout(timeout);
+          resolve({ gameId: data.gameId, playerId: data.playerId, gameState: data.gameState });
+        });
+        socket.once('error', (err: any) => {
+          clearTimeout(timeout);
+          reject(new Error(err?.message || 'create_game error'));
+        });
+      } catch (e) {
+        reject(e);
+      }
+    });
+  };
+
   const joinGame = (gameId: string, playerName: string) => {
     if (socket) {
       socket.emit('join_game', { gameId, playerName });
     }
+  };
+
+  const joinGameWithAck = (gameId: string, playerName: string, opts: { timeoutMs?: number } = {}) => {
+    return new Promise<{ gameId: string; playerId: string; gameState: any }>((resolve, reject) => {
+      if (!socket) return reject(new Error('Socket not connected'));
+      try {
+        const timeout = setTimeout(() => reject(new Error('join_game timeout')), opts.timeoutMs ?? 6000);
+        socket.emit('join_game', { gameId, playerName });
+        const handler = (data: any) => {
+          // Resolve when we see ourselves join
+          const p = data?.player;
+          if (p && (String(p.name).toLowerCase() === String(playerName).toLowerCase())) {
+            clearTimeout(timeout);
+            socket.off('player_joined', handler);
+            resolve({ gameId, playerId: p.id, gameState: data.gameState });
+          }
+        };
+        socket.on('player_joined', handler);
+        socket.once('error', (err: any) => {
+          clearTimeout(timeout);
+          socket.off('player_joined', handler);
+          reject(new Error(err?.message || 'join_game error'));
+        });
+      } catch (e) {
+        reject(e);
+      }
+    });
   };
 
   const leaveGame = () => {
@@ -257,7 +308,9 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     socket,
     connected,
     createGame,
+    createGameWithAck,
     joinGame,
+    joinGameWithAck,
     leaveGame,
     startGame,
     sendGameAction,
