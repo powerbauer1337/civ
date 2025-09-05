@@ -1001,6 +1001,10 @@ Goal: Get to a stable, enjoyable “playable” state for 1–4 players with cor
     - [ ] Cover happy path and basic invalid action rejections.
   - Acceptance:
     - Suite passes consistently and runs in CI; flake-free.
+  - Done:
+    - [x] Added `server/tests/integration/GameLoop.integration.test.ts` covering create → join → start → end_turn rotation and broadcasts.
+    - [x] Fixed `end_turn` timer handling in `GameManager` to accept enum or string types.
+    - [x] Gated client action buttons by turn ownership in `SimpleGamePage`.
 
 ### P1 — Basic Combat, Cities, and Feedback
 - [ ] Server/Game: Simple combat resolution
