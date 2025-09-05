@@ -86,6 +86,11 @@
   - Change: Introduced lightweight client `logger`; removed `GamePhase` import in client store and used string phase to avoid missing export from shared build.
   - Acceptance: `cd client && npm run build` completes successfully.
 
+- [x] App providers wired
+  - Files: `client/src/main.tsx`
+  - Change: Wrapped app with Redux `Provider` and `SocketProvider` so lobby and game pages use real-time socket context and global store.
+  - Acceptance: App boots with socket connected in demo/dev; lobby shows Online status and live counts; create/join via WebSocket navigates to game.
+
 ## Notes (September 5, 2025)
 
 - AI tests fixed: eliminated randomness/delay under test env in `AIPlayer.makeDecisions` so actions deterministically include adjacent attacks and settler expansion. Suite `server/tests/game/AIPlayer.test.ts` now passes fully.
