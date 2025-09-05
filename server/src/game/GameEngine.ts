@@ -1168,10 +1168,10 @@ export class GameEngine {
     gameState.tradeOffers.push(tradeOffer);
 
     logger.info(`Technology trade offer created: ${fromPlayerId} → ${toPlayerId}`);
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: `Technology trade offer sent to ${toPlayer.name}`,
-      gameState 
+      gameState
     };
   }
 
@@ -1270,10 +1270,10 @@ export class GameEngine {
     tradeOffer.status = TradeOfferStatus.ACCEPTED;
 
     logger.info(`Technology trade accepted: ${tradeOffer.fromPlayerId} ↔ ${tradeOffer.toPlayerId}`);
-    return { 
-      success: true, 
-      message: `Technology trade completed successfully`,
-      gameState 
+    return {
+      success: true,
+      message: 'Technology trade completed successfully',
+      gameState
     };
   }
 
@@ -1306,10 +1306,10 @@ export class GameEngine {
     tradeOffer.status = TradeOfferStatus.REJECTED;
 
     logger.info(`Technology trade rejected: ${tradeOffer.fromPlayerId} → ${tradeOffer.toPlayerId}`);
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: 'Technology trade offer rejected',
-      gameState 
+      gameState
     };
   }
 
@@ -1342,10 +1342,10 @@ export class GameEngine {
     tradeOffer.status = TradeOfferStatus.CANCELLED;
 
     logger.info(`Technology trade cancelled: ${tradeOffer.fromPlayerId} → ${tradeOffer.toPlayerId}`);
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: 'Technology trade offer cancelled',
-      gameState 
+      gameState
     };
   }
 }

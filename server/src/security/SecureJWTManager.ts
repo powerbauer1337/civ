@@ -83,7 +83,7 @@ export class SecureJWTManager {
 
       logger.info('SecureJWTManager initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize SecureJWTManager:', error);
+      logger.error('Failed to initialize SecureJWTManager:', error);
       throw error;
     }
   }
@@ -407,7 +407,7 @@ export class SecureJWTManager {
         totalKeys: this.keys.size
       });
     } catch (error) {
-      console.error('JWT key rotation failed:', error);
+      logger.error('JWT key rotation failed:', error);
       throw error;
     }
   }
@@ -446,7 +446,7 @@ export class SecureJWTManager {
       try {
         await this.rotateKeys();
       } catch (error) {
-        console.error('Automatic key rotation failed:', error);
+        logger.error('Automatic key rotation failed:', error);
       }
     }, this.keyRotationInterval);
 
