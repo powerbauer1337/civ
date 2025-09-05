@@ -23,8 +23,9 @@ import {
   Send as SendIcon,
   People as PeopleIcon
 } from '@mui/icons-material';
-import { io, Socket } from 'socket.io-client';
-import { apiConfig } from '../config/api';
+import { useSelector } from 'react-redux';
+import { useSocket } from '../contexts/SocketContext';
+import { RootState } from '../store/store';
 // Lazy load the heavy HexMap component for better performance
 const HexMap = React.lazy(() => import('../components/HexMap/HexMap'));
 
@@ -41,20 +42,9 @@ interface Unit {
   maxMovement: number;
 }
 
-interface GameState {
-  gameId: string
-  name: string
-  status: string
-  players: Player[]
-  currentTurn: number
-}
+// GameState is sourced from Redux via SocketContext
 
-interface Player {
-  id: string
-  username: string
-  civilization: string
-  isOnline: boolean
-}
+// Player type is handled within global game state
 
 interface ChatMessage {
   id: string
@@ -65,20 +55,13 @@ interface ChatMessage {
   type: 'message' | 'system' | 'action'
 }
 
-interface GameAction {
-  id: string
-  playerId: string
-  action: string
-  payload: any
-  timestamp: Date
-}
+// Game actions are handled by server + store
 
 const SimpleGamePage: React.FC = () => {
   const { gameId } = useParams<{ gameId: string }>();
   const navigate = useNavigate();
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [connected, setConnected] = useState(false);
-  const [gameState, setGameState] = useState<GameState | null>(null);
+  const { socket, connected, spectateGame, stopSpectating, sendGameAction, requestGameState } = useSocket();
+  const gameState = useSelector((state: RootState) => (state.game.gameState as any) || null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const location = useLocation();
@@ -103,131 +86,28 @@ const SimpleGamePage: React.FC = () => {
       setError('No game ID provided');
       return;
     }
-
-    if (!playerId && !isSpectatorRoute) {
-      setError('No player ID found. Please join the game from the lobby.');
-      return;
-    }
-
-    // Initialize WebSocket connection
-    const newSocket = io(apiConfig.socketURL, {
-      transports: ['websocket']
-    });
-
-    newSocket.on('connect', () => {
-      console.log('🔌 Connected to game server:', newSocket.id);
-      setConnected(true);
-      setSocket(newSocket);
-
-      if (isSpectatorRoute && !playerId) {
-        // Start spectating without joining as player
-        newSocket.emit('spectate_game', { gameId });
-        setIsSpectator(true);
-      } else {
-        // Join the game room as a player
-        newSocket.emit('join_game', {
-          gameId: gameId,
-          playerId: playerId
-        });
-      }
-
-      addSystemMessage('Connected to game server');
-    });
-
-    newSocket.on('disconnect', () => {
-      console.log('❌ Disconnected from server');
-      setConnected(false);
-      addSystemMessage('Disconnected from server');
-    });
-
-    newSocket.on('welcome', (data) => {
-      console.log('👋 Welcome message:', data);
-      addSystemMessage(`Welcome! ${data.message}`);
-    });
-
-    newSocket.on('game_joined', (data) => {
-      console.log('🏁 Joined game room:', data);
-      addSystemMessage(`Joined game room: ${data.gameId}`);
-      fetchGameState();
-    });
-
-    newSocket.on('player_joined', (data) => {
-      console.log('👥 Player joined:', data);
-      addSystemMessage(`New player joined: ${data.playerId}`);
-      fetchGameState(); // Refresh game state when someone joins
-    });
-
-    // Spectator events
-    newSocket.on('spectating_started', (data) => {
-      console.log('👀 Spectating started:', data);
+    if (!connected) return;
+    if (isSpectatorRoute && !playerId) {
+      spectateGame(gameId).catch((e) => setError(e.message));
       setIsSpectator(true);
-      addSystemMessage('You are now spectating this game');
-      // We receive current state payload
-      setGameState({
-        gameId: data.gameId,
-        name: `Spectating ${String(data.gameId).slice(0, 8)}`,
-        status: 'active',
-        players: [],
-        currentTurn: (data.gameState?.currentTurn) || 1
-      });
-    });
-    newSocket.on('spectator_joined', () => addSystemMessage('A spectator joined'));
-    newSocket.on('spectator_left', () => addSystemMessage('A spectator left'));
-
-    newSocket.on('game_started', (data) => {
-      console.log('🎮 Game started:', data);
-      addSystemMessage(`Game started with ${data.players.length} players!`);
-      fetchGameState();
-    });
-
-    newSocket.on('game_update', (data) => {
-      console.log('📊 Game update received:', data);
-      addGameAction(data);
-      addSystemMessage(`${data.playerId}: ${data.action}`);
-    });
-
-    newSocket.on('action_acknowledged', (data) => {
-      console.log('✅ Action acknowledged:', data);
-      addActionLog(`✅ ${data.action} - ${data.success ? 'Success' : 'Failed'}`);
-    });
-
-    setSocket(newSocket);
-
-    // Cleanup
-    return () => {
-      newSocket.disconnect();
-    };
-  }, [gameId, playerId, isSpectatorRoute]);
+      addSystemMessage('Connected to game server');
+    } else if (playerId) {
+      requestGameState();
+      addSystemMessage('Connected to game server');
+    } else {
+      setError('No player ID found. Please join the game from the lobby.');
+    }
+  }, [connected, gameId, playerId, isSpectatorRoute, spectateGame, requestGameState]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
-  const fetchGameState = async () => {
-    try {
-      // In a real implementation, you'd have a game state endpoint
-      // For now, we'll simulate with the games list
-      const response = await fetch(`${process.env.VITE_API_BASE_URL || 'http://localhost:4002'}/api/games`);
-      if (response.ok) {
-        const games = await response.json();
-        const currentGame = games.find((g: any) => g.id === gameId);
-        if (currentGame) {
-          setGameState({
-            gameId: currentGame.id,
-            name: currentGame.name,
-            status: currentGame.status,
-            players: [], // We'll get this from WebSocket events
-            currentTurn: currentGame.currentTurn
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching game state:', error);
-      setError('Failed to load game state');
-    } finally {
+  useEffect(() => {
+    if (gameState || error) {
       setLoading(false);
     }
-  };
+  }, [gameState, error]);
 
   const addSystemMessage = (message: string) => {
     const newMessage: ChatMessage = {
@@ -241,17 +121,7 @@ const SimpleGamePage: React.FC = () => {
     setChatMessages(prev => [...prev, newMessage]);
   };
 
-  const addGameAction = (actionData: any) => {
-    const newAction: GameAction = {
-      id: Date.now().toString(),
-      playerId: actionData.playerId,
-      action: actionData.action,
-      payload: actionData.payload,
-      timestamp: new Date()
-    };
-    // gameActions not currently used in UI, just log it
-    console.log('Game action:', newAction);
-  };
+  // We rely on SocketContext + Redux for game updates
 
   const addActionLog = (logEntry: string) => {
     setActionLog(prev => [...prev.slice(-9), `${new Date().toLocaleTimeString()}: ${logEntry}`]);
@@ -315,7 +185,7 @@ const SimpleGamePage: React.FC = () => {
     const actionData = testActions[actionType as keyof typeof testActions];
     if (actionData) {
       console.log('🎮 Sending action:', actionData);
-      socket.emit('game_action', actionData);
+      sendGameAction(actionData);
       addActionLog(`Sent: ${actionData.type}`);
     }
   };
@@ -372,11 +242,8 @@ const SimpleGamePage: React.FC = () => {
   };
 
   const handleLeaveGame = () => {
-    if (socket) {
-      if (isSpectator) {
-        socket.emit('stop_spectating');
-      }
-      socket.disconnect();
+    if (socket && isSpectator) {
+      stopSpectating();
     }
     if (!isSpectator) {
       localStorage.removeItem('currentGameId');

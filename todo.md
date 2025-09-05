@@ -943,3 +943,7 @@ The technology trading system establishes a foundation for advanced diplomatic f
   - Files: `client/src/pages/SimpleLobbyPage.tsx`
   - Change: Show a small eye badge with “N watching” when `spectatorCount > 0`.
   - Acceptance: Users can see at-a-glance viewer counts for active games.
+- [x] SimpleGamePage refactor to shared socket/store
+  - Files: `client/src/pages/SimpleGamePage.tsx`
+  - Change: Remove direct `socket.io-client` usage; use `SocketContext` for connection and actions; derive `gameState` from Redux store; streamline loading/error handling.
+  - Acceptance: Page works with the shared socket session; no duplicate connections; production build passes.
