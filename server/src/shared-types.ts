@@ -169,11 +169,14 @@ export class GameState {
       }
 
       // Normalize action shape to { type, payload, playerId }
-      const normalizedAction = {
+      const normalizedAction: any = {
         type: action.type,
         playerId: playerId,
         payload: action.payload ?? action.data ?? {}
       };
+      // Ensure payload carries playerId for engine validation
+      if (!normalizedAction.payload) normalizedAction.payload = {};
+      if (!normalizedAction.payload.playerId) normalizedAction.payload.playerId = playerId;
 
       // Delegate to GameEngine
       const { success, gameState, error } = GameEngine.processPlayerAction(sharedState, normalizedAction as any);
