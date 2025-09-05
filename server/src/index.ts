@@ -189,7 +189,9 @@ async function startServer() {
             'start_game',
             'game_action',
             'player_ready',
-            'request_game_state'
+            'request_game_state',
+            'list_games',
+            'lobby_stats'
           ]
         }
       }

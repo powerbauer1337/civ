@@ -62,6 +62,13 @@
   - Change: Replaced `console.*` with shared `logger` in `SecureJWTManager`; startup logs now include `Persistence Provider`; configuration already enforces strong JWT secrets in production.
   - Acceptance: No `console.*` in security-critical server paths; production validation halts on missing/weak secrets.
 
+### ✅ Multiplayer Lobby Enhancements (September 5, 2025)
+
+- [x] Socket lobby events: list and stats
+  - Files: `server/src/game/GameManager.ts`, `server/src/index.ts`
+  - Change: Added `list_games` and `lobby_stats` Socket.IO events. `list_games` supports pagination and filtering via `getFilteredGameList`; emits `games_list { games, totalGames, hasMore }`. `lobby_stats` emits `{ activeGames, activePlayers }`.
+  - Acceptance: Client can request lobby listings and stats without HTTP; server tests updated and passing.
+
 ## Notes (September 5, 2025)
 
 - AI tests fixed: eliminated randomness/delay under test env in `AIPlayer.makeDecisions` so actions deterministically include adjacent attacks and settler expansion. Suite `server/tests/game/AIPlayer.test.ts` now passes fully.

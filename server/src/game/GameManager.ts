@@ -68,6 +68,9 @@ export class GameManager {
     socket.on('request_game_state', () => this.handleRequestGameState(socket));
     socket.on('spectate_game', (data) => this.handleSpectateGame(socket, data));
     socket.on('stop_spectating', () => this.handleStopSpectating(socket));
+    // Lobby helpers
+    socket.on('list_games', (data) => this.handleListGames(socket, data));
+    socket.on('lobby_stats', () => this.handleLobbyStats(socket));
   }
 
   public handleDisconnection(socket: Socket): void {
@@ -433,6 +436,34 @@ export class GameManager {
     }
     this.spectatorToGame.delete(socket.id);
     socket.emit('spectating_stopped', { gameId });
+  }
+
+  private handleListGames(
+    socket: Socket,
+    data: { page?: number; limit?: number; filter?: 'all' | 'active' | 'waiting' | 'ended'; hideTestGames?: boolean } = {}
+  ): void {
+    try {
+      const result = this.getFilteredGameList({
+        page: data.page,
+        limit: data.limit,
+        filter: data.filter,
+        hideTestGames: data.hideTestGames
+      });
+      socket.emit('games_list', result);
+    } catch (error) {
+      socket.emit('error', { message: 'Failed to list games' });
+    }
+  }
+
+  private handleLobbyStats(socket: Socket): void {
+    try {
+      socket.emit('lobby_stats', {
+        activeGames: this.getGameCount(),
+        activePlayers: this.getActivePlayerCount()
+      });
+    } catch (error) {
+      socket.emit('error', { message: 'Failed to get lobby stats' });
+    }
   }
 
   private handlePlayerDisconnect(playerId: string): void {

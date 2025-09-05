@@ -627,4 +627,53 @@ describe('GameManager', () => {
       expect(gameState?.id).toBe('game-1');
     });
   });
+
+  describe('Lobby Events', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      // Prepare some games in different phases
+      const makeRoom = (id: string, phase: GamePhase, players: number) => ({
+        id,
+        name: `Room ${id}`,
+        gameState: { ...mockGameState, id, phase, createdAt: new Date() },
+        game: {} as any,
+        players: new Map(Array.from({ length: players }, (_, i) => [`p-${i}`, {} as Socket])),
+        maxPlayers: 8,
+        status: 'waiting' as const,
+        gameMode: 'multiplayer' as const,
+        spectators: new Set(),
+        lastActivity: new Date()
+      });
+      (gameManager as any).games.set('lobby-1', makeRoom('lobby-1', GamePhase.LOBBY, 1));
+      (gameManager as any).games.set('active-1', makeRoom('active-1', GamePhase.ACTIVE, 2));
+    });
+
+    test('should register lobby event handlers', () => {
+      gameManager.handleConnection(mockSocket as Socket);
+      expect(mockSocket.on).toHaveBeenCalledWith('list_games', expect.any(Function));
+      expect(mockSocket.on).toHaveBeenCalledWith('lobby_stats', expect.any(Function));
+    });
+
+    test('list_games should emit paginated game list', () => {
+      gameManager.handleConnection(mockSocket as Socket);
+      const listGamesHandler = (mockSocket.on as jest.Mock).mock.calls.find((c: any[]) => c[0] === 'list_games')[1];
+      listGamesHandler({ limit: 5, page: 1, filter: 'all' });
+
+      expect(mockSocket.emit).toHaveBeenCalledWith('games_list', expect.objectContaining({
+        games: expect.any(Array),
+        totalGames: expect.any(Number),
+        hasMore: expect.any(Boolean)
+      }));
+    });
+
+    test('lobby_stats should emit counts', () => {
+      gameManager.handleConnection(mockSocket as Socket);
+      const lobbyStatsHandler = (mockSocket.on as jest.Mock).mock.calls.find((c: any[]) => c[0] === 'lobby_stats')[1];
+      lobbyStatsHandler();
+      expect(mockSocket.emit).toHaveBeenCalledWith('lobby_stats', expect.objectContaining({
+        activeGames: expect.any(Number),
+        activePlayers: expect.any(Number)
+      }));
+    });
+  });
 });
