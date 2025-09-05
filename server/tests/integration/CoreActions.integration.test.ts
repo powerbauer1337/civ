@@ -59,7 +59,7 @@ describe('Integration: Core Actions (move/found/research)', () => {
     return { gameId, p1Id, p2Id: (gm as any).socketToPlayer.get((s2 as any).id), room };
   };
 
-  test.skip('move_unit: current player can move a unit and broadcast update', () => {
+test('move_unit: current player can move a unit and broadcast update', () => {
     const { gameId, room } = bootstrap2PGame();
     const current = room.gameState.getCurrentPlayer();
     const p = (room.gameState.players as any[]).find((x: any) => x.id === current.id);
@@ -80,7 +80,7 @@ describe('Integration: Core Actions (move/found/research)', () => {
     expect(clientResponses.length > 0 || serverBroadcast).toBe(true);
   });
 
-  test.skip('found_city: settler can found a city on current tile', () => {
+test('found_city: settler can found a city on current tile', () => {
     const { room } = bootstrap2PGame();
     const current = room.gameState.getCurrentPlayer();
     const p = (room.gameState.players as any[]).find((x: any) => x.id === current.id);
