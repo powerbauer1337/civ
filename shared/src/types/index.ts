@@ -392,6 +392,7 @@ export enum GameActionType {
   OFFER_PEACE = 'diplomacy_offer_peace',
   ACCEPT_PEACE = 'diplomacy_accept_peace',
   PROPOSE_ALLIANCE = 'diplomacy_propose_alliance',
+  ACCEPT_ALLIANCE = 'diplomacy_accept_alliance',
   BREAK_ALLIANCE = 'diplomacy_break_alliance',
   END_TURN = 'end_turn'
 }
@@ -432,6 +433,11 @@ export interface AcceptPeacePayload {
 export interface ProposeAlliancePayload {
   playerId: string;
   targetPlayerId: string;
+}
+
+export interface AcceptAlliancePayload {
+  playerId: string; // accepter (must be target of pending offer)
+  withPlayerId: string; // proposer id
 }
 
 export interface BreakAlliancePayload {

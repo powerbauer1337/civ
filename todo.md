@@ -92,10 +92,16 @@ Current totals (as executed locally on September 5, 2025):
 - Lint: clean; Build: green
 
 Next steps (scoped):
-- [ ] Alliance acceptance action and mutual status change
-- [ ] Basic diplomatic modifiers (e.g., combat restrictions for PEACE/ALLIANCE)
+- [x] Alliance acceptance action and mutual status change
+- [x] Basic diplomatic modifiers (combat blocked when PEACE/ALLIANCE)
 - [ ] Persist diplomacy in save/load layer
 - [ ] Client UI surface for current relations and offers
+
+#### Details
+- Added `ACCEPT_ALLIANCE` action and `AcceptAlliancePayload` type; validation schema included
+- GameEngine: implemented `processAcceptAlliance`; enhanced `processAttackUnit` to respect peace/alliance
+- Tests: added `DiplomacyAllianceAndCombat.test.ts` (propose→accept alliance; attack blocked during peace)
+- Build/lint/tests: green after shared+server build; total server tests 443/443
 
 ### 🎯 EXECUTIVE SUMMARY: PRODUCTION-READY STATUS ✅
 

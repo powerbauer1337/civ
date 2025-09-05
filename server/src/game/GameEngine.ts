@@ -1,4 +1,4 @@
-import { GameAction, GameActionType, GameState, PlayerState, Unit, City, UnitType, TerrainType, VisibilityLevel, ProductionType, DiplomacyStatus, DeclareWarPayload, OfferPeacePayload, AcceptPeacePayload, ProposeAlliancePayload, BreakAlliancePayload, DiplomaticRelation } from '@civ-game/shared';
+import { GameAction, GameActionType, GameState, PlayerState, Unit, City, UnitType, TerrainType, VisibilityLevel, ProductionType, DiplomacyStatus, DeclareWarPayload, OfferPeacePayload, AcceptPeacePayload, ProposeAlliancePayload, AcceptAlliancePayload, BreakAlliancePayload, DiplomaticRelation } from '@civ-game/shared';
 import { Technology, TechnologyEffects, PlayerTechnology, TECHNOLOGY_DATABASE, validateTechnologyPrerequisites, calculateResearchCost, TechnologyTradeOffer, TradeOfferStatus } from '@civ-game/shared';
 import { HexMap } from './HexMap';
 import { v4 as uuidv4 } from 'uuid';
@@ -84,6 +84,8 @@ export class GameEngine {
         return GameEngine.processAcceptPeace(gameState, action);
       case GameActionType.PROPOSE_ALLIANCE:
         return GameEngine.processProposeAlliance(gameState, action);
+      case GameActionType.ACCEPT_ALLIANCE:
+        return GameEngine.processAcceptAlliance(gameState, action);
       case GameActionType.BREAK_ALLIANCE:
         return GameEngine.processBreakAlliance(gameState, action);
 
@@ -284,6 +286,29 @@ export class GameEngine {
   }
 
   /**
+   * ACCEPT_ALLIANCE: target accepts existing alliance proposal
+   */
+  private static processAcceptAlliance(gameState: GameState, action: GameAction): ActionResult {
+    const { playerId, withPlayerId } = action.payload as AcceptAlliancePayload;
+    if (!playerId || !withPlayerId) {
+      return { success: false, error: 'Missing playerId or withPlayerId', gameState };
+    }
+    if (playerId !== gameState.currentPlayer) {
+      return { success: false, error: 'Accept alliance not from current player', gameState };
+    }
+    const relation = GameEngine.getOrCreateRelation(gameState, playerId, withPlayerId);
+    if (relation.pendingAllianceOfferFrom !== withPlayerId) {
+      return { success: false, error: 'No pending alliance offer from specified player', gameState };
+    }
+    relation.status = DiplomacyStatus.ALLIANCE;
+    relation.sinceTurn = gameState.turn;
+    relation.lastUpdated = new Date();
+    relation.pendingAllianceOfferFrom = undefined;
+    logger.info(`Alliance formed: ${playerId} ↔ ${withPlayerId}`);
+    return { success: true, message: 'Alliance formed', gameState };
+  }
+
+  /**
    * BREAK_ALLIANCE: acting currentPlayer breaks an active alliance with target
    */
   private static processBreakAlliance(gameState: GameState, action: GameAction): ActionResult {
@@ -317,6 +342,12 @@ export class GameEngine {
 
     if (!attacker || !target) {
       return { success: false, error: 'Attacker or target unit not found', gameState };
+    }
+
+    // Diplomacy: prevent attacks during peace or alliance
+    const relation = GameEngine.getOrCreateRelation(gameState, attacker.playerId, target.playerId);
+    if (relation.status === DiplomacyStatus.PEACE || relation.status === DiplomacyStatus.ALLIANCE) {
+      return { success: false, error: 'Cannot attack due to peace or alliance', gameState };
     }
 
     // Check if units are adjacent

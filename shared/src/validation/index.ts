@@ -141,6 +141,11 @@ export const proposeAllianceSchema = z.object({
   targetPlayerId: z.string().min(1)
 });
 
+export const acceptAllianceSchema = z.object({
+  playerId: z.string().min(1),
+  withPlayerId: z.string().min(1)
+});
+
 export const breakAllianceSchema = z.object({
   playerId: z.string().min(1),
   targetPlayerId: z.string().min(1)
@@ -223,6 +228,8 @@ export const validateGameAction = (actionType: GameActionType, payload: any) => 
       return acceptPeaceSchema.parse(payload);
     case GameActionType.PROPOSE_ALLIANCE:
       return proposeAllianceSchema.parse(payload);
+    case GameActionType.ACCEPT_ALLIANCE:
+      return acceptAllianceSchema.parse(payload);
     case GameActionType.BREAK_ALLIANCE:
       return breakAllianceSchema.parse(payload);
     case GameActionType.END_TURN:
