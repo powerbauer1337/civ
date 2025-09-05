@@ -249,6 +249,13 @@ export class GameManager {
         return;
       }
 
+      // Block further actions if game is finished
+      const phaseLower = String(gameRoom.gameState.phase || '').toLowerCase();
+      if (gameRoom.status === 'completed' || phaseLower === 'ended' || phaseLower === 'end_game') {
+        socket.emit('error', { message: 'Game has ended' });
+        return;
+      }
+
       // Only first player can start the game
       const firstPlayer = gameRoom.gameState.players[0];
       const firstPlayerId = (firstPlayer as any).id || (firstPlayer as any).userId;
@@ -581,6 +588,9 @@ export class GameManager {
     });
 
     logger.info(`Game ${gameId} ended. Winner: ${(winner as any).name || (winner as any).username || winner.id}`);
+
+    // Mark room as completed to prevent further actions
+    gameRoom.status = 'completed';
   }
 
   private validateGameConfig(config: GameConfig): boolean {

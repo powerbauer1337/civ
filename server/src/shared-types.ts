@@ -136,6 +136,8 @@ export class GameState {
         // GameEngine expects currentPlayer to be a playerId (string)
         currentPlayer: (this.players[this.currentPlayer] as any)?.id,
         currentTurn: this.currentTurn,
+        // Some engine paths expect 'turn' instead of 'currentTurn'
+        turn: this.currentTurn,
         phase: this.phase,
         map: hexMap.serialize(),
         cities: {},
@@ -196,6 +198,11 @@ export class GameState {
       // Update map/board
       this.map = gameState.map;
       this.board = gameState.map;
+
+      // Update local phase if engine advanced to end state
+      if ((gameState as any).phase) {
+        this.phase = (gameState as any).phase as any;
+      }
 
       // Write back diplomacy
       if (gameState.diplomacy) {
