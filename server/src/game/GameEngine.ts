@@ -1,4 +1,4 @@
-import { GameAction, GameActionType, GameState, PlayerState, Unit, City, UnitType, TerrainType, VisibilityLevel, ProductionType } from '../../../shared/src/types';
+import { GameAction, GameActionType, GameState, PlayerState, Unit, City, UnitType, TerrainType, VisibilityLevel, ProductionType } from '@civ-game/shared';
 import { Technology, TechnologyEffects, PlayerTechnology, TECHNOLOGY_DATABASE, validateTechnologyPrerequisites, calculateResearchCost, TechnologyTradeOffer, TradeOfferStatus } from '@civ-game/shared';
 import { HexMap } from './HexMap';
 import { v4 as uuidv4 } from 'uuid';
@@ -1365,4 +1365,3 @@ export interface ActionResult {
     message?: string;
   };
 }
-
