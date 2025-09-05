@@ -29,10 +29,10 @@ const io = new Server(server, {
   allowEIO3: true,
   // Maximum payload size for large game states
   maxHttpBufferSize: 1e6, // 1MB
-  // Connection state recovery for better reliability  
+  // Connection state recovery for better reliability
   connectionStateRecovery: {
     maxDisconnectionDuration: 2 * 60 * 1000, // 2 minutes
-    skipMiddlewares: true,
+    skipMiddlewares: true
   }
 });
 

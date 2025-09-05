@@ -117,7 +117,7 @@ export class GamePersistence {
 
       const saveResult = await this.db.run(
         `INSERT INTO game_saves (
-          game_id, save_name, turn_number, save_type, 
+          game_id, save_name, turn_number, save_type,
           game_state, map_data, created_by, file_size
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -168,9 +168,9 @@ export class GamePersistence {
       } else if (options.gameId) {
         // Load most recent save for game
         save = await this.db.get(
-          `SELECT * FROM game_saves 
-           WHERE game_id = ? 
-           ORDER BY created_at DESC 
+          `SELECT * FROM game_saves
+           WHERE game_id = ?
+           ORDER BY created_at DESC
            LIMIT 1`,
           [options.gameId]
         );
@@ -356,7 +356,7 @@ export class GamePersistence {
       values.push(playerId, gameId);
 
       await this.db.run(
-        `UPDATE player_statistics SET ${updates} 
+        `UPDATE player_statistics SET ${updates}
          WHERE player_id = ? AND game_id = ?`,
         values
       );
@@ -380,7 +380,7 @@ export class GamePersistence {
     if (!this.db) throw new Error('Database not initialized');
 
     const stats = await this.db.get(
-      `SELECT 
+      `SELECT
         p.*,
         COUNT(DISTINCT pa.achievement_id) as achievement_count
        FROM players p
@@ -419,7 +419,7 @@ export class GamePersistence {
     if (!this.db) throw new Error('Database not initialized');
 
     return await this.db.all(
-      `SELECT 
+      `SELECT
         gs.id,
         gs.game_id,
         gs.save_name,
@@ -463,7 +463,7 @@ export class GamePersistence {
     const currentSeason = season || new Date().getFullYear().toString();
 
     return await this.db.all(
-      `SELECT 
+      `SELECT
         l.*,
         p.username
        FROM leaderboards l
@@ -490,7 +490,7 @@ export class GamePersistence {
     try {
       // Update game record
       await this.db.run(
-        `UPDATE games 
+        `UPDATE games
          SET status = 'completed',
              winner_id = ?,
              victory_type = ?,
@@ -509,7 +509,7 @@ export class GamePersistence {
         const isWinner = participant.player_id === winnerId;
 
         await this.db.run(
-          `UPDATE players 
+          `UPDATE players
            SET total_games = total_games + 1,
                games_won = games_won + ?,
                games_lost = games_lost + ?

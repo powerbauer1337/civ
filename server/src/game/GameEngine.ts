@@ -472,25 +472,25 @@ export class GameEngine {
 
       const techData = TECHNOLOGY_DATABASE[actualTechId];
       const isSimpleArray = playerState.technologies.length === 0 || typeof playerState.technologies[0] === 'string';
-      
+
       if (isSimpleArray) {
         // Handle simple string array format for backward compatibility
         const techArray = playerState.technologies as unknown as string[];
         if (techArray.includes(actualTechId)) {
           return { success: false, error: 'Technology already researched', gameState };
         }
-        
+
         // Add technology and apply effects immediately (simple format doesn't track progress)
         techArray.push(actualTechId);
         GameEngine.applyTechnologyEffects(techData.effects, playerState, gameState);
-        
+
       } else {
         // Handle PlayerTechnology array format
         const existingTech = playerState.technologies.find(t => t.techId === actualTechId);
         if (existingTech && existingTech.isResearched) {
           return { success: false, error: 'Technology already researched', gameState };
         }
-        
+
         if (existingTech) {
           // Add progress to existing research
           existingTech.progress = Math.min(100, (existingTech.progress || 0) + 25);
@@ -506,7 +506,7 @@ export class GameEngine {
             isResearched: false,
             progress: 25
           };
-          
+
           // Check if we have enough science to complete it immediately
           if (playerState.resources.science >= techData.cost) {
             newTech.isResearched = true;
@@ -514,7 +514,7 @@ export class GameEngine {
             // Apply technology effects
             GameEngine.applyTechnologyEffects(techData.effects, playerState, gameState);
           }
-          
+
           playerState.technologies.push(newTech);
         }
       }

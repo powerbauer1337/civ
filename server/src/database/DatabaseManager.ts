@@ -169,7 +169,7 @@ export class DatabaseManager {
 
   public async getUserByUsername(username: string): Promise<any> {
     const query = `
-      SELECT * FROM users 
+      SELECT * FROM users
       WHERE username = $1 OR email = $1
     `;
 
@@ -185,7 +185,7 @@ export class DatabaseManager {
 
   public async updateUserStats(userId: string, won: boolean): Promise<void> {
     const query = `
-      UPDATE users 
+      UPDATE users
       SET games_played = games_played + 1,
           games_won = games_won + $2,
           updated_at = CURRENT_TIMESTAMP
@@ -200,8 +200,8 @@ export class DatabaseManager {
     const query = `
       INSERT INTO games (id, config, phase, current_turn, current_player, created_at, updated_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
-      ON CONFLICT (id) 
-      DO UPDATE SET 
+      ON CONFLICT (id)
+      DO UPDATE SET
         phase = $3,
         current_turn = $4,
         current_player = $5,
@@ -230,7 +230,7 @@ export class DatabaseManager {
       INSERT INTO game_players (game_id, user_id, player_index, civilization, color, final_score)
       VALUES ($1, $2, $3, $4, $5, $6)
       ON CONFLICT (game_id, user_id)
-      DO UPDATE SET 
+      DO UPDATE SET
         final_score = $6
     `;
 
@@ -247,10 +247,10 @@ export class DatabaseManager {
   public async getGameById(gameId: string): Promise<any> {
     const gameQuery = 'SELECT * FROM games WHERE id = $1';
     const playersQuery = `
-      SELECT gp.*, u.username 
-      FROM game_players gp 
-      JOIN users u ON gp.user_id = u.id 
-      WHERE gp.game_id = $1 
+      SELECT gp.*, u.username
+      FROM game_players gp
+      JOIN users u ON gp.user_id = u.id
+      WHERE gp.game_id = $1
       ORDER BY gp.player_index
     `;
 
@@ -301,7 +301,7 @@ export class DatabaseManager {
 
   public async getGameActions(gameId: string, fromTurn?: number): Promise<any[]> {
     let query = `
-      SELECT * FROM game_actions 
+      SELECT * FROM game_actions
       WHERE game_id = $1
     `;
     const params = [gameId];
@@ -390,7 +390,7 @@ export class DatabaseManager {
   // Analytics and statistics
   public async getGameStats(): Promise<any> {
     const query = `
-      SELECT 
+      SELECT
         COUNT(*) as total_games,
         COUNT(CASE WHEN phase = 'lobby' THEN 1 END) as lobby_games,
         COUNT(CASE WHEN phase = 'active' THEN 1 END) as active_games,
@@ -405,7 +405,7 @@ export class DatabaseManager {
 
   public async getUserStats(): Promise<any> {
     const query = `
-      SELECT 
+      SELECT
         COUNT(*) as total_users,
         SUM(games_played) as total_games_played,
         AVG(games_played) as avg_games_per_user,
@@ -420,7 +420,7 @@ export class DatabaseManager {
   // Cleanup operations
   public async cleanupOldGames(daysOld: number = 30): Promise<number> {
     const query = `
-      DELETE FROM games 
+      DELETE FROM games
       WHERE ended_at < NOW() - INTERVAL '${daysOld} days'
       AND phase = 'ended'
     `;

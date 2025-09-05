@@ -312,10 +312,10 @@ export class AIPlayer {
 
     // Check for adjacent enemies to attack
     const neighbors = this.hexMap.getNeighbors(unit.position.x, unit.position.y);
-    
+
     for (const neighbor of neighbors) {
       const tile = gameState.board[neighbor.y]?.[neighbor.x];
-      
+
       if (tile?.unit && tile.unit.owner !== this.playerId) {
         decisions.push({
           action: {
@@ -528,8 +528,8 @@ export class AIPlayer {
     const decisions: AIDecision[] = [];
     const player = gameState.players[this.playerId];
 
-    // Check if we can research something
-    if (player.resources.science >= 20 && player.technologies.length < 10) {
+    // Check if we can research something (and not already researching)
+    if (player.resources.science >= 20 && player.technologies.length < 10 && !player.currentResearch) {
       const availableTechs = this.getAvailableTechnologies(player.technologies);
 
       if (availableTechs.length > 0) {
@@ -863,8 +863,17 @@ export class AIPlayer {
   }
 
   private getAvailableTechnologies(currentTechs: TechnologyType[]): TechnologyType[] {
-    const allTechs = Object.values(TechnologyType);
-    return allTechs.filter(tech => !currentTechs.includes(tech));
+    // Import the proper shared function that handles prerequisites
+    const { getAvailableTechnologies: sharedGetAvailableTechnologies } = require('@civ-game/shared');
+
+    // Convert TechnologyType enum to string array for shared function compatibility
+    const techStrings = currentTechs.filter(tech => tech != null).map(tech => tech.toString());
+
+    // Use the proper shared function that handles prerequisites
+    const availableTechs = sharedGetAvailableTechnologies(techStrings);
+
+    // Convert back to TechnologyType enum values
+    return availableTechs.map(tech => tech.id as TechnologyType).filter(tech => Object.values(TechnologyType).includes(tech));
   }
 
   private generateCityName(): string {
