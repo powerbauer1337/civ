@@ -436,7 +436,7 @@ describe('GameEngine - Comprehensive Tests', () => {
 
       // Check if new unit was created
       const units = Object.values(result.gameState?.units || {});
-      const newWarrior = units.find(u => u.type === UnitType.WARRIOR && u.position && u.position.q === 5 && u.position.r === 5);
+      const newWarrior = units.find(u => u.type === UnitType.WARRIOR && u.x === 5 && u.y === 5);
       expect(newWarrior).toBeDefined();
       
       // Check that production was reset
