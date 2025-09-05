@@ -673,12 +673,16 @@ export class GameManager {
     return gameRoom?.gameState;
   }
 
-  public getGameList(): Array<{ id: string; playerCount: number; phase: GamePhase; createdAt: Date }> {
+  public getGameList(): Array<{ id: string; playerCount: number; spectatorCount: number; phase: GamePhase; createdAt: Date; name?: string; maxPlayers?: number; currentTurn?: number }> {
     return Array.from(this.games.entries()).map(([id, room]) => ({
       id,
       playerCount: room.players.size,
+      spectatorCount: room.spectators.size,
       phase: room.gameState.phase as any,
-      createdAt: room.gameState.createdAt
+      createdAt: room.gameState.createdAt,
+      name: (room as any).name,
+      maxPlayers: room.maxPlayers,
+      currentTurn: room.gameState.currentTurn
     }));
   }
 
@@ -773,7 +777,7 @@ export class GameManager {
     filter?: 'all' | 'active' | 'waiting' | 'ended';
     hideTestGames?: boolean;
   } = {}): {
-    games: Array<{ id: string; playerCount: number; phase: GamePhase; createdAt: Date; name?: string }>;
+    games: Array<{ id: string; playerCount: number; spectatorCount: number; phase: GamePhase; createdAt: Date; name?: string; maxPlayers?: number; currentTurn?: number }>;
     totalGames: number;
     hasMore: boolean;
   } {

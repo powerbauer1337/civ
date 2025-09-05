@@ -926,3 +926,20 @@ The technology trading system establishes a foundation for advanced diplomatic f
   - Files: `client/src/pages/SimpleGamePage.tsx`
   - Change: Support `?spectate=1` query to emit `spectate_game` on connect when no `playerId` is present; handle `spectating_started`, `spectator_joined`, and `spectator_left` events. UI chips now show “Spectating”; all action buttons disabled for spectators; leaving emits `stop_spectating`.
   - Acceptance: Spectators receive current game state, cannot perform actions, and can leave cleanly; players are notified on spectate join/leave.
+
+### ✅ Spectating via Context + Lobby Spectator Counts (September 5, 2025)
+
+- [x] SocketContext spectate helpers
+  - Files: `client/src/contexts/SocketContext.tsx`
+  - Change: Added `spectateGame(gameId)` and `stopSpectating()` promise APIs; emits/handles `spectating_started` for acks.
+  - Acceptance: Callers can start/stop spectating through shared context without managing low-level events.
+
+- [x] Server exposes spectator counts
+  - Files: `server/src/game/GameManager.ts`, `server/src/controllers/GameController.ts`
+  - Change: `getGameList()` now returns `spectatorCount`, `maxPlayers`, `currentTurn`, and (when available) `name`. REST `/api/games` and WS `list_games` include `spectatorCount` in payloads.
+  - Acceptance: Client receives `spectatorCount` for each lobby game entry.
+
+- [x] Lobby badge for spectators
+  - Files: `client/src/pages/SimpleLobbyPage.tsx`
+  - Change: Show a small eye badge with “N watching” when `spectatorCount > 0`.
+  - Acceptance: Users can see at-a-glance viewer counts for active games.

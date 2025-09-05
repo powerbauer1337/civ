@@ -28,6 +28,8 @@ interface SocketContextValue {
   requestGameState: () => void
   listGames: (options?: { page?: number; limit?: number; filter?: 'all' | 'active' | 'waiting' | 'ended'; hideTestGames?: boolean }) => Promise<{ games: any[]; totalGames: number; hasMore: boolean }>
   getLobbyStats: () => Promise<{ activeGames: number; activePlayers: number }>
+  spectateGame: (gameId: string) => Promise<{ gameId: string; gameState: any }>
+  stopSpectating: () => void
 }
 
 const SocketContext = createContext<SocketContextValue>({
@@ -42,7 +44,9 @@ const SocketContext = createContext<SocketContextValue>({
   sendGameAction: () => {},
   requestGameState: () => {},
   listGames: async () => ({ games: [], totalGames: 0, hasMore: false }),
-  getLobbyStats: async () => ({ activeGames: 0, activePlayers: 0 })
+  getLobbyStats: async () => ({ activeGames: 0, activePlayers: 0 }),
+  spectateGame: async () => { throw new Error('socket not connected'); },
+  stopSpectating: () => {}
 });
 
 export const useSocket = () => {
@@ -304,6 +308,31 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     });
   };
 
+  // Spectator helpers
+  const spectateGame = (gameId: string) => {
+    return new Promise<{ gameId: string; gameState: any }>((resolve, reject) => {
+      if (!socket) return reject(new Error('Socket not connected'));
+      try {
+        socket.emit('spectate_game', { gameId });
+        const timeout = setTimeout(() => {
+          socket.off('spectating_started', handler);
+          reject(new Error('spectate_game timeout'));
+        }, 5000);
+        const handler = (payload: any) => {
+          clearTimeout(timeout);
+          resolve({ gameId: payload.gameId, gameState: payload.gameState });
+        };
+        socket.once('spectating_started', handler);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  };
+
+  const stopSpectating = () => {
+    if (socket) socket.emit('stop_spectating');
+  };
+
   const contextValue: SocketContextValue = {
     socket,
     connected,
@@ -316,7 +345,9 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     sendGameAction,
     requestGameState,
     listGames,
-    getLobbyStats
+    getLobbyStats,
+    spectateGame,
+    stopSpectating
   };
 
   return (

@@ -33,6 +33,7 @@ import {
   Add as AddIcon,
   Refresh as RefreshIcon,
   People as PeopleIcon,
+  Visibility as EyeIcon,
   PlayArrow as PlayIcon,
   AccessTime as TimeIcon,
   FilterList as FilterIcon,
@@ -54,6 +55,7 @@ interface Game {
   createdAt: string
   joinable: boolean
   isTestGame?: boolean
+  spectatorCount?: number
 }
 
 interface GameListResponse {
@@ -128,7 +130,8 @@ const SimpleLobbyPage: React.FC = () => {
             maxPlayers: Number(g.maxPlayers ?? 8),
             currentTurn: Number(g.currentTurn ?? 1),
             createdAt: g.createdAt ?? new Date().toISOString(),
-            joinable: g.phase === 'lobby' || g.phase === 'waiting'
+            joinable: g.phase === 'lobby' || g.phase === 'waiting',
+            spectatorCount: Number(g.spectatorCount ?? 0)
           };
         });
         setGames(mapped);
@@ -568,9 +571,17 @@ const SimpleLobbyPage: React.FC = () => {
 
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                         <PeopleIcon sx={{ mr: 1, fontSize: 16 }} />
-                        <Typography variant="body2">
+                        <Typography variant="body2" sx={{ mr: 1 }}>
                           {game.playerCount}/{game.maxPlayers} players
                         </Typography>
+                        {(game.spectatorCount ?? 0) > 0 && (
+                          <Chip
+                            size="small"
+                            icon={<EyeIcon sx={{ fontSize: 16 }} />}
+                            label={`${game.spectatorCount} watching`}
+                            variant="outlined"
+                          />
+                        )}
                       </Box>
 
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>

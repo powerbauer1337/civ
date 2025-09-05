@@ -64,14 +64,15 @@ export class GameController {
       res.json({
         games: paginatedGames.map(game => ({
           id: game.id,
-          name: this.getGameName(game.id),
+          name: game.name || this.getGameName(game.id),
           playerCount: game.playerCount,
-          maxPlayers: 8, // Would need to get from game config
+          spectatorCount: (game as any).spectatorCount ?? 0,
+          maxPlayers: game.maxPlayers || 8,
           phase: game.phase,
           status: this.mapPhaseToStatus(game.phase),
           createdAt: game.createdAt,
-          joinable: game.phase === 'lobby' && game.playerCount < 8,
-          currentTurn: this.getGameTurn(game.id) || 1,
+          joinable: game.phase === 'lobby' && game.playerCount < (game.maxPlayers || 8),
+          currentTurn: game.currentTurn || this.getGameTurn(game.id) || 1,
           isTestGame: this.isTestGame(game.id)
         })),
         totalGames: games.length,
