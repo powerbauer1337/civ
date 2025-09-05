@@ -912,3 +912,17 @@ The technology trading system establishes a foundation for advanced diplomatic f
 *Technology Trading System: 19/19 tests passing (100% success rate)*  
 *Total Test Suite: 579/579 tests passing across all systems (100% success rate)* 🏆  
 *Ready for Next Phase: Diplomacy System & Victory Conditions*
+
+---
+
+### ✅ Client Spectator Mode UI (September 5, 2025)
+
+- [x] Spectate active games from the lobby
+  - Files: `client/src/pages/SimpleLobbyPage.tsx`
+  - Change: Added a “Spectate” button for active games that navigates to `/game/:gameId?spectate=1`.
+  - Acceptance: Users can enter a running game in read‑only mode directly from the lobby.
+
+- [x] Game page spectator flow and safeguards
+  - Files: `client/src/pages/SimpleGamePage.tsx`
+  - Change: Support `?spectate=1` query to emit `spectate_game` on connect when no `playerId` is present; handle `spectating_started`, `spectator_joined`, and `spectator_left` events. UI chips now show “Spectating”; all action buttons disabled for spectators; leaving emits `stop_spectating`.
+  - Acceptance: Spectators receive current game state, cannot perform actions, and can leave cleanly; players are notified on spectate join/leave.

@@ -584,19 +584,30 @@ const SimpleLobbyPage: React.FC = () => {
                         Game ID: {game.id}
                       </Typography>
 
-                      <Button
-                        fullWidth
-                        variant={game.status === 'waiting' ? 'contained' : 'outlined'}
-                        startIcon={loading ? <CircularProgress size={16} /> : <PlayIcon />}
-                        disabled={!game.joinable || loading}
-                        onClick={() => handleJoinGame(game.id, game.name)}
-                      >
-                        {loading ? 'Joining...' : (
-                          game.status === 'waiting'
-                            ? (game.playerCount < game.maxPlayers ? 'Join Game' : 'Game Full')
-                            : game.status === 'active' ? 'Game In Progress' : 'Game Finished'
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          fullWidth
+                          variant={game.status === 'waiting' ? 'contained' : 'outlined'}
+                          startIcon={loading ? <CircularProgress size={16} /> : <PlayIcon />}
+                          disabled={!game.joinable || loading}
+                          onClick={() => handleJoinGame(game.id, game.name)}
+                        >
+                          {loading ? 'Joining...' : (
+                            game.status === 'waiting'
+                              ? (game.playerCount < game.maxPlayers ? 'Join Game' : 'Game Full')
+                              : game.status === 'active' ? 'Game In Progress' : 'Game Finished'
+                          )}
+                        </Button>
+                        {game.status === 'active' && (
+                          <Button
+                            variant="contained"
+                            color="secondary"
+                            onClick={() => navigate(`/game/${game.id}?spectate=1`)}
+                          >
+                            Spectate
+                          </Button>
                         )}
-                      </Button>
+                      </Box>
                     </CardContent>
                   </Card>
                 </Grid>

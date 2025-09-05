@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -81,10 +81,14 @@ const SimpleGamePage: React.FC = () => {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const location = useLocation();
+  const query = new URLSearchParams(location.search);
+  const isSpectatorRoute = query.get('spectate') === '1';
 
   // Player info from localStorage
   const [playerId] = useState(localStorage.getItem('currentPlayerId') || '');
   const [playerName] = useState(localStorage.getItem('playerName') || 'Anonymous');
+  const [isSpectator, setIsSpectator] = useState<boolean>(isSpectatorRoute && !playerId);
 
   // Chat and actions
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -100,7 +104,7 @@ const SimpleGamePage: React.FC = () => {
       return;
     }
 
-    if (!playerId) {
+    if (!playerId && !isSpectatorRoute) {
       setError('No player ID found. Please join the game from the lobby.');
       return;
     }
@@ -115,11 +119,17 @@ const SimpleGamePage: React.FC = () => {
       setConnected(true);
       setSocket(newSocket);
 
-      // Join the game room
-      newSocket.emit('join_game', {
-        gameId: gameId,
-        playerId: playerId
-      });
+      if (isSpectatorRoute && !playerId) {
+        // Start spectating without joining as player
+        newSocket.emit('spectate_game', { gameId });
+        setIsSpectator(true);
+      } else {
+        // Join the game room as a player
+        newSocket.emit('join_game', {
+          gameId: gameId,
+          playerId: playerId
+        });
+      }
 
       addSystemMessage('Connected to game server');
     });
@@ -147,6 +157,23 @@ const SimpleGamePage: React.FC = () => {
       fetchGameState(); // Refresh game state when someone joins
     });
 
+    // Spectator events
+    newSocket.on('spectating_started', (data) => {
+      console.log('👀 Spectating started:', data);
+      setIsSpectator(true);
+      addSystemMessage('You are now spectating this game');
+      // We receive current state payload
+      setGameState({
+        gameId: data.gameId,
+        name: `Spectating ${String(data.gameId).slice(0, 8)}`,
+        status: 'active',
+        players: [],
+        currentTurn: (data.gameState?.currentTurn) || 1
+      });
+    });
+    newSocket.on('spectator_joined', () => addSystemMessage('A spectator joined'));
+    newSocket.on('spectator_left', () => addSystemMessage('A spectator left'));
+
     newSocket.on('game_started', (data) => {
       console.log('🎮 Game started:', data);
       addSystemMessage(`Game started with ${data.players.length} players!`);
@@ -170,7 +197,7 @@ const SimpleGamePage: React.FC = () => {
     return () => {
       newSocket.disconnect();
     };
-  }, [gameId, playerId]);
+  }, [gameId, playerId, isSpectatorRoute]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -235,6 +262,10 @@ const SimpleGamePage: React.FC = () => {
       setError('Not connected to server');
       return;
     }
+    if (isSpectator) {
+      setError('Spectators cannot perform actions');
+      return;
+    }
 
     const testActions = {
       'move_unit': {
@@ -292,6 +323,8 @@ const SimpleGamePage: React.FC = () => {
   const handleTileClick = (x: number, y: number) => {
     console.log(`Tile clicked: (${x}, ${y})`);
 
+    if (isSpectator) return;
+
     if (selectedUnit) {
       // Try to move selected unit to this tile
       const moveAction = {
@@ -340,10 +373,15 @@ const SimpleGamePage: React.FC = () => {
 
   const handleLeaveGame = () => {
     if (socket) {
+      if (isSpectator) {
+        socket.emit('stop_spectating');
+      }
       socket.disconnect();
     }
-    localStorage.removeItem('currentGameId');
-    localStorage.removeItem('currentPlayerId');
+    if (!isSpectator) {
+      localStorage.removeItem('currentGameId');
+      localStorage.removeItem('currentPlayerId');
+    }
     navigate('/lobby');
   };
 
@@ -379,8 +417,8 @@ const SimpleGamePage: React.FC = () => {
             🎮 {gameState?.name || `Game ${gameId?.slice(-8)}`}
           </Typography>
           <Chip
-            label={connected ? 'Connected' : 'Disconnected'}
-            color={connected ? 'success' : 'error'}
+            label={connected ? (isSpectator ? 'Spectating' : 'Connected') : 'Disconnected'}
+            color={connected ? (isSpectator ? 'info' : 'success') : 'error'}
             sx={{ mr: 2 }}
           />
           <Chip
@@ -456,7 +494,7 @@ const SimpleGamePage: React.FC = () => {
                 variant="contained"
                 color="primary"
                 onClick={() => sendTestAction('move_unit')}
-                disabled={!connected || !selectedUnit}
+                disabled={!connected || !selectedUnit || isSpectator}
               >
                 Move Unit {selectedUnit ? `(${selectedUnit.type})` : ''}
               </Button>
@@ -464,7 +502,7 @@ const SimpleGamePage: React.FC = () => {
                 variant="contained"
                 color="secondary"
                 onClick={() => sendTestAction('build_city')}
-                disabled={!connected}
+                disabled={!connected || isSpectator}
               >
                 Found City
               </Button>
@@ -472,7 +510,7 @@ const SimpleGamePage: React.FC = () => {
                 variant="contained"
                 color="info"
                 onClick={() => sendTestAction('research_tech')}
-                disabled={!connected}
+                disabled={!connected || isSpectator}
               >
                 Research Tech
               </Button>
@@ -480,7 +518,7 @@ const SimpleGamePage: React.FC = () => {
                 variant="contained"
                 color="warning"
                 onClick={() => sendTestAction('end_turn')}
-                disabled={!connected}
+                disabled={!connected || isSpectator}
               >
                 End Turn
               </Button>
