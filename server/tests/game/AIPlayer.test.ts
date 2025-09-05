@@ -384,6 +384,9 @@ describe('AIPlayer', () => {
     });
 
     it('should prioritize settlers for expansion strategy', async () => {
+      // Use insane difficulty to avoid random mistake chance interference
+      const insaneAI = new AIPlayer('test-ai-player', AIPersonality.Balanced, AIDifficulty.Insane);
+      
       const expandingGameState = {
         ...mockGameState,
         currentTurn: 25 // Later turn to avoid explore strategy
@@ -403,12 +406,12 @@ describe('AIPlayer', () => {
       expandingGameState.players['test-ai-player'].cities[0].production.cost = 10;
 
       // Populate explored tiles to avoid explore strategy
-      (aiPlayer as any).exploredTiles.clear();
+      (insaneAI as any).exploredTiles.clear();
       for (let i = 0; i < 150; i++) {
-        (aiPlayer as any).exploredTiles.add(`${i % 10},${Math.floor(i / 10)}`);
+        (insaneAI as any).exploredTiles.add(`${i % 10},${Math.floor(i / 10)}`);
       }
 
-      const actions = await aiPlayer.makeDecisions(expandingGameState);
+      const actions = await insaneAI.makeDecisions(expandingGameState);
       const productionActions = actions.filter(a => a.type === GameActionType.CHANGE_PRODUCTION);
       
       expect(productionActions.length).toBeGreaterThan(0);
