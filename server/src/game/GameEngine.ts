@@ -1000,7 +1000,7 @@ export class GameEngine {
         playerId: city.playerId,
         x: city.x,
         y: city.y,
-        position: { q: city.x, r: city.y }, // Include position for test compatibility
+        // position: { q: city.x, r: city.y }, // Removed - not part of Unit interface
         movement: 2, // Default movement points
         maxMovement: 2,
         health: 100,
