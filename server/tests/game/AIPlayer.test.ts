@@ -239,6 +239,9 @@ describe('AIPlayer', () => {
       // Create isolated test state to avoid test interdependency
       const testGameState = JSON.parse(JSON.stringify(mockGameState));
       
+      // Ensure our AI warrior has moves available
+      testGameState.players['test-ai-player'].units[0].moves = 2;
+      
       // Place enemy unit adjacent to AI warrior at (3,2)
       const neighborPos = { x: 3, y: 2 };
       testGameState.board[neighborPos.y][neighborPos.x].unit = {
