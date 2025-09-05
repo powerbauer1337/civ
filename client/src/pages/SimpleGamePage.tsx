@@ -62,7 +62,7 @@ interface ChatMessage {
 const SimpleGamePage: React.FC = () => {
   const { gameId } = useParams<{ gameId: string }>();
   const navigate = useNavigate();
-  const { socket, connected, spectateGame, stopSpectating, sendGameAction, requestGameState } = useSocket();
+  const { socket, connected, spectateGame, stopSpectating, sendGameAction, requestGameState, joinGameWithAck } = useSocket();
   const gameState = useSelector((state: RootState) => (state.game.gameState as any) || null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,21 +90,48 @@ const SimpleGamePage: React.FC = () => {
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  const [rejoinPromptOpen, setRejoinPromptOpen] = useState(false);
   useEffect(() => {
     if (!gameId) {
       setError('No game ID provided');
       return;
     }
     if (!connected) return;
-    if (isSpectatorRoute && !playerId) {
-      spectateGame(gameId).catch((e) => setError(e.message));
-      setIsSpectator(true);
-      addSystemMessage('Connected to game server');
-    } else if (playerId) {
-      requestGameState();
-      addSystemMessage('Connected to game server');
+
+    const doSpectate = async () => {
+      try {
+        await spectateGame(gameId);
+        setIsSpectator(true);
+        addSystemMessage('Spectating game (read-only)');
+      } catch (e: any) {
+        setError(e?.message || 'Failed to spectate');
+      }
+    };
+
+    if (isSpectatorRoute) {
+      // Explicit spectate route
+      doSpectate();
+      return;
+    }
+
+    if (playerId) {
+      // Attempt to rejoin lobby if possible; on failure prompt to spectate
+      const name = localStorage.getItem('playerName') || 'Player';
+      (async () => {
+        try {
+          await (window as any).requestIdleCallback?.(() => {})
+          await (async () => {})();
+          // Try to join; if game already started, server will error
+          await joinGameWithAck?.(gameId, name, { timeoutMs: 2000 });
+          addSystemMessage('Rejoined game');
+          requestGameState();
+        } catch (e: any) {
+          setRejoinPromptOpen(true);
+        }
+      })();
     } else {
-      setError('No player ID found. Please join the game from the lobby.');
+      // No player mapping, offer to spectate
+      setRejoinPromptOpen(true);
     }
   }, [connected, gameId, playerId, isSpectatorRoute, spectateGame, requestGameState]);
 
@@ -613,6 +640,34 @@ const SimpleGamePage: React.FC = () => {
         </Grid>
       </Grid>
     </Box>
+    {/* Rejoin → Spectate prompt */}
+    <Dialog open={rejoinPromptOpen && !isSpectator} onClose={() => setRejoinPromptOpen(false)}>
+      <DialogTitle>Rejoin Unavailable</DialogTitle>
+      <DialogContent dividers>
+        <Typography variant="body2">
+          You can’t rejoin this game as a player right now. Would you like to spectate instead?
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setRejoinPromptOpen(false)}>Cancel</Button>
+        <Button
+          variant="contained"
+          onClick={async () => {
+            setRejoinPromptOpen(false);
+            if (gameId) {
+              try {
+                await spectateGame(gameId);
+                setIsSpectator(true);
+              } catch (e: any) {
+                setError(e?.message || 'Failed to spectate');
+              }
+            }
+          }}
+        >
+          Spectate
+        </Button>
+      </DialogActions>
+    </Dialog>
     /* Global toast */
     <Snackbar
       open={toastOpen}

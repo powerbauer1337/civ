@@ -1045,7 +1045,7 @@ Goal: Get to a stable, enjoyable “playable” state for 1–4 players with cor
 - [ ] Client: Results screen and rejoin UX
   - Tasks:
     - [x] Simple results modal/page with final scores and “Return to Lobby”.
-    - [ ] Persist `playerId` in localStorage and auto-rejoin mapping; if not found, prompt to rejoin as spectator.
+    - [x] Persist `playerId` in localStorage and auto-rejoin mapping; if not found, prompt to rejoin as spectator.
   - Acceptance:
     - On game end, users see winner and can return to lobby; refresh keeps session where possible.
 

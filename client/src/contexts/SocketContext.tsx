@@ -103,6 +103,11 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         logger.info('Game created:', data);
         dispatch(showSuccess({ title: 'Game Created', message: `Game ${data.gameId} created successfully` }));
         dispatch(updateGameState(data.gameState));
+        try {
+          localStorage.setItem('currentGameId', String(data.gameId));
+          localStorage.setItem('currentPlayerId', String(data.playerId));
+          if (user?.username) localStorage.setItem('playerName', String(user.username));
+        } catch {}
       });
 
       newSocket.on('player_joined', (data) => {
@@ -110,6 +115,15 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         dispatch(playerJoined(data.player));
         dispatch(updateGameState(data.gameState));
         dispatch(showInfo({ title: 'Player Joined', message: `${data.player.name} joined the game` }));
+        // If this client is the one that joined, persist mapping
+        try {
+          if (user?.username && String(data.player.name).toLowerCase() === String(user.username).toLowerCase()) {
+            const gameId = data?.gameState?.id || data?.gameId;
+            if (gameId) localStorage.setItem('currentGameId', String(gameId));
+            localStorage.setItem('currentPlayerId', String(data.player.id));
+            localStorage.setItem('playerName', String(data.player.name));
+          }
+        } catch {}
       });
 
       newSocket.on('player_disconnected', (data) => {
@@ -200,6 +214,11 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         socket.emit('create_game', { playerName, gameConfig });
         socket.once('game_created', (data: any) => {
           clearTimeout(timeout);
+          try {
+            localStorage.setItem('currentGameId', String(data.gameId));
+            localStorage.setItem('currentPlayerId', String(data.playerId));
+            localStorage.setItem('playerName', String(playerName));
+          } catch {}
           resolve({ gameId: data.gameId, playerId: data.playerId, gameState: data.gameState });
         });
         socket.once('error', (err: any) => {
@@ -230,6 +249,11 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
           if (p && (String(p.name).toLowerCase() === String(playerName).toLowerCase())) {
             clearTimeout(timeout);
             socket.off('player_joined', handler);
+            try {
+              localStorage.setItem('currentGameId', String(gameId));
+              localStorage.setItem('currentPlayerId', String(p.id));
+              localStorage.setItem('playerName', String(playerName));
+            } catch {}
             resolve({ gameId, playerId: p.id, gameState: data.gameState });
           }
         };

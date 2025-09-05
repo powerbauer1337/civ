@@ -185,6 +185,10 @@ cd shared && npm run build   # Shared types only
 - Start the game (Tab A). Alternate End Turn and simple actions for ~10 turns.
 - You can spectate: open the lobby’s Spectate action or navigate to `/game/{gameId}?spectate=1`. Spectators are read-only (UI disabled, map overlay).
 
+### Rejoin & Spectate
+- Rejoin: if you refresh, the client persists `currentGameId` and `currentPlayerId` in localStorage. On reconnect it tries to rejoin the lobby; if the game already started and rejoin as player isn’t allowed, you’ll be prompted to spectate instead.
+- Spectate: join any running game as a read-only spectator. UI disables actions and shows a subtle overlay.
+
 ### **Adding Features**
 1. **New Units**: Add to `UnitType` enum and implement in `GameEngine.ts`
 2. **New Technologies**: Extend tech tree in `Technology` system
