@@ -347,8 +347,10 @@ export class GameManager {
           message: `${data.type} completed successfully`
         });
 
-        // Check for game end
-        if (gameRoom.gameState.phase === (GamePhase.ENDED as any)) {
+        // Check for game end (support both 'ended' and 'END_GAME')
+        const phase = gameRoom.gameState.phase as any;
+        const ended = String(phase).toLowerCase() === 'ended' || String(phase).toLowerCase() === 'end_game';
+        if (ended) {
           this.handleGameEnd(gameId);
         }
       } else {

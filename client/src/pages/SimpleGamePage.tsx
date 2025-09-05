@@ -28,6 +28,7 @@ import { useSocket } from '../contexts/SocketContext';
 import { RootState } from '../store/store';
 // Lazy load the heavy HexMap component for better performance
 const HexMap = React.lazy(() => import('../components/HexMap/HexMap'));
+import { Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 
 // Simplified interface to avoid import issues
 interface Unit {
@@ -80,6 +81,8 @@ const SimpleGamePage: React.FC = () => {
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
   const [selectedTech, setSelectedTech] = useState<string>('agriculture');
   const techOptions = ['agriculture', 'pottery', 'animal_husbandry', 'mining'];
+  const [resultsOpen, setResultsOpen] = useState(false);
+  const [resultsData, setResultsData] = useState<any | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -110,6 +113,27 @@ const SimpleGamePage: React.FC = () => {
       setLoading(false);
     }
   }, [gameState, error]);
+
+  // Listen for server game_ended event and show results
+  useEffect(() => {
+    if (!socket) return;
+    const onGameEnded = (data: any) => {
+      setResultsData(data);
+      setResultsOpen(true);
+    };
+    socket.on('game_ended', onGameEnded);
+    return () => {
+      socket.off('game_ended', onGameEnded);
+    };
+  }, [socket]);
+
+  // Also open results if gameState indicates ended
+  useEffect(() => {
+    const phase = (gameState as any)?.phase;
+    if (phase && (String(phase).toLowerCase() === 'ended' || String(phase).toLowerCase() === 'end_game')) {
+      setResultsOpen(true);
+    }
+  }, [gameState]);
 
   const addSystemMessage = (message: string) => {
     const newMessage: ChatMessage = {
@@ -491,8 +515,33 @@ const SimpleGamePage: React.FC = () => {
                 </Box>
               ))}
               <div ref={chatEndRef} />
-            </Box>
+      </Box>
 
+      {/* Results Dialog */}
+      <Dialog open={resultsOpen} onClose={() => setResultsOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Game Over</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body1" gutterBottom>
+            {resultsData?.winner?.playerName
+              ? `${resultsData.winner.playerName} wins!`
+              : 'A player has won the game.'}
+          </Typography>
+          {resultsData?.finalScores && (
+            <List dense>
+              {resultsData.finalScores.map((s: any) => (
+                <ListItem key={s.playerId}>
+                  <ListItemText primary={`${s.playerName || s.playerId} — ${s.score} pts`} />
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setResultsOpen(false); handleLeaveGame(); }} variant="contained" color="primary">
+            Return to Lobby
+          </Button>
+        </DialogActions>
+      </Dialog>
             {/* Chat Input */}
             <Box sx={{ display: 'flex', gap: 1 }}>
               <TextField
