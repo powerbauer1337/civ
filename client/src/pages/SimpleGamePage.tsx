@@ -257,6 +257,7 @@ const SimpleGamePage: React.FC = () => {
   };
 
   const handleUnitClick = (unit: Unit) => {
+    if (isSpectator) return; // Spectators cannot select units
     console.log('Unit selected:', unit);
     setSelectedUnit(unit);
     addActionLog(`Selected ${unit.type}`);
@@ -364,12 +365,33 @@ const SimpleGamePage: React.FC = () => {
                   <CircularProgress size={60} />
                 </Box>
               }>
-                <HexMap
-                  gameState={gameState}
-                  playerId={playerId}
-                  onTileClick={handleTileClick}
-                  onUnitClick={handleUnitClick}
-                />
+                <Box sx={{ position: 'relative', height: '100%' }}>
+                  <HexMap
+                    gameState={gameState}
+                    playerId={playerId}
+                    onTileClick={handleTileClick}
+                    onUnitClick={handleUnitClick}
+                  />
+                  {isSpectator && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: 'rgba(0,0,0,0.25)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontWeight: 600,
+                        letterSpacing: 1,
+                        pointerEvents: 'auto'
+                      }}
+                      title="Spectating — read-only"
+                    >
+                      Spectating — read-only
+                    </Box>
+                  )}
+                </Box>
               </Suspense>
             ) : (
               <Box sx={{

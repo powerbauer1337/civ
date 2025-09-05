@@ -994,7 +994,7 @@ Goal: Get to a stable, enjoyable “playable” state for 1–4 players with cor
 
 - [x] Client/Server: Spectator-readonly enforcement
   - Tasks:
-    - [ ] Disable action buttons when spectating; hide unit selection affordances.
+    - [x] Disable action buttons when spectating; hide unit selection affordances. (SimpleGamePage overlay + no-op unit/tile handlers)
     - [x] Ensure server rejects actions from sockets not mapped to a player in room.
   - Acceptance:
     - Spectators see updates but cannot perform actions; attempted actions are rejected with an error toast.

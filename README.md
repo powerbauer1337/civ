@@ -183,7 +183,7 @@ cd shared && npm run build   # Shared types only
 - Open two tabs at `http://localhost:5173`.
 - Tab A: Create a game. Tab B: Join it.
 - Start the game (Tab A). Alternate End Turn and simple actions for ~10 turns.
-- You can open a third tab as spectator via the lobby; spectators are read-only.
+- You can spectate: open the lobby’s Spectate action or navigate to `/game/{gameId}?spectate=1`. Spectators are read-only (UI disabled, map overlay).
 
 ### **Adding Features**
 1. **New Units**: Add to `UnitType` enum and implement in `GameEngine.ts`
