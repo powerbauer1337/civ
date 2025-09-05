@@ -1079,6 +1079,7 @@ Goal: Get to a stable, enjoyable “playable” state for 1–4 players with cor
 - [ ] Mini City panel (queue start/remaining turns)
 - [ ] Results modal/page; rejoin persistence; spectator-readonly UI
 - [ ] Wire error/info toasts for action acks/failures
+  - [x] Wire error/info toasts for action acks/failures
 
 ### QA/DevEx
 - [x] Add `npm run test:server:game-loop` (focused suite)

@@ -16,7 +16,8 @@ import {
   IconButton,
   Alert,
   LinearProgress,
-  CircularProgress
+  CircularProgress,
+  Snackbar
 } from '@mui/material';
 import {
   ArrowBack as BackIcon,
@@ -83,6 +84,9 @@ const SimpleGamePage: React.FC = () => {
   const techOptions = ['agriculture', 'pottery', 'animal_husbandry', 'mining'];
   const [resultsOpen, setResultsOpen] = useState(false);
   const [resultsData, setResultsData] = useState<any | null>(null);
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
+  const [toastSeverity, setToastSeverity] = useState<'success' | 'info' | 'warning' | 'error'>('info');
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -121,9 +125,31 @@ const SimpleGamePage: React.FC = () => {
       setResultsData(data);
       setResultsOpen(true);
     };
+    const onAck = (data: any) => {
+      setToastSeverity('success');
+      setToastMsg(data?.message || `${data?.action || 'Action'} completed`);
+      setToastOpen(true);
+    };
+    const onFailed = (data: any) => {
+      setToastSeverity('error');
+      const msg = data?.reason || data?.message || 'Action failed';
+      setToastMsg(msg);
+      setToastOpen(true);
+    };
+    const onError = (data: any) => {
+      setToastSeverity('error');
+      setToastMsg(data?.message || 'Server error');
+      setToastOpen(true);
+    };
     socket.on('game_ended', onGameEnded);
+    socket.on('action_acknowledged', onAck);
+    socket.on('action_failed', onFailed);
+    socket.on('error', onError);
     return () => {
       socket.off('game_ended', onGameEnded);
+      socket.off('action_acknowledged', onAck);
+      socket.off('action_failed', onFailed);
+      socket.off('error', onError);
     };
   }, [socket]);
 
@@ -587,6 +613,17 @@ const SimpleGamePage: React.FC = () => {
         </Grid>
       </Grid>
     </Box>
+    /* Global toast */
+    <Snackbar
+      open={toastOpen}
+      autoHideDuration={3000}
+      onClose={() => setToastOpen(false)}
+      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+    >
+      <Alert onClose={() => setToastOpen(false)} severity={toastSeverity} sx={{ width: '100%' }}>
+        {toastMsg}
+      </Alert>
+    </Snackbar>
   );
 };
 
