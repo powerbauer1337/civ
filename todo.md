@@ -978,8 +978,9 @@ Goal: Get to a stable, enjoyable “playable” state for 1–4 players with cor
   - Acceptance:
     - All actions mutate map/units/cities/tech and broadcast updates; tests green.
   - Progress (Sep 5):
-    - [x] Added integration: create/join/start + research_technology emits response (ack/fail) using real GameState.
-    - [ ] Move/Found integration tests are marked skipped pending stable turn/validation semantics in GameEngine. Track in P0 bug list.
+    - [x] Integration: create/join/start + end_turn rotation (green).
+    - [x] Integration: research_technology emits client response with real state.
+    - [x] Integration: move_unit and found_city passing using acting current player with payload.playerId injection and correct coords.
 
 - [ ] Client: Basic play controls in SimpleGamePage
   - Tasks:
@@ -1085,8 +1086,8 @@ Goal: Get to a stable, enjoyable “playable” state for 1–4 players with cor
 - [ ] CI gates on server tests + lint (already) and new suites
 
 ### P0 Bug List (tracking)
-- [ ] Move action rejected with "Action not performed by current player" in real-state integration despite turn guard; investigate `shared-types.ts` currentPlayer/id mapping for GameEngine.
-- [ ] Technology research requires parameters beyond `techId`; align payload schema with engine expectations; update client accordingly.
+- [x] Move action rejected due to missing payload.playerId — fixed by injecting playerId in server action normalization.
+- [x] Research tech missing parameters — fixed by injecting payload.playerId and using `techId`.
 
 ---
 
