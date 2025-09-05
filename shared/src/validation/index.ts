@@ -120,6 +120,32 @@ export const researchTechnologyActionSchema = z.object({
   technologyId: z.string().min(1, 'Technology ID is required')
 });
 
+// Diplomacy action validation
+export const declareWarSchema = z.object({
+  playerId: z.string().min(1),
+  targetPlayerId: z.string().min(1)
+});
+
+export const offerPeaceSchema = z.object({
+  playerId: z.string().min(1),
+  targetPlayerId: z.string().min(1)
+});
+
+export const acceptPeaceSchema = z.object({
+  playerId: z.string().min(1),
+  withPlayerId: z.string().min(1)
+});
+
+export const proposeAllianceSchema = z.object({
+  playerId: z.string().min(1),
+  targetPlayerId: z.string().min(1)
+});
+
+export const breakAllianceSchema = z.object({
+  playerId: z.string().min(1),
+  targetPlayerId: z.string().min(1)
+});
+
 // WebSocket message validation
 export const webSocketMessageSchema = z.object({
   type: z.string().min(1, 'Message type is required'),
@@ -188,6 +214,17 @@ export const validateGameAction = (actionType: GameActionType, payload: any) => 
       return changeProductionActionSchema.parse(payload);
     case GameActionType.RESEARCH_TECHNOLOGY:
       return researchTechnologyActionSchema.parse(payload);
+    // Diplomacy actions
+    case GameActionType.DECLARE_WAR:
+      return declareWarSchema.parse(payload);
+    case GameActionType.OFFER_PEACE:
+      return offerPeaceSchema.parse(payload);
+    case GameActionType.ACCEPT_PEACE:
+      return acceptPeaceSchema.parse(payload);
+    case GameActionType.PROPOSE_ALLIANCE:
+      return proposeAllianceSchema.parse(payload);
+    case GameActionType.BREAK_ALLIANCE:
+      return breakAllianceSchema.parse(payload);
     case GameActionType.END_TURN:
       return z.object({}).parse(payload); // No payload for end turn
     default:

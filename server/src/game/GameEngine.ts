@@ -1,4 +1,4 @@
-import { GameAction, GameActionType, GameState, PlayerState, Unit, City, UnitType, TerrainType, VisibilityLevel, ProductionType } from '@civ-game/shared';
+import { GameAction, GameActionType, GameState, PlayerState, Unit, City, UnitType, TerrainType, VisibilityLevel, ProductionType, DiplomacyStatus, DeclareWarPayload, OfferPeacePayload, AcceptPeacePayload, ProposeAlliancePayload, BreakAlliancePayload, DiplomaticRelation } from '@civ-game/shared';
 import { Technology, TechnologyEffects, PlayerTechnology, TECHNOLOGY_DATABASE, validateTechnologyPrerequisites, calculateResearchCost, TechnologyTradeOffer, TradeOfferStatus } from '@civ-game/shared';
 import { HexMap } from './HexMap';
 import { v4 as uuidv4 } from 'uuid';
@@ -62,9 +62,9 @@ export class GameEngine {
         case GameActionType.END_TURN:
           return GameEngine.processEndTurn(gameState, action);
 
-        // Technology Trading Actions
-        case GameActionType.TECH_TRADE_OFFER:
-          return GameEngine.processTechTradeOffer(gameState, action);
+      // Technology Trading Actions
+      case GameActionType.TECH_TRADE_OFFER:
+        return GameEngine.processTechTradeOffer(gameState, action);
 
         case GameActionType.TECH_TRADE_ACCEPT:
           return GameEngine.processTechTradeAccept(gameState, action);
@@ -72,8 +72,20 @@ export class GameEngine {
         case GameActionType.TECH_TRADE_REJECT:
           return GameEngine.processTechTradeReject(gameState, action);
 
-        case GameActionType.TECH_TRADE_CANCEL:
-          return GameEngine.processTechTradeCancel(gameState, action);
+      case GameActionType.TECH_TRADE_CANCEL:
+        return GameEngine.processTechTradeCancel(gameState, action);
+
+      // Diplomacy Actions
+      case GameActionType.DECLARE_WAR:
+        return GameEngine.processDeclareWar(gameState, action);
+      case GameActionType.OFFER_PEACE:
+        return GameEngine.processOfferPeace(gameState, action);
+      case GameActionType.ACCEPT_PEACE:
+        return GameEngine.processAcceptPeace(gameState, action);
+      case GameActionType.PROPOSE_ALLIANCE:
+        return GameEngine.processProposeAlliance(gameState, action);
+      case GameActionType.BREAK_ALLIANCE:
+        return GameEngine.processBreakAlliance(gameState, action);
 
         default:
           return { success: false, error: `Unknown action type: ${action.type}`, gameState };
@@ -168,6 +180,130 @@ export class GameEngine {
       message: `Unit ${unit.type} moved to (${to.x}, ${to.y})`,
       gameState
     };
+  }
+
+  // -------- Diplomacy helpers --------
+  private static relationKey(a: string, b: string): string {
+    return [a, b].sort().join('|');
+  }
+
+  private static getOrCreateRelation(gameState: GameState, a: string, b: string): DiplomaticRelation {
+    if (!gameState.diplomacy) gameState.diplomacy = {};
+    const key = GameEngine.relationKey(a, b);
+    if (!gameState.diplomacy[key]) {
+      gameState.diplomacy[key] = {
+        a: [a, b].sort()[0],
+        b: [a, b].sort()[1],
+        status: DiplomacyStatus.NEUTRAL,
+        sinceTurn: gameState.turn,
+        lastUpdated: new Date()
+      };
+    }
+    return gameState.diplomacy[key];
+  }
+
+  /**
+   * DECLARE_WAR: acting currentPlayer declares war on target
+   */
+  private static processDeclareWar(gameState: GameState, action: GameAction): ActionResult {
+    const { playerId, targetPlayerId } = action.payload as DeclareWarPayload;
+    if (!playerId || !targetPlayerId) {
+      return { success: false, error: 'Missing playerId or targetPlayerId', gameState };
+    }
+    if (playerId !== gameState.currentPlayer) {
+      return { success: false, error: 'Declare war not from current player', gameState };
+    }
+    const relation = GameEngine.getOrCreateRelation(gameState, playerId, targetPlayerId);
+    relation.status = DiplomacyStatus.WAR;
+    relation.sinceTurn = gameState.turn;
+    relation.lastUpdated = new Date();
+    relation.pendingPeaceOfferFrom = undefined;
+    relation.pendingAllianceOfferFrom = undefined;
+    logger.info(`War declared: ${playerId} vs ${targetPlayerId}`);
+    return { success: true, message: 'War declared', gameState };
+  }
+
+  /**
+   * OFFER_PEACE: acting currentPlayer offers peace to target
+   */
+  private static processOfferPeace(gameState: GameState, action: GameAction): ActionResult {
+    const { playerId, targetPlayerId } = action.payload as OfferPeacePayload;
+    if (!playerId || !targetPlayerId) {
+      return { success: false, error: 'Missing playerId or targetPlayerId', gameState };
+    }
+    if (playerId !== gameState.currentPlayer) {
+      return { success: false, error: 'Offer peace not from current player', gameState };
+    }
+    const relation = GameEngine.getOrCreateRelation(gameState, playerId, targetPlayerId);
+    relation.pendingPeaceOfferFrom = playerId;
+    relation.lastUpdated = new Date();
+    logger.info(`Peace offered: ${playerId} → ${targetPlayerId}`);
+    return { success: true, message: 'Peace offer sent', gameState };
+  }
+
+  /**
+   * ACCEPT_PEACE: target accepts existing peace offer
+   */
+  private static processAcceptPeace(gameState: GameState, action: GameAction): ActionResult {
+    const { playerId, withPlayerId } = action.payload as AcceptPeacePayload;
+    if (!playerId || !withPlayerId) {
+      return { success: false, error: 'Missing playerId or withPlayerId', gameState };
+    }
+    if (playerId !== gameState.currentPlayer) {
+      return { success: false, error: 'Accept peace not from current player', gameState };
+    }
+    const relation = GameEngine.getOrCreateRelation(gameState, playerId, withPlayerId);
+    if (relation.pendingPeaceOfferFrom !== withPlayerId) {
+      return { success: false, error: 'No pending peace offer from specified player', gameState };
+    }
+    relation.status = DiplomacyStatus.PEACE;
+    relation.sinceTurn = gameState.turn;
+    relation.lastUpdated = new Date();
+    relation.pendingPeaceOfferFrom = undefined;
+    logger.info(`Peace accepted: ${playerId} ↔ ${withPlayerId}`);
+    return { success: true, message: 'Peace established', gameState };
+  }
+
+  /**
+   * PROPOSE_ALLIANCE: acting currentPlayer proposes alliance to target
+   */
+  private static processProposeAlliance(gameState: GameState, action: GameAction): ActionResult {
+    const { playerId, targetPlayerId } = action.payload as ProposeAlliancePayload;
+    if (!playerId || !targetPlayerId) {
+      return { success: false, error: 'Missing playerId or targetPlayerId', gameState };
+    }
+    if (playerId !== gameState.currentPlayer) {
+      return { success: false, error: 'Propose alliance not from current player', gameState };
+    }
+    const relation = GameEngine.getOrCreateRelation(gameState, playerId, targetPlayerId);
+    // Alliance can be proposed from PEACE or NEUTRAL states
+    relation.pendingAllianceOfferFrom = playerId;
+    relation.lastUpdated = new Date();
+    logger.info(`Alliance proposed: ${playerId} → ${targetPlayerId}`);
+    return { success: true, message: 'Alliance proposal sent', gameState };
+  }
+
+  /**
+   * BREAK_ALLIANCE: acting currentPlayer breaks an active alliance with target
+   */
+  private static processBreakAlliance(gameState: GameState, action: GameAction): ActionResult {
+    const { playerId, targetPlayerId } = action.payload as BreakAlliancePayload;
+    if (!playerId || !targetPlayerId) {
+      return { success: false, error: 'Missing playerId or targetPlayerId', gameState };
+    }
+    if (playerId !== gameState.currentPlayer) {
+      return { success: false, error: 'Break alliance not from current player', gameState };
+    }
+    const relation = GameEngine.getOrCreateRelation(gameState, playerId, targetPlayerId);
+    if (relation.status !== DiplomacyStatus.ALLIANCE) {
+      return { success: false, error: 'No active alliance to break', gameState };
+    }
+    relation.status = DiplomacyStatus.NEUTRAL;
+    relation.sinceTurn = gameState.turn;
+    relation.lastUpdated = new Date();
+    relation.pendingAllianceOfferFrom = undefined;
+    logger.info(`Alliance broken: ${playerId} ↔ ${targetPlayerId}`);
+    return { success: true, message: 'Alliance broken', gameState };
   }
 
   /**

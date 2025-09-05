@@ -73,6 +73,30 @@
 
 ## 🔍 DEEP CODE AUDIT RESULTS (September 5, 2025)
 
+### ✅ Completed (September 5, 2025) — Phase 4.1: Diplomacy Baseline
+
+- [x] Shared types added for Diplomacy
+  - `DiplomacyStatus` enum: NEUTRAL, WAR, PEACE, ALLIANCE
+  - `DiplomaticRelation` structure keyed by sorted `a|b`
+  - Action payloads: `DeclareWarPayload`, `OfferPeacePayload`, `AcceptPeacePayload`, `ProposeAlliancePayload`, `BreakAlliancePayload`
+- [x] Validation schemas (Zod) for diplomacy actions in `shared/src/validation/index.ts`
+- [x] GameEngine action handlers implemented
+  - `DECLARE_WAR`, `OFFER_PEACE`, `ACCEPT_PEACE`, `PROPOSE_ALLIANCE`, `BREAK_ALLIANCE`
+  - Stores relations in `gameState.diplomacy` and updates timestamps/turns
+- [x] Tests added: `server/tests/game/DiplomacySystem.test.ts` (2 tests)
+- [x] Build, lint, and all tests passing
+
+Current totals (as executed locally on September 5, 2025):
+- Server tests: 441/441 passing
+- Shared basic tests: 3/3 passing
+- Lint: clean; Build: green
+
+Next steps (scoped):
+- [ ] Alliance acceptance action and mutual status change
+- [ ] Basic diplomatic modifiers (e.g., combat restrictions for PEACE/ALLIANCE)
+- [ ] Persist diplomacy in save/load layer
+- [ ] Client UI surface for current relations and offers
+
 ### 🎯 EXECUTIVE SUMMARY: PRODUCTION-READY STATUS ✅
 
 **GAME IS FULLY PLAYABLE** - This comprehensive audit confirms the civilization game is production-ready with excellent code quality and architecture.

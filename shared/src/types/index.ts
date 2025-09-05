@@ -124,6 +124,7 @@ export interface GameState {
   cities: { [id: string]: City };  // Add cities map for frontend
   units: { [id: string]: Unit };   // Add units map for frontend
   tradeOffers?: TechnologyTradeOffer[]; // Technology trading system
+  diplomacy?: Record<string, DiplomaticRelation>; // Keyed by sorted "a|b"
   lastUpdate: Date;
 }
 
@@ -386,7 +387,56 @@ export enum GameActionType {
   TECH_COLLABORATION_REQUEST = 'tech_collaboration_request',
   TECH_COLLABORATION_JOIN = 'tech_collaboration_join',
   TECH_COLLABORATION_LEAVE = 'tech_collaboration_leave',
+  // Phase 4.1 Diplomacy Actions (baseline)
+  DECLARE_WAR = 'diplomacy_declare_war',
+  OFFER_PEACE = 'diplomacy_offer_peace',
+  ACCEPT_PEACE = 'diplomacy_accept_peace',
+  PROPOSE_ALLIANCE = 'diplomacy_propose_alliance',
+  BREAK_ALLIANCE = 'diplomacy_break_alliance',
   END_TURN = 'end_turn'
+}
+
+// Diplomacy Types (baseline)
+export enum DiplomacyStatus {
+  NEUTRAL = 'neutral',
+  WAR = 'war',
+  PEACE = 'peace',
+  ALLIANCE = 'alliance'
+}
+
+export interface DiplomaticRelation {
+  a: string; // playerId
+  b: string; // playerId
+  status: DiplomacyStatus;
+  sinceTurn: number;
+  lastUpdated: Date;
+  pendingPeaceOfferFrom?: string; // playerId of proposer
+  pendingAllianceOfferFrom?: string; // playerId of proposer
+}
+
+export interface DeclareWarPayload {
+  playerId: string; // acting player (must be currentPlayer)
+  targetPlayerId: string;
+}
+
+export interface OfferPeacePayload {
+  playerId: string;
+  targetPlayerId: string;
+}
+
+export interface AcceptPeacePayload {
+  playerId: string; // target accepting existing offer
+  withPlayerId: string; // proposer id
+}
+
+export interface ProposeAlliancePayload {
+  playerId: string;
+  targetPlayerId: string;
+}
+
+export interface BreakAlliancePayload {
+  playerId: string;
+  targetPlayerId: string;
 }
 
 // API Response Types
