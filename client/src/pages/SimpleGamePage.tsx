@@ -78,6 +78,8 @@ const SimpleGamePage: React.FC = () => {
   const [chatInput, setChatInput] = useState('');
   const [actionLog, setActionLog] = useState<string[]>([]);
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
+  const [selectedTech, setSelectedTech] = useState<string>('agriculture');
+  const techOptions = ['agriculture', 'pottery', 'animal_husbandry', 'mining'];
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -168,7 +170,7 @@ const SimpleGamePage: React.FC = () => {
         playerId,
         payload: {
           settlerId: selectedUnit?.id,
-          location: { x: Math.floor(Math.random() * 20), y: Math.floor(Math.random() * 20) },
+          location: selectedUnit ? { x: selectedUnit.x, y: selectedUnit.y } : { x: 0, y: 0 },
           cityName: `${playerName}'s City`
         },
         timestamp: Date.now(),
@@ -179,7 +181,7 @@ const SimpleGamePage: React.FC = () => {
         gameId,
         playerId,
         payload: {
-          techId: ['pottery', 'bronze_working', 'animal_husbandry'][Math.floor(Math.random() * 3)]
+          techId: selectedTech
         },
         timestamp: Date.now(),
         actionId: Math.random().toString(36).substr(2, 9)
@@ -368,6 +370,21 @@ const SimpleGamePage: React.FC = () => {
           {/* Action Buttons */}
           <Paper sx={{ m: 2, p: 2 }}>
             <Typography variant="h6" gutterBottom>Game Actions</Typography>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 1 }}>
+              <TextField
+                select
+                size="small"
+                label="Research"
+                value={selectedTech}
+                onChange={(e) => setSelectedTech(e.target.value)}
+                SelectProps={{ native: true }}
+              >
+                {techOptions.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </TextField>
+              <Chip label={isMyTurn ? 'Your Turn' : 'Waiting'} color={isMyTurn ? 'success' : 'default'} size="small" />
+            </Box>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               <Button
                 variant="contained"
@@ -381,7 +398,7 @@ const SimpleGamePage: React.FC = () => {
                 variant="contained"
                 color="secondary"
                 onClick={() => sendTestAction('build_city')}
-                disabled={!connected || isSpectator || !isMyTurn}
+                disabled={!connected || isSpectator || !isMyTurn || !selectedUnit || String(selectedUnit.type).toLowerCase() !== 'settler'}
               >
                 Found City
               </Button>
