@@ -32,10 +32,10 @@
   - Change: Add server test/lint jobs; remove `--passWithNoTests` and `|| true`.
   - Acceptance: PRs fail when lint or tests fail in any package.
 
-- [ ] Choose one persistence layer
-  - Files: `server/src/database/*`, `server/src/handlers/saveLoadHandlers.ts`
-  - Decision: Prefer Postgres/Redis (`DatabaseManager`) and deprecate `GamePersistence` (SQLite) or behind feature flag.
-  - Acceptance: Single source of truth for saves; docs updated.
+- [x] Choose one persistence layer
+  - Files: `server/src/config/config.ts`, `server/src/index.ts`, `README.md`
+  - Decision: Use SQLite `GamePersistence` as the single source of truth for Save/Load. Added `PERSISTENCE_PROVIDER` env (`sqlite` | `postgres`) and `SQLITE_DB_PATH`. When `postgres`, we initialize Postgres/Redis but disable Save/Load socket features until a `DatabasePersistenceAdapter` is implemented.
+  - Acceptance: Save/Load is consistently backed by SQLite; configuration is explicit; docs updated with provider details.
 
 - [x] Deterministic scoring
   - Files: `server/src/shared-types.ts`

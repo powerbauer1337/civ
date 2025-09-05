@@ -106,15 +106,20 @@ async function startServer() {
   // Initialize game manager
   const gameManager = new GameManager(io);
 
-  // Initialize persistence and save/load handlers
-  const gp = new GamePersistence();
-  try {
-    await gp.initialize();
-    logger.info('GamePersistence initialized');
-  } catch (err) {
-    logger.warn('GamePersistence initialization failed; continuing without SQLite:', err);
+  // Initialize persistence and save/load handlers (provider-gated)
+  let sl: SaveLoadHandlers | null = null;
+  if (config.PERSISTENCE_PROVIDER === 'sqlite') {
+    const gp = new GamePersistence(config.SQLITE_DB_PATH);
+    try {
+      await gp.initialize();
+      logger.info('GamePersistence (SQLite) initialized');
+      sl = new SaveLoadHandlers(gp, gameManager);
+    } catch (err) {
+      logger.warn('GamePersistence initialization failed; Save/Load features disabled:', err);
+    }
+  } else {
+    logger.info('Persistence provider set to Postgres/Redis. Save/Load socket features currently disabled.');
   }
-  const sl = new SaveLoadHandlers(gp, gameManager);
 
   // Initialize controllers
   const authController = new AuthController();
@@ -198,8 +203,10 @@ async function startServer() {
     // Handle game events
     gameManager.handleConnection(socket);
 
-    // Register save/load socket handlers
-    sl.registerHandlers(socket);
+    // Register save/load socket handlers when available
+    if (sl) {
+      sl.registerHandlers(socket);
+    }
 
     socket.on('disconnect', () => {
       logger.debug(`Client disconnected: ${socket.id}`);
@@ -237,6 +244,7 @@ async function startServer() {
     logger.info(`Environment: ${summary.environment}`);
     logger.info(`Client URL: ${config.CLIENT_URL}`);
     logger.info(`Database: ${databaseManager.isConnected() ? 'Connected' : 'Disconnected'}`);
+    logger.info(`Persistence Provider: ${config.PERSISTENCE_PROVIDER}`);
     logger.info('Security: JWT Manager Active');
     logger.info(`Rate Limiting: ${summary.rateLimiting.maxRequests} req/${summary.rateLimiting.windowMs}ms`);
     logger.info(`Security Headers: ${summary.security.securityHeadersEnabled ? 'Enabled' : 'Disabled'}`);

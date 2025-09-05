@@ -36,7 +36,7 @@ A fully functional, browser-based civilization strategy game built with hex-grid
 - **Backend**: Node.js + Express + Socket.io + TypeScript
 - **State Management**: Redux Toolkit with type-safe slices
 - **Game Engine**: Custom hex-grid engine with procedural generation
-- **Database**: SQLite with comprehensive game persistence
+- **Database**: SQLite for game saves (default); Postgres/Redis optional
 - **Real-time**: WebSocket for multiplayer synchronization
 - **Build Tools**: Vite + Terser for optimized production builds
 - **Testing**: Vitest with comprehensive unit test coverage
@@ -87,6 +87,11 @@ npm run dev
 - **Frontend**: http://localhost:5173
 - **Backend**: http://localhost:3001
 - **Game API**: http://localhost:3001/api
+
+### **Persistence Provider**
+- Configure via env var `PERSISTENCE_PROVIDER` = `sqlite` | `postgres`.
+- Default is `sqlite` with file path `SQLITE_DB_PATH` (default `./data/civilization.db`).
+- When set to `postgres`, core DB (Postgres/Redis) initializes, and Save/Load socket features are currently disabled pending adapter parity.
 
 ## 🎯 How to Play
 

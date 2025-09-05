@@ -14,6 +14,9 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),
   CLIENT_URL: z.string().url().default('http://localhost:5173'),
+  // Persistence
+  PERSISTENCE_PROVIDER: z.enum(['sqlite', 'postgres']).default('sqlite'),
+  SQLITE_DB_PATH: z.string().default('./data/civilization.db'),
 
   // Database Configuration - REQUIRED in production
   DATABASE_URL: z.string().min(1, 'Database URL is required'),
@@ -146,6 +149,10 @@ export const config = validateEnvironment();
 export const getConfigSummary = () => ({
   environment: config.NODE_ENV,
   port: config.PORT,
+  persistence: {
+    provider: config.PERSISTENCE_PROVIDER,
+    sqlitePath: config.SQLITE_DB_PATH
+  },
   security: {
     bcryptRounds: config.BCRYPT_ROUNDS,
     jwtExpiresIn: config.JWT_EXPIRES_IN,
