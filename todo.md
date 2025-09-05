@@ -977,6 +977,9 @@ Goal: Get to a stable, enjoyable “playable” state for 1–4 players with cor
     - [ ] Add integration tests covering each action via socket → manager → state.
   - Acceptance:
     - All actions mutate map/units/cities/tech and broadcast updates; tests green.
+  - Progress (Sep 5):
+    - [x] Added integration: create/join/start + research_technology emits response (ack/fail) using real GameState.
+    - [ ] Move/Found integration tests are marked skipped pending stable turn/validation semantics in GameEngine. Track in P0 bug list.
 
 - [ ] Client: Basic play controls in SimpleGamePage
   - Tasks:
@@ -1080,6 +1083,10 @@ Goal: Get to a stable, enjoyable “playable” state for 1–4 players with cor
 - [ ] Add `npm run test:server:game-loop` (focused suite)
 - [ ] Update docs: quickstart to launch two tabs and play 10 turns
 - [ ] CI gates on server tests + lint (already) and new suites
+
+### P0 Bug List (tracking)
+- [ ] Move action rejected with "Action not performed by current player" in real-state integration despite turn guard; investigate `shared-types.ts` currentPlayer/id mapping for GameEngine.
+- [ ] Technology research requires parameters beyond `techId`; align payload schema with engine expectations; update client accordingly.
 
 ---
 
