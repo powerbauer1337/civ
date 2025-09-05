@@ -58,7 +58,7 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
   const [interactionMode, setInteractionMode] = useState<'pan' | 'select'>('select');
   const [showControls, setShowControls] = useState(true);
   const [lastInteraction, setLastInteraction] = useState(Date.now());
-  const [performance, setPerformance] = useState({ fps: 60, renderTime: 0 });
+  const [perfStats, setPerfStats] = useState({ fps: 60, renderTime: 0 });
 
   // Refs
   const svgRef = useRef<SVGSVGElement>(null);
@@ -90,11 +90,11 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
 
   // Performance monitoring
   useEffect(() => {
-    const startTime = performance.now();
-    const endTime = performance.now();
+    const startTime = window.performance.now();
+    const endTime = window.performance.now();
     const renderTime = endTime - startTime;
     
-    setPerformance(prev => ({
+    setPerfStats(() => ({
       fps: Math.round(1000 / Math.max(renderTime, 16)), // Estimate FPS
       renderTime: Math.round(renderTime * 100) / 100
     }));
@@ -387,11 +387,11 @@ const MobileHexMap: React.FC<MobileHexMapProps> = ({
               )}
             </Box>
             
-            {performance.renderTime > 0 && (
+            {perfStats.renderTime > 0 && (
               <Chip 
-                label={`${performance.fps} FPS`} 
+                label={`${perfStats.fps} FPS`} 
                 size="small" 
-                color={performance.fps > 30 ? 'success' : 'warning'} 
+                color={perfStats.fps > 30 ? 'success' : 'warning'} 
                 variant="outlined" 
               />
             )}

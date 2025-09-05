@@ -94,14 +94,19 @@ Current totals (as executed locally on September 5, 2025):
 Next steps (scoped):
 - [x] Alliance acceptance action and mutual status change
 - [x] Basic diplomatic modifiers (combat blocked when PEACE/ALLIANCE)
-- [ ] Persist diplomacy in save/load layer
-- [ ] Client UI surface for current relations and offers
+- [x] Persist diplomacy in save/load layer
+- [x] Client UI surface for current relations (compact)
 
 #### Details
 - Added `ACCEPT_ALLIANCE` action and `AcceptAlliancePayload` type; validation schema included
 - GameEngine: implemented `processAcceptAlliance`; enhanced `processAttackUnit` to respect peace/alliance
 - Tests: added `DiplomacyAllianceAndCombat.test.ts` (propose→accept alliance; attack blocked during peace)
 - Build/lint/tests: green after shared+server build; total server tests 443/443
+
+#### Persistence & UI (September 5, 2025)
+- [x] Server persistence: `server/src/shared-types.ts` now carries `diplomacy` through executeAction, serialize/deserialize; included in saves
+- [x] Client UI: new `DiplomacyPanel` and sidebar tab to display relations for the current user
+- [x] Client build fixes: resolve naming collision with `performance` in `MobileHexMap.tsx`
 
 ### 🎯 EXECUTIVE SUMMARY: PRODUCTION-READY STATUS ✅
 

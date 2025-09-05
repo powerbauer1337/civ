@@ -2,7 +2,7 @@
 import { HexMap } from './game/HexMap';
 import { GameEngine } from './game/GameEngine';
 import { logger } from '@civ-game/shared/utils';
-import { GameUtils as SharedGameUtils } from '@civ-game/shared';
+import { GameUtils as SharedGameUtils, DiplomaticRelation } from '@civ-game/shared';
 import { v4 as uuidv4 } from 'uuid';
 
 export class GameState {
@@ -16,6 +16,7 @@ export class GameState {
   public lastUpdate: Date;
   public board: any; // This now contains the real HexMap data
   public map: any;   // Alias used by GameEngine/shared types
+  public diplomacy?: Record<string, DiplomaticRelation>;
 
   constructor(config: GameConfig) {
     this.id = GameUtils.generateGameId();
@@ -29,6 +30,7 @@ export class GameState {
     hexMap.generateProceduralMap();
     this.board = hexMap.serialize();
     this.map = this.board;
+    this.diplomacy = {};
 
     logger.info(`Created real game state with ${config.mapSize.width}x${config.mapSize.height} hex map`);
   }
@@ -140,6 +142,8 @@ export class GameState {
         units: {},
         lastUpdate: this.lastUpdate
       };
+      // Carry over diplomacy state for GameEngine
+      if (this.diplomacy) sharedState.diplomacy = this.diplomacy;
 
       // Populate units map from per-player local units (if present)
       for (const p of this.players as any[]) {
@@ -190,6 +194,11 @@ export class GameState {
       this.map = gameState.map;
       this.board = gameState.map;
 
+      // Write back diplomacy
+      if (gameState.diplomacy) {
+        this.diplomacy = gameState.diplomacy as any;
+      }
+
       // Re-hydrate player unit positions from gameState.units
       const unitsByOwner: Record<string, any[]> = {};
       if (gameState.units) {
@@ -227,7 +236,8 @@ export class GameState {
       config: this.config,
       createdAt: this.createdAt,
       lastUpdate: this.lastUpdate,
-      board: this.board
+      board: this.board,
+      diplomacy: this.diplomacy
     };
   }
 
@@ -241,6 +251,8 @@ export class GameState {
     gameState.createdAt = new Date(data.createdAt);
     gameState.lastUpdate = new Date(data.lastUpdate);
     gameState.board = data.board;
+    gameState.map = data.board;
+    gameState.diplomacy = data.diplomacy || {};
     return gameState;
   }
 }

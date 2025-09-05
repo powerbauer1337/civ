@@ -127,7 +127,20 @@ export interface GameState {
   phase: string;
   map: GameMap;
   players: PlayerState[];
+  diplomacy?: Record<string, DiplomaticRelation>;
   lastUpdate: Date;
+}
+
+export type DiplomacyStatus = 'neutral' | 'war' | 'peace' | 'alliance';
+
+export interface DiplomaticRelation {
+  a: string;
+  b: string;
+  status: DiplomacyStatus;
+  sinceTurn: number;
+  lastUpdated: string | Date;
+  pendingPeaceOfferFrom?: string;
+  pendingAllianceOfferFrom?: string;
 }
 
 // Legacy support for existing code

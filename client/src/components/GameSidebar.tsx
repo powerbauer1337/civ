@@ -26,6 +26,7 @@ import {
 const TechnologyTreeModal = React.lazy(() => import('./TechnologyTree/TechnologyTreeModal'));
 import { RootState } from '../store/store';
 import { toggleSidebar, setCurrentPanel } from '../store/uiSlice';
+import DiplomacyPanel from './DiplomacyPanel';
 
 interface GameSidebarProps {
   open: boolean
@@ -101,6 +102,12 @@ const GameSidebar: React.FC<GameSidebarProps> = ({ open }) => {
             label="Tech"
             value="tech"
             icon={<ScienceIcon />}
+            sx={{ color: 'white' }}
+          />
+          <Tab
+            label="Diplomacy"
+            value="diplomacy"
+            icon={<PeopleIcon />}
             sx={{ color: 'white' }}
           />
         </Tabs>
@@ -255,6 +262,10 @@ const GameSidebar: React.FC<GameSidebarProps> = ({ open }) => {
               </>
             )}
           </Box>
+        )}
+
+        {currentPanel === 'diplomacy' && (
+          <DiplomacyPanel />
         )}
       </Box>
       
