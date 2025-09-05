@@ -46,6 +46,7 @@ export enum BuildingType {
 }
 
 export enum TechnologyType {
+  AGRICULTURE = 'agriculture',
   POTTERY = 'pottery',
   ANIMAL_HUSBANDRY = 'animal_husbandry',
   ARCHERY = 'archery',

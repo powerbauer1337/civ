@@ -49,6 +49,7 @@ describe('AIPlayer', () => {
       { x: 5, y: 5 }, { x: 6, y: 5 }, { x: 4, y: 5 } // Include city position and adjacent tiles
     ]);
     
+    // Create fresh AIPlayer instance for each test to prevent state pollution
     aiPlayer = new AIPlayer('test-ai-player', AIPersonality.Balanced, AIDifficulty.Normal);
     
     // Create mock players first

@@ -70,6 +70,9 @@ module.exports = {
   // Test timeout
   testTimeout: 10000,
   
+  // Force serial execution to prevent test interdependency issues
+  maxWorkers: 1,
+  
   // Clear mocks between tests
   clearMocks: true,
   restoreMocks: true,
