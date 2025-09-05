@@ -127,6 +127,18 @@ const SimpleGamePage: React.FC = () => {
     setActionLog(prev => [...prev.slice(-9), `${new Date().toLocaleTimeString()}: ${logEntry}`]);
   };
 
+  const isMyTurn = React.useMemo(() => {
+    if (!gameState || !playerId) return false;
+    const cp: any = (gameState as any).currentPlayer;
+    const idx = typeof cp === 'number'
+      ? cp
+      : (Array.isArray((gameState as any).players)
+          ? (gameState as any).players.findIndex((p: any) => p.id === cp)
+          : -1);
+    const current = (gameState as any).players?.[idx];
+    return current?.id === playerId;
+  }, [gameState, playerId]);
+
   const sendTestAction = (actionType: string) => {
     if (!socket || !connected) {
       setError('Not connected to server');
@@ -361,7 +373,7 @@ const SimpleGamePage: React.FC = () => {
                 variant="contained"
                 color="primary"
                 onClick={() => sendTestAction('move_unit')}
-                disabled={!connected || !selectedUnit || isSpectator}
+                disabled={!connected || !selectedUnit || isSpectator || !isMyTurn}
               >
                 Move Unit {selectedUnit ? `(${selectedUnit.type})` : ''}
               </Button>
@@ -369,7 +381,7 @@ const SimpleGamePage: React.FC = () => {
                 variant="contained"
                 color="secondary"
                 onClick={() => sendTestAction('build_city')}
-                disabled={!connected || isSpectator}
+                disabled={!connected || isSpectator || !isMyTurn}
               >
                 Found City
               </Button>
@@ -377,7 +389,7 @@ const SimpleGamePage: React.FC = () => {
                 variant="contained"
                 color="info"
                 onClick={() => sendTestAction('research_tech')}
-                disabled={!connected || isSpectator}
+                disabled={!connected || isSpectator || !isMyTurn}
               >
                 Research Tech
               </Button>
@@ -385,7 +397,7 @@ const SimpleGamePage: React.FC = () => {
                 variant="contained"
                 color="warning"
                 onClick={() => sendTestAction('end_turn')}
-                disabled={!connected || isSpectator}
+                disabled={!connected || isSpectator || !isMyTurn}
               >
                 End Turn
               </Button>

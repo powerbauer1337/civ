@@ -324,11 +324,12 @@ export class GameManager {
       if (success) {
         gameRoom.lastActivity = new Date();
 
-        // Reset turn timer if it wasn't an end turn action
-        if (data.type !== 'end_turn') {
-          this.resetTurnTimer(gameId);
-        } else {
+        // Reset/start turn timer based on action type (support enum or string)
+        const isEndTurn = String((data as any).type || '').toLowerCase() === 'end_turn';
+        if (isEndTurn) {
           this.startTurnTimer(gameId);
+        } else {
+          this.resetTurnTimer(gameId);
         }
 
         // Broadcast game state update with additional action info
