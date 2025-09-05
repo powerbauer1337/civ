@@ -312,8 +312,10 @@ export class AIPlayer {
 
     // Check for adjacent enemies to attack
     const neighbors = this.hexMap.getNeighbors(unit.position.x, unit.position.y);
+    
     for (const neighbor of neighbors) {
       const tile = gameState.board[neighbor.y]?.[neighbor.x];
+      
       if (tile?.unit && tile.unit.owner !== this.playerId) {
         decisions.push({
           action: {
@@ -321,7 +323,7 @@ export class AIPlayer {
             playerId: this.playerId,
             data: {
               attacker: unit.position,
-              target: neighbor
+              target: { x: neighbor.x, y: neighbor.y }
             }
           },
           priority: this.personality === AIPersonality.Aggressive ? 9 : 7,
