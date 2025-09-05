@@ -376,6 +376,36 @@ describe('SaveLoadHandlers', () => {
           message: 'Database error'
         });
       });
+
+      it('should be idempotent when loading the same save twice (no duplicate rooms)', async () => {
+        const loadData = {
+          saveId: testSaveId,
+          playerId: testPlayerId
+        };
+
+        const newRoom = { ...mockRoom, id: testGameId };
+
+        // First call: no room exists -> createRoom used
+        mockGamePersistence.loadGame.mockResolvedValue(mockSavedGame);
+        mockGamePersistence.getSavedGames.mockResolvedValue([{ id: testSaveId, game_id: testGameId, save_name: testSaveName, game_mode: 'multiplayer' }] as any);
+        (mockGameManager.getRoom as jest.Mock)
+          .mockReturnValueOnce(null)   // before first load
+          .mockReturnValue(newRoom as any); // for second load and after
+        mockGameManager.createRoom.mockResolvedValue(newRoom as any);
+
+        await loadGameHandler(loadData); // first load
+
+        expect(mockGameManager.createRoom).toHaveBeenCalledTimes(1);
+        expect(mockSocket.emit).toHaveBeenCalledWith('game_loaded', expect.any(Object));
+
+        // Clear emission count for clarity and call again
+        (mockSocket.emit as jest.Mock).mockClear();
+
+        await loadGameHandler(loadData); // second load should reuse existing room
+
+        expect(mockGameManager.createRoom).toHaveBeenCalledTimes(1); // still once
+        expect(mockSocket.emit).toHaveBeenCalledWith('game_loaded', expect.any(Object));
+      });
     });
 
     describe('get_saves handler', () => {

@@ -1050,10 +1050,10 @@ Goal: Get to a stable, enjoyable “playable” state for 1–4 players with cor
     - On game end, users see winner and can return to lobby; refresh keeps session where possible.
 
 ### P3 — Persistence (Optional for MVP+)
-- [ ] Save/Load manual controls for host (SQLite provider)
+- [x] Save/Load manual controls for host (SQLite provider)
   - Tasks:
-    - [ ] Client Save/Load buttons for host; emit and handle `game_saved` / `game_loaded` / `saves_list`.
-    - [ ] Tests for save metadata and load idempotency.
+    - [x] Client Save/Load buttons for host; emit and handle `game_saved` / `game_loaded` / `saves_list`.
+    - [x] Tests for save metadata and load idempotency.
   - Acceptance:
     - Host can save and reload the current game; spectators/players see the reloaded state.
 
