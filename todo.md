@@ -955,3 +955,132 @@ The technology trading system establishes a foundation for advanced diplomatic f
   - Change: Added `join_spectator` event that validates game, joins room, acks with `spectator_joined`, and notifies players via `spectator_notification`. Added unit tests covering success path, missing game, and internal error handling.
   - Notes: GameManager already supports full spectating via `spectate_game`/`spectating_started`. This server-side addition keeps SocketHandler in parity and provides explicit Spectator-only join semantics. Does not grant action rights; spectators receive room broadcasts only.
   - Acceptance: New tests pass (`npm run test:server` for websocket suite), no regressions.
+
+---
+
+## 🎯 Playable MVP Plan (Core Features)
+
+Goal: Get to a stable, enjoyable “playable” state for 1–4 players with core loop (create → join → start → take turns → move/found/research → basic combat → end turn → win/lose) working both locally and via WebSocket.
+
+### P0 — Minimal Playable Loop (Highest Priority)
+- [ ] Server/Game: Solidify turn loop
+  - Tasks:
+    - [ ] Validate `GameManager` start/turn sequencing (start → currentPlayer rotation → end_turn).
+    - [ ] Ensure `game_updated` payloads always include `gameState.serialize()` and action metadata.
+    - [ ] Add end-turn timeout coverage tests; verify timer reset semantics.
+  - Acceptance:
+    - 2-player game can run 5+ full turns using MOVE/FOUND_CITY/RESEARCH/END_TURN without errors.
+
+- [ ] Server/Game: Core actions parity with GameEngine
+  - Tasks:
+    - [ ] Confirm action types and payload shape for: `move_unit`, `found_city`, `attack_unit`, `research_technology`, `end_turn`.
+    - [ ] Add integration tests covering each action via socket → manager → state.
+  - Acceptance:
+    - All actions mutate map/units/cities/tech and broadcast updates; tests green.
+
+- [ ] Client: Basic play controls in SimpleGamePage
+  - Tasks:
+    - [ ] Wire HexMap clicks to send `move_unit` for selected unit (own units only).
+    - [ ] Add “Found City” CTA when a Settler is selected (sends `found_city`).
+    - [ ] Add “Research” quick-pick (baseline techs) and send `research_technology`.
+    - [ ] Add “End Turn” button (sends `end_turn`) and disable when not current player.
+    - [ ] Render current turn, current player name, action toasts, and basic errors.
+  - Acceptance:
+    - From lobby → game: a user can move a unit, found first city, start research, and end their turn; UI reflects state updates in near real time.
+
+- [ ] Client/Server: Spectator-readonly enforcement
+  - Tasks:
+    - [ ] Disable action buttons when spectating; hide unit selection affordances.
+    - [ ] Ensure server rejects actions from sockets not mapped to a player in room.
+  - Acceptance:
+    - Spectators see updates but cannot perform actions; attempted actions are rejected with an error toast.
+
+- [ ] Tests/Tooling: E2E-like socket flow test
+  - Tasks:
+    - [ ] Add Jest suite spinning a GameManager with two mock sockets to simulate create → join → start → actions → end_turn cycles.
+    - [ ] Cover happy path and basic invalid action rejections.
+  - Acceptance:
+    - Suite passes consistently and runs in CI; flake-free.
+
+### P1 — Basic Combat, Cities, and Feedback
+- [ ] Server/Game: Simple combat resolution
+  - Tasks:
+    - [ ] Implement/verify `attack_unit` flow and damage resolution; unit death removal; occupancy rules.
+    - [ ] Add tests for melee vs. city garrison denial (if applicable) and edge cases (0 HP, movement left).
+  - Acceptance:
+    - Units can defeat enemy units and occupy hexes; results broadcast correctly.
+
+- [ ] Server/Game: City production and growth (minimal)
+  - Tasks:
+    - [ ] Production queue for units only (Warrior/Settler) with fixed costs; per-turn production accrual.
+    - [ ] Basic city growth from FOOD; clamp to simple thresholds.
+    - [ ] Tests covering queue start/progress/complete and growth increments.
+  - Acceptance:
+    - Cities can produce at least one unit end-to-end; growth updates are reflected in state.
+
+- [ ] Client: City/Research mini-panels
+  - Tasks:
+    - [ ] Minimal city panel to view queue, start “Produce Warrior/Settler”, and show turns remaining.
+    - [ ] Minimal research picker showing available techs; show turns remaining.
+  - Acceptance:
+    - Players can initiate production and research and see progress each turn.
+
+### P2 — Game End and Stability
+- [ ] Server/Game: Victory and end-of-game broadcast
+  - Tasks:
+    - [ ] Domination-only MVP: game ends when only one player owns any cities.
+    - [ ] Ensure `game_ended` includes winner and final scores; prevent further actions.
+    - [ ] Tests for victory detection and late action rejection.
+  - Acceptance:
+    - Ending conditions trigger reliably; clients return to a results screen.
+
+- [ ] Client: Results screen and rejoin UX
+  - Tasks:
+    - [ ] Simple results modal/page with final scores and “Return to Lobby”.
+    - [ ] Persist `playerId` in localStorage and auto-rejoin mapping; if not found, prompt to rejoin as spectator.
+  - Acceptance:
+    - On game end, users see winner and can return to lobby; refresh keeps session where possible.
+
+### P3 — Persistence (Optional for MVP+)
+- [ ] Save/Load manual controls for host (SQLite provider)
+  - Tasks:
+    - [ ] Client Save/Load buttons for host; emit and handle `game_saved` / `game_loaded` / `saves_list`.
+    - [ ] Tests for save metadata and load idempotency.
+  - Acceptance:
+    - Host can save and reload the current game; spectators/players see the reloaded state.
+
+---
+
+## 📌 Implementation Breakdown by Package
+
+### Server
+- [ ] Turn handling hardening (timeouts, rotation, rejections)
+- [ ] Action handlers parity checks: move, found, attack, research, end_turn
+- [ ] Victory detection (domination MVP)
+- [ ] Spectator enforcement (reject actions)
+- [ ] Integration tests: socket flow and game loop
+
+### Shared
+- [ ] Confirm shared action/type alignment for client/server
+- [ ] Minimal types for city queue and combat outcome payloads
+- [ ] Utility helpers for client UI (turns remaining calc)
+
+### Client
+- [ ] HexMap: selection/move interactions + feedback highlights
+- [ ] Found City CTA; quick Research picker; End Turn button
+- [ ] Mini City panel (queue start/remaining turns)
+- [ ] Results modal/page; rejoin persistence; spectator-readonly UI
+- [ ] Wire error/info toasts for action acks/failures
+
+### QA/DevEx
+- [ ] Add `npm run test:server:game-loop` (focused suite)
+- [ ] Update docs: quickstart to launch two tabs and play 10 turns
+- [ ] CI gates on server tests + lint (already) and new suites
+
+---
+
+## 🔎 Milestone Acceptance (Playable MVP)
+Upon completion of P0 and P1:
+- A 2-player game can be created from lobby, started, played for 10 turns with unit movement, first city founded, basic combat, research progression, and stable turn rotation.
+- Spectator can watch without being able to act.
+- Client UI communicates turn status and action results; no console errors; tests green in CI.
