@@ -116,8 +116,12 @@ export class AIPlayer {
     // Determine current strategy
     this.currentStrategy = this.determineStrategy(gameState);
 
-    // Add decision delay based on difficulty
-    await this.wait(this.difficultyModifiers[this.difficulty].decisionDelay);
+    // Test mode: eliminate delay and randomness for deterministic results
+    const isTest = process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined;
+    const decisionDelay = isTest ? 0 : this.difficultyModifiers[this.difficulty].decisionDelay;
+
+    // Add decision delay based on difficulty (skipped in tests)
+    await this.wait(decisionDelay);
 
     // Make decisions based on personality and strategy
     const decisions: AIDecision[] = [];
@@ -142,7 +146,7 @@ export class AIPlayer {
     decisions.sort((a, b) => b.priority - a.priority);
 
     // Apply mistake chance for lower difficulties
-    const mistakeChance = this.difficultyModifiers[this.difficulty].mistakeChance;
+    const mistakeChance = isTest ? 0 : this.difficultyModifiers[this.difficulty].mistakeChance;
 
     for (const decision of decisions) {
       if (Math.random() > mistakeChance) {

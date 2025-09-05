@@ -1,6 +1,20 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GameActionType = exports.ImprovementType = exports.UnlockType = exports.TechEra = exports.ProductionType = exports.UnitStatus = exports.UnitType = exports.ResourceCategory = exports.ResourceType = exports.VisibilityLevel = exports.TerrainFeature = exports.TerrainType = exports.GamePhase = exports.DifficultyLevel = exports.VictoryCondition = exports.GameStatus = void 0;
+exports.GameActionType = exports.ImprovementType = exports.ProductionType = exports.UnitStatus = exports.UnitType = exports.ResourceCategory = exports.ResourceType = exports.VisibilityLevel = exports.TerrainFeature = exports.TerrainType = exports.GamePhase = exports.DifficultyLevel = exports.VictoryCondition = exports.GameStatus = void 0;
 var GameStatus;
 (function (GameStatus) {
     GameStatus["WAITING"] = "waiting";
@@ -122,33 +136,7 @@ var ProductionType;
     ProductionType["WONDER"] = "wonder";
     ProductionType["PROJECT"] = "project";
 })(ProductionType || (exports.ProductionType = ProductionType = {}));
-var TechEra;
-(function (TechEra) {
-    TechEra["ANCIENT"] = "ancient";
-    TechEra["CLASSICAL"] = "classical";
-    TechEra["MEDIEVAL"] = "medieval";
-    TechEra["RENAISSANCE"] = "renaissance";
-    TechEra["INDUSTRIAL"] = "industrial";
-    TechEra["MODERN"] = "modern";
-    TechEra["ATOMIC"] = "atomic";
-    TechEra["INFORMATION"] = "information";
-})(TechEra || (exports.TechEra = TechEra = {}));
-var UnlockType;
-(function (UnlockType) {
-    UnlockType["UNIT"] = "unit";
-    UnlockType["BUILDING"] = "building";
-    UnlockType["IMPROVEMENT"] = "improvement";
-    UnlockType["CIVIC"] = "civic";
-    UnlockType["RESOURCE"] = "resource";
-})(UnlockType || (exports.UnlockType = UnlockType = {}));
-// Extend PlayerTechnology[] to support add method for client compatibility
-if (!Array.prototype.add) {
-    Array.prototype.add = function (item) {
-        if (!this.includes(item)) {
-            this.push(item);
-        }
-    };
-}
+__exportStar(require("./TechnologyTypes"), exports);
 var ImprovementType;
 (function (ImprovementType) {
     ImprovementType["FARM"] = "farm";
@@ -170,5 +158,13 @@ var GameActionType;
     GameActionType["BUILD_IMPROVEMENT"] = "build_improvement";
     GameActionType["CHANGE_PRODUCTION"] = "change_production";
     GameActionType["RESEARCH_TECHNOLOGY"] = "research_technology";
+    // Phase 2.2.1 Technology Trading Actions
+    GameActionType["TECH_TRADE_OFFER"] = "tech_trade_offer";
+    GameActionType["TECH_TRADE_ACCEPT"] = "tech_trade_accept";
+    GameActionType["TECH_TRADE_REJECT"] = "tech_trade_reject";
+    GameActionType["TECH_TRADE_CANCEL"] = "tech_trade_cancel";
+    GameActionType["TECH_COLLABORATION_REQUEST"] = "tech_collaboration_request";
+    GameActionType["TECH_COLLABORATION_JOIN"] = "tech_collaboration_join";
+    GameActionType["TECH_COLLABORATION_LEAVE"] = "tech_collaboration_leave";
     GameActionType["END_TURN"] = "end_turn";
 })(GameActionType || (exports.GameActionType = GameActionType = {}));

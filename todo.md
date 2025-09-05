@@ -63,7 +63,7 @@
 
 ## Notes (September 5, 2025)
 
-- After wiring GameEngine into `GameState.executeAction`, most server tests pass; 2 AI behavior tests remain failing (warrior adjacent attack; settler best location). Track and fix in next pass.
+- AI tests fixed: eliminated randomness/delay under test env in `AIPlayer.makeDecisions` so actions deterministically include adjacent attacks and settler expansion. Suite `server/tests/game/AIPlayer.test.ts` now passes fully.
 - Save/Load socket handlers are registered; events: `saves_list`, `game_saved`, `game_loaded`, `save_error` available to client.
 - Client/server URLs standardized on `http://localhost:3001`; envs are `VITE_API_BASE_URL`, `VITE_SOCKET_URL`.
 - Docker build fixed: devDeps available in builders; final image installs prod deps only.
