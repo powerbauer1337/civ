@@ -81,6 +81,11 @@
   - Change: Implemented `createGameWithAck` (listens for `game_created`) and `joinGameWithAck` (resolves on `player_joined` for self). Lobby uses these when online; stores `currentGameId`/`currentPlayerId` and navigates.
   - Acceptance: Creating or joining from lobby completes via WebSocket without HTTP; navigation to `/game/:id` occurs on ack.
 
+- [x] Client build restored
+  - Files: `client/src/utils/logger.ts`, multiple imports updated, `client/src/store/gameSlice.ts`
+  - Change: Introduced lightweight client `logger`; removed `GamePhase` import in client store and used string phase to avoid missing export from shared build.
+  - Acceptance: `cd client && npm run build` completes successfully.
+
 ## Notes (September 5, 2025)
 
 - AI tests fixed: eliminated randomness/delay under test env in `AIPlayer.makeDecisions` so actions deterministically include adjacent attacks and settler expansion. Suite `server/tests/game/AIPlayer.test.ts` now passes fully.
