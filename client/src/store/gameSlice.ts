@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { GameState, GameAction, PlayerInfo, PlayerState, GamePhase, logger } from '@civ-game/shared';
+import { GameState, GameAction, PlayerInfo, PlayerState } from '@civ-game/shared';
+import { logger } from '../utils/logger';
 
 export interface GameSliceState {
   currentGameId: string | null
@@ -132,7 +133,8 @@ const gameSlice = createSlice({
 
     gameEnded: (state, _action: PayloadAction<{ winner: PlayerInfo; finalScores: any[] }>) => {
       if (state.gameState) {
-        state.gameState.phase = GamePhase.END_GAME;
+        // Use string to avoid dependency on enum export
+        (state.gameState as any).phase = 'ended';
       }
       // Keep the game state for viewing results
     },

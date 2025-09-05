@@ -1,5 +1,5 @@
 // Client configuration
-import { logger } from '@civ-game/shared';
+import { logger } from '../utils/logger';
 
 const isDevelopment = import.meta.env.MODE === 'development';
 const isProduction = import.meta.env.MODE === 'production';

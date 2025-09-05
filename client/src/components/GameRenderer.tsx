@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
-import { GameState, logger } from '@civ-game/shared';
+import { GameState } from '@civ-game/shared';
+import { logger } from '../utils/logger';
 import Phaser from 'phaser';
 
 interface GameRendererProps {

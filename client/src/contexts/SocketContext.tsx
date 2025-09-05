@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { io, Socket } from 'socket.io-client';
 import { apiConfig } from '../config/api';
-import { logger } from '@civ-game/shared';
+import { logger } from '../utils/logger';
 import { RootState } from '../store/store';
 import {
   setConnectionStatus,

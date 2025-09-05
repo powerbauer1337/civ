@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { logger } from '@civ-game/shared';
+import { logger } from '../utils/logger';
 import { apiConfig } from '../config/api';
 
 interface UseWebSocketOptions {
