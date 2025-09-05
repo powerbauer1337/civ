@@ -2,7 +2,7 @@
 import { HexMap } from './game/HexMap';
 import { GameEngine } from './game/GameEngine';
 import { logger } from '@civ-game/shared/utils';
-import { GameUtils as SharedGameUtils } from '@civ-game/shared/utils/GameUtils';
+import { GameUtils as SharedGameUtils } from '@civ-game/shared';
 import { v4 as uuidv4 } from 'uuid';
 
 export class GameState {

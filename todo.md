@@ -64,6 +64,7 @@
 ## Notes (September 5, 2025)
 
 - AI tests fixed: eliminated randomness/delay under test env in `AIPlayer.makeDecisions` so actions deterministically include adjacent attacks and settler expansion. Suite `server/tests/game/AIPlayer.test.ts` now passes fully.
+- Security tests fixed: `AuthController.authenticateToken` now returns 401 for unknown user IDs to avoid account enumeration and to make expired/invalid token checks consistent. All server suites pass (19/19).
 - Save/Load socket handlers are registered; events: `saves_list`, `game_saved`, `game_loaded`, `save_error` available to client.
 - Client/server URLs standardized on `http://localhost:3001`; envs are `VITE_API_BASE_URL`, `VITE_SOCKET_URL`.
 - Docker build fixed: devDeps available in builders; final image installs prod deps only.

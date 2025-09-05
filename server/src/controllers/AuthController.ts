@@ -282,10 +282,10 @@ export class AuthController {
         return;
       }
 
-      // Find user
+      // Find user (do not leak existence via 404)
       const user = this.users.get(decoded.userId);
       if (!user) {
-        res.status(404).json({ success: false, error: 'User not found' });
+        res.status(401).json({ success: false, error: 'Invalid or expired token' });
         return;
       }
 
