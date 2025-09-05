@@ -34,6 +34,19 @@ export class SocketHandler {
       this.handleJoinGame(socket, data);
     });
 
+    // Join as spectator (read-only observer)
+    socket.on('join_spectator', (data: { gameId: string; displayName?: string }) => {
+      this.handleJoinSpectator(socket, data);
+    });
+
+    // New spectator API used by client
+    socket.on('spectate_game', (data: { gameId: string }) => {
+      this.handleSpectateGame(socket, data);
+    });
+    socket.on('stop_spectating', () => {
+      this.handleStopSpectating(socket);
+    });
+
     // Handle game actions
     socket.on('game_action', (data: {
       gameId: string;
@@ -161,6 +174,101 @@ export class SocketHandler {
         error: 'Internal server error',
         timestamp: new Date().toISOString()
       });
+    }
+  }
+
+  private handleJoinSpectator(
+    socket: Socket,
+    data: { gameId: string; displayName?: string }
+  ): void {
+    const { gameId, displayName } = data || ({} as any);
+
+    try {
+      const game = this.gameService.getGame(gameId);
+      if (!game) {
+        socket.emit('error', {
+          message: 'Game not found',
+          type: 'join_spectator_error'
+        });
+        return;
+      }
+
+      // Spectators join the same game room to receive broadcasts
+      socket.join(gameId);
+
+      const spectatorInfo = {
+        gameId,
+        displayName: displayName?.trim() || 'Spectator',
+        joinedAt: new Date().toISOString()
+      };
+
+      // Acknowledge spectator join to the requester
+      socket.emit('spectator_joined', spectatorInfo);
+
+      // Optionally notify players that a spectator joined (no PII)
+      socket.to(gameId).emit('spectator_notification', {
+        message: 'A spectator joined the game',
+        timestamp: spectatorInfo.joinedAt
+      });
+    } catch (error) {
+      logger.error('Error joining as spectator:', error);
+      socket.emit('error', {
+        message: 'Failed to join as spectator',
+        type: 'join_spectator_error'
+      });
+    }
+  }
+
+  private handleSpectateGame(
+    socket: Socket,
+    data: { gameId: string }
+  ): void {
+    const { gameId } = data || ({} as any);
+    try {
+      const game = this.gameService.getGame(gameId);
+      if (!game) {
+        socket.emit('error', { message: 'Game not found', type: 'spectate_error' });
+        return;
+      }
+
+      socket.join(gameId);
+
+      // Compose a minimal game snapshot for spectators
+      const snapshot = {
+        id: game.id,
+        status: game.status,
+        currentTurn: (game as any).currentTurn ?? 0,
+        players: Array.isArray((game as any).players)
+          ? (game as any).players.map((p: any) => ({ id: p.id, username: p.username, civilization: p.civilization }))
+          : []
+      };
+
+      socket.emit('spectating_started', { gameId, gameState: snapshot });
+
+      // Optional notification to others in the room
+      socket.to(gameId).emit('spectator_notification', {
+        message: 'A spectator is now watching this game',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      logger.error('Error starting spectate:', error);
+      socket.emit('error', { message: 'Failed to spectate game', type: 'spectate_error' });
+    }
+  }
+
+  private handleStopSpectating(socket: Socket): void {
+    try {
+      // Best-effort: leave all joined game rooms (except own room)
+      for (const room of socket.rooms) {
+        if (room !== socket.id) {
+          // Room name convention aligns with gameId
+          socket.leave(room);
+        }
+      }
+      socket.emit('spectating_stopped', { timestamp: new Date().toISOString() });
+    } catch (error) {
+      logger.error('Error stopping spectate:', error);
+      socket.emit('error', { message: 'Failed to stop spectating', type: 'spectate_error' });
     }
   }
 

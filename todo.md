@@ -947,3 +947,11 @@ The technology trading system establishes a foundation for advanced diplomatic f
   - Files: `client/src/pages/SimpleGamePage.tsx`
   - Change: Remove direct `socket.io-client` usage; use `SocketContext` for connection and actions; derive `gameState` from Redux store; streamline loading/error handling.
   - Acceptance: Page works with the shared socket session; no duplicate connections; production build passes.
+
+## ✅ Completed Today (September 5, 2025)
+
+- [x] Server: Minimal Spectator Mode socket support and tests
+  - Files: `server/src/websocket/SocketHandler.ts`, `server/tests/websocket/SpectatorMode.test.ts`
+  - Change: Added `join_spectator` event that validates game, joins room, acks with `spectator_joined`, and notifies players via `spectator_notification`. Added unit tests covering success path, missing game, and internal error handling.
+  - Notes: GameManager already supports full spectating via `spectate_game`/`spectating_started`. This server-side addition keeps SocketHandler in parity and provides explicit Spectator-only join semantics. Does not grant action rights; spectators receive room broadcasts only.
+  - Acceptance: New tests pass (`npm run test:server` for websocket suite), no regressions.
