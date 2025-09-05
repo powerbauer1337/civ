@@ -258,17 +258,29 @@ describe('AIPlayer', () => {
     });
 
     it('should make settler found city at best location', async () => {
-      // Add settler unit
-      mockGameState.players['test-ai-player'].units.push({
-        id: 'settler-1',
-        type: UnitType.SETTLER,
-        position: { x: 8, y: 8 },
-        moves: 2,
-        health: 100,
-        owner: 'test-ai-player'
-      });
+      // Create a fresh game state for this test to avoid interdependencies
+      const testGameState = {
+        ...mockGameState,
+        players: {
+          ...mockGameState.players,
+          'test-ai-player': {
+            ...mockGameState.players['test-ai-player'],
+            units: [
+              ...mockGameState.players['test-ai-player'].units,
+              {
+                id: 'settler-1',
+                type: UnitType.SETTLER,
+                position: { x: 8, y: 8 },
+                moves: 2,
+                health: 100,
+                owner: 'test-ai-player'
+              }
+            ]
+          }
+        }
+      };
 
-      const actions = await aiPlayer.makeDecisions(mockGameState);
+      const actions = await aiPlayer.makeDecisions(testGameState);
       const settlerActions = actions.filter(a => 
         a.type === GameActionType.FOUND_CITY || a.type === GameActionType.MOVE_UNIT
       );
