@@ -12,7 +12,7 @@ COPY server/package*.json ./server/
 COPY client/package*.json ./client/
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci
 
 # Build shared package
 FROM base AS shared-builder
@@ -59,13 +59,13 @@ COPY --from=server-builder --chown=nodejs:nodejs /app/server/package.json ./serv
 COPY --from=client-builder --chown=nodejs:nodejs /app/client/dist ./client/dist
 COPY --from=client-builder --chown=nodejs:nodejs /app/client/package.json ./client/
 
-# Copy production dependencies
-COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --from=deps --chown=nodejs:nodejs /app/shared/node_modules ./shared/node_modules
-COPY --from=deps --chown=nodejs:nodejs /app/server/node_modules ./server/node_modules
-
-# Copy root package.json
+## Install production dependencies only
 COPY --chown=nodejs:nodejs package*.json ./
+COPY --chown=nodejs:nodejs shared/package*.json ./shared/
+COPY --chown=nodejs:nodejs server/package*.json ./server/
+COPY --chown=nodejs:nodejs client/package*.json ./client/
+COPY --chown=nodejs:nodejs package-lock.json ./
+RUN npm ci --omit=dev
 
 # Create necessary directories
 RUN mkdir -p /app/uploads /app/logs /app/data

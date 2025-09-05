@@ -2,8 +2,8 @@
 
 // Environment-based API configuration
 const isDevelopment = import.meta.env.MODE === 'development';
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4002';
-const socketURL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:4002';
+const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const socketURL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
 
 export const apiConfig = {
   baseURL,

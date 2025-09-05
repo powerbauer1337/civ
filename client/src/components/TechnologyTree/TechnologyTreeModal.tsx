@@ -31,6 +31,7 @@ import {
 } from '@mui/icons-material';
 import { RootState } from '../../store/store';
 import { TECHNOLOGY_DATABASE } from '@civ-game/shared';
+import { useSocket } from '../../contexts/SocketContext';
 import { Technology, TechEra } from '@civ-game/shared';
 
 interface TechnologyTreeModalProps {
@@ -149,6 +150,7 @@ const TechnologyNode: React.FC<TechnologyNodeProps> = ({
 const TechnologyTreeModal: React.FC<TechnologyTreeModalProps> = ({ open, onClose }) => {
   const { gameState } = useSelector((state: RootState) => state.game);
   const { user } = useSelector((state: RootState) => state.auth);
+  const { sendGameAction } = useSocket();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEra, setSelectedEra] = useState<TechEra | 'all'>('all');
@@ -218,8 +220,15 @@ const TechnologyTreeModal: React.FC<TechnologyTreeModalProps> = ({ open, onClose
   };
 
   const handleTechnologyClick = (techId: string) => {
-    // TODO: Implement research technology action
-    console.log(`Research technology: ${techId}`);
+    if (!user?.id || !gameState?.id) return;
+    sendGameAction({
+      type: 'research_technology',
+      gameId: gameState.id,
+      playerId: user.id,
+      payload: { techId },
+      timestamp: Date.now(),
+      actionId: Math.random().toString(36).slice(2, 11)
+    });
   };
 
   const handleZoomIn = () => setScale(prev => Math.min(prev * 1.2, 3));

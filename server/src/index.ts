@@ -13,6 +13,8 @@ import { securityHeaders, sanitizeRequest, validationErrorHandler } from './midd
 import { authErrorHandler } from './middleware/auth';
 import { secureJWTManager } from './security/SecureJWTManager';
 import { logger } from '@civ-game/shared';
+import { GamePersistence } from './database/GamePersistence';
+import { SaveLoadHandlers } from './handlers/saveLoadHandlers';
 
 async function startServer() {
   const app = express();
@@ -104,6 +106,16 @@ async function startServer() {
   // Initialize game manager
   const gameManager = new GameManager(io);
 
+  // Initialize persistence and save/load handlers
+  const gp = new GamePersistence();
+  try {
+    await gp.initialize();
+    logger.info('GamePersistence initialized');
+  } catch (err) {
+    logger.warn('GamePersistence initialization failed; continuing without SQLite:', err);
+  }
+  const sl = new SaveLoadHandlers(gp, gameManager);
+
   // Initialize controllers
   const authController = new AuthController();
   const gameController = new GameController(gameManager);
@@ -185,6 +197,9 @@ async function startServer() {
 
     // Handle game events
     gameManager.handleConnection(socket);
+
+    // Register save/load socket handlers
+    sl.registerHandlers(socket);
 
     socket.on('disconnect', () => {
       logger.debug(`Client disconnected: ${socket.id}`);

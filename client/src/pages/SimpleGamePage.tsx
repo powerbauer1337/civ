@@ -24,6 +24,7 @@ import {
   People as PeopleIcon
 } from '@mui/icons-material';
 import { io, Socket } from 'socket.io-client';
+import { apiConfig } from '../config/api';
 // Lazy load the heavy HexMap component for better performance
 const HexMap = React.lazy(() => import('../components/HexMap/HexMap'));
 
@@ -105,7 +106,7 @@ const SimpleGamePage: React.FC = () => {
     }
 
     // Initialize WebSocket connection
-    const newSocket = io(process.env.VITE_SOCKET_URL || 'http://localhost:4002', {
+    const newSocket = io(apiConfig.socketURL, {
       transports: ['websocket']
     });
 

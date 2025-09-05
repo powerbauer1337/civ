@@ -34,11 +34,9 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
 
-    - name: Install dependencies
+    - name: Install dependencies (workspaces)
       run: |
         npm ci
-        cd shared && npm ci
-        cd ../client && npm ci
 
     - name: Build shared package
       run: |
@@ -97,12 +95,12 @@ jobs:
         cd shared && npm ci
         cd ../client && npm ci
 
-    - name: Run tests
+    - name: Run tests (shared, server, client)
       run: |
-        cd shared && npm test -- --passWithNoTests
-        cd ../client && npm test -- --passWithNoTests
+        npm run test
+        cd client && npm test
 
-    - name: Run linting
+    - name: Run linting (all packages)
       run: |
-        cd shared && npm run lint || true
-        cd ../client && npm run lint || true
+        npm run lint
+        cd client && npm run lint

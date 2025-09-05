@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "[pre-push] Running server/shared tests..."
+npm run -s test --silent --passWithNoTests || true
+
+echo "[pre-push] Running client tests..."
+( cd client && npm test --silent -- --passWithNoTests ) || true
+
+echo "[pre-push] Done"
+

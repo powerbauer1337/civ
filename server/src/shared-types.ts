@@ -1,6 +1,8 @@
 // Simplified shared types that integrate HexMap and GameEngine with existing system
 import { HexMap } from './game/HexMap';
 import { GameEngine } from './game/GameEngine';
+import { logger } from '@civ-game/shared/utils';
+import { GameUtils as SharedGameUtils } from '@civ-game/shared/utils/GameUtils';
 import { v4 as uuidv4 } from 'uuid';
 
 export class GameState {
@@ -13,6 +15,7 @@ export class GameState {
   public createdAt: Date;
   public lastUpdate: Date;
   public board: any; // This now contains the real HexMap data
+  public map: any;   // Alias used by GameEngine/shared types
 
   constructor(config: GameConfig) {
     this.id = GameUtils.generateGameId();
@@ -25,8 +28,9 @@ export class GameState {
     const hexMap = new HexMap(config.mapSize.width, config.mapSize.height);
     hexMap.generateProceduralMap();
     this.board = hexMap.serialize();
+    this.map = this.board;
 
-    console.log(`Created real game state with ${config.mapSize.width}x${config.mapSize.height} hex map`);
+    logger.info(`Created real game state with ${config.mapSize.width}x${config.mapSize.height} hex map`);
   }
 
   addPlayer(playerInfo: PlayerInfo): void {
@@ -51,7 +55,7 @@ export class GameState {
     this.players.forEach(player => this.createStartingUnitsForPlayer(player as any));
 
     this.lastUpdate = new Date();
-    console.log(`Game ${this.id} started with real hex map and starting units`);
+    logger.info(`Game ${this.id} started with real hex map and starting units`);
   }
 
   private createStartingUnitsForPlayer(playerInfo: any): void {
@@ -92,7 +96,7 @@ export class GameState {
       playerInfo.units = playerInfo.units || [];
       playerInfo.units.push(settler, warrior);
 
-      console.log(`Created starting units for player ${playerInfo.id} at (${startX}, ${startY})`);
+      logger.debug(`Created starting units for player ${playerInfo.id} at (${startX}, ${startY})`);
     }
 
     this.board = hexMap.serialize();
@@ -102,26 +106,113 @@ export class GameState {
     return this.players[this.currentPlayer] || this.players[0];
   }
 
-  executeAction(action: GameAction): boolean {
+  executeAction(action: any): boolean {
     try {
-      console.log(`Executing action: ${action.type} for player ${action.playerId}`);
+      const playerId = action.playerId || (action.payload && action.payload.playerId);
+      logger.debug(`Executing action: ${action.type} for player ${playerId}`);
 
-      // For now, handle end_turn and log other actions
-      if (action.type === 'end_turn') {
-        this.currentPlayer = (this.currentPlayer + 1) % this.players.length;
-        if (this.currentPlayer === 0) {
-          this.currentTurn++;
+      // Prepare a GameEngine-compatible state view
+      const hexMap = HexMap.deserialize(this.board);
+
+      // Build shared-like state minimally for GameEngine
+      const sharedState: any = {
+        id: this.id,
+        players: (this.players || []).map((p: any) => ({
+          id: p.id || p.userId,
+          userId: p.id || p.userId,
+          name: p.name || p.username,
+          color: p.color,
+          civilization: p.civilization,
+          resources: p.resources || GameUtils.createDefaultResources(),
+          technologies: p.technologies || [],
+          cities: [],
+          units: [],
+          score: p.score || 0,
+          isAlive: true,
+          isActive: p.isActive ?? true
+        })),
+        // GameEngine expects currentPlayer to be a playerId (string)
+        currentPlayer: (this.players[this.currentPlayer] as any)?.id,
+        currentTurn: this.currentTurn,
+        phase: this.phase,
+        map: hexMap.serialize(),
+        cities: {},
+        units: {},
+        lastUpdate: this.lastUpdate
+      };
+
+      // Populate units map from per-player local units (if present)
+      for (const p of this.players as any[]) {
+        if (p?.units?.length) {
+          for (const u of p.units) {
+            sharedState.units[u.id] = {
+              id: u.id,
+              type: u.type,
+              playerId: p.id,
+              x: u.position?.x ?? u.x,
+              y: u.position?.y ?? u.y,
+              health: u.health ?? 100,
+              maxHealth: u.maxHealth ?? 100,
+              movement: u.movement ?? 2,
+              maxMovement: u.maxMovement ?? 2,
+              strength: u.strength ?? 10,
+              experience: u.experience ?? 0,
+              promotions: u.promotions ?? [],
+              status: u.status ?? []
+            };
+          }
         }
-        console.log(`Turn advanced to player ${this.currentPlayer}, turn ${this.currentTurn}`);
-      } else {
-        // Log the action - future integration point for GameEngine
-        console.log(`Action ${action.type} received - integration with GameEngine coming soon`);
       }
+
+      // Normalize action shape to { type, payload, playerId }
+      const normalizedAction = {
+        type: action.type,
+        playerId: playerId,
+        payload: action.payload ?? action.data ?? {}
+      };
+
+      // Delegate to GameEngine
+      const { success, gameState, error } = GameEngine.processPlayerAction(sharedState, normalizedAction as any);
+
+      if (!success) {
+        logger.warn(`Action ${action.type} failed: ${error}`);
+        return false;
+      }
+
+      // Write back updates
+      this.currentTurn = gameState.currentTurn;
+      // Update currentPlayer index from id
+      const nextPlayerId = gameState.currentPlayer;
+      const idx = (this.players as any[]).findIndex(p => (p.id || p.userId) === nextPlayerId);
+      if (idx >= 0) this.currentPlayer = idx;
+
+      // Update map/board
+      this.map = gameState.map;
+      this.board = gameState.map;
+
+      // Re-hydrate player unit positions from gameState.units
+      const unitsByOwner: Record<string, any[]> = {};
+      if (gameState.units) {
+        Object.values(gameState.units).forEach((u: any) => {
+          if (!unitsByOwner[u.playerId]) unitsByOwner[u.playerId] = [];
+          unitsByOwner[u.playerId].push({
+            id: u.id,
+            type: u.type,
+            position: { x: u.x, y: u.y },
+            owner: u.playerId,
+            health: u.health,
+            movement: u.movement
+          });
+        });
+      }
+      (this.players as any[]).forEach(p => {
+        p.units = unitsByOwner[p.id] || p.units || [];
+      });
 
       this.lastUpdate = new Date();
       return true;
     } catch (error) {
-      console.error(`Error executing action ${action.type}:`, error);
+      logger.error(`Error executing action ${action?.type}:`, error as Error);
       return false;
     }
   }
@@ -274,6 +365,6 @@ export class GameUtils {
   }
 
   static calculateScore(player: any): number {
-    return Math.floor(Math.random() * 1000); // Placeholder
+    return SharedGameUtils.calculateScore(player);
   }
 }

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { io, Socket } from 'socket.io-client';
+import { apiConfig } from '../config/api';
 import { logger } from '@civ-game/shared';
 import { RootState } from '../store/store';
 import {
@@ -57,7 +58,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   useEffect(() => {
     if (isAuthenticated && user) {
       // Create socket connection
-      const newSocket = io('http://localhost:3001', {
+      const newSocket = io(apiConfig.socketURL, {
         auth: {
           userId: user.id,
           username: user.username

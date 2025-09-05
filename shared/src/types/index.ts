@@ -331,22 +331,6 @@ export interface PlayerState {
 
 // PlayerTechnology interface now imported from TechnologyTypes.ts
 
-// Add method for PlayerTechnology arrays to support Set-like operations
-declare global {
-  interface Array<T> {
-    add?(item: T): void;
-  }
-}
-
-// Extend PlayerTechnology[] to support add method for client compatibility
-if (!Array.prototype.add) {
-  Array.prototype.add = function<T>(this: T[], item: T) {
-    if (!this.includes(item)) {
-      this.push(item);
-    }
-  };
-}
-
 // Improvement Types
 export interface Improvement {
   type: ImprovementType;

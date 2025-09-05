@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "[pre-commit] Linting repo..."
+npm run -s lint
+(
+  cd client && npm run -s lint
+)
+
+echo "[pre-commit] Type-checking packages..."
+npx -y tsc -p client/tsconfig.json --noEmit
+npx -y tsc -p server/tsconfig.json --noEmit
+npx -y tsc -p shared/tsconfig.json --noEmit
+
+echo "[pre-commit] OK"
+

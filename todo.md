@@ -1,5 +1,74 @@
 # Todo List - Civilization Game Development
 
+## 🚨 High-Priority Fixes (September 5, 2025)
+
+- [x] Route actions through GameEngine
+  - Files: `server/src/shared-types.ts`
+  - Change: Replace stub `executeAction` with delegation to `GameEngine.processPlayerAction(gameState, action)` and remove `console.*` (use `logger`).
+  - Acceptance: MOVE/ATTACK/FOUND_CITY/RESEARCH actions mutate state consistently; end-turn mechanics fire.
+
+- [x] Register Save/Load socket handlers
+  - Files: `server/src/index.ts`
+  - Change: `const gp = new GamePersistence(); await gp.initialize(); const sl = new SaveLoadHandlers(gp, gameManager);` and in `io.on('connection', s => sl.registerHandlers(s))`.
+  - Acceptance: Client receives `saves_list`, `game_saved`, `game_loaded`, `save_error` events.
+
+- [x] Unify client/server ports and envs
+  - Files: `client/src/config/api.ts`, `client/vite.config.ts`, `docker-compose*.yml`
+  - Change: Default to `http://localhost:3001`; proxy `/api` and `/socket.io` to 3001; standardize on `VITE_API_BASE_URL` and `VITE_SOCKET_URL` everywhere.
+  - Acceptance: `npm run dev` connects without manual env edits.
+
+- [x] Fix Docker build for TypeScript/Vite
+  - Files: `Dockerfile`
+  - Change: Install devDependencies in builder stages (no `--only=production` there); keep production deps in final stage.
+  - Acceptance: `docker build` succeeds; server starts and serves `/health`.
+
+- [x] Tighten `server/tsconfig.json`
+  - Files: `server/tsconfig.json`
+  - Change: `rootDir: "src"`, `include: ["src/**/*"]`, ensure path alias to `../shared/dist` stays.
+  - Acceptance: `npm run build:server` outputs only server code in `dist`.
+
+- [x] CI: fail on lint/test; include server
+  - Files: `.github/workflows/deploy.yml`
+  - Change: Add server test/lint jobs; remove `--passWithNoTests` and `|| true`.
+  - Acceptance: PRs fail when lint or tests fail in any package.
+
+- [ ] Choose one persistence layer
+  - Files: `server/src/database/*`, `server/src/handlers/saveLoadHandlers.ts`
+  - Decision: Prefer Postgres/Redis (`DatabaseManager`) and deprecate `GamePersistence` (SQLite) or behind feature flag.
+  - Acceptance: Single source of truth for saves; docs updated.
+
+- [x] Deterministic scoring
+  - Files: `server/src/shared-types.ts`
+  - Change: Replace random score with `@civ-game/shared/utils/GameUtils.calculateScore(player)`.
+  - Acceptance: Endgame scores are reproducible across runs.
+
+- [x] Remove global prototype mutation
+  - Files: `shared/src/types/index.ts`
+  - Change: Drop `Array.prototype.add`; provide a small helper util instead.
+  - Acceptance: No global prototype changes; types compile.
+
+- [x] Implement client tech actions
+  - Files: `client/src/components/TechnologyTree/TechnologyTreeModal.tsx`, `client/src/components/TechnologyTree/TechnologyTradingModal.tsx`
+  - Change: Wire `emit('research_technology'| 'tech_trade_*', payload)` via `useWebSocket` and handle acks.
+  - Acceptance: Research/trade flows update UI and reflect in server state.
+
+- [ ] Lint/format cleanup
+  - Commands: `cd server && eslint src --fix`, `cd client && eslint . --ext ts,tsx --fix`
+  - Acceptance: Zero ESLint errors; hook warnings addressed (add deps or justify).
+
+- [ ] Security hardening sweep
+  - Files: `.env`, `docker-compose.yml`, `server/src/index.ts`
+  - Change: Ensure strong `JWT_SECRET`/`JWT_REFRESH_SECRET` in prod; `ENABLE_SECURITY_HEADERS=true`; avoid `console.*` in server code.
+  - Acceptance: Prod boot fails on missing secrets; logs use shared `logger`.
+
+## Notes (September 5, 2025)
+
+- After wiring GameEngine into `GameState.executeAction`, most server tests pass; 2 AI behavior tests remain failing (warrior adjacent attack; settler best location). Track and fix in next pass.
+- Save/Load socket handlers are registered; events: `saves_list`, `game_saved`, `game_loaded`, `save_error` available to client.
+- Client/server URLs standardized on `http://localhost:3001`; envs are `VITE_API_BASE_URL`, `VITE_SOCKET_URL`.
+- Docker build fixed: devDeps available in builders; final image installs prod deps only.
+- CI updated to fail on lint/tests and include server package.
+
 ## 🔍 DEEP CODE AUDIT RESULTS (September 5, 2025)
 
 ### 🎯 EXECUTIVE SUMMARY: PRODUCTION-READY STATUS ✅
