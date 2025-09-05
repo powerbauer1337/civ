@@ -1036,15 +1036,15 @@ Goal: Get to a stable, enjoyable “playable” state for 1–4 players with cor
 ### P2 — Game End and Stability
 - [ ] Server/Game: Victory and end-of-game broadcast
   - Tasks:
-    - [ ] Domination-only MVP: game ends when only one player owns any cities.
-    - [ ] Ensure `game_ended` includes winner and final scores; prevent further actions.
+    - [x] Domination/END_GAME glue: GameManager now triggers game end when GameEngine sets phase 'END_GAME' (or 'ended').
+    - [x] Ensure `game_ended` includes winner and final scores; prevent further actions (existing handleGameEnd used).
     - [ ] Tests for victory detection and late action rejection.
   - Acceptance:
     - Ending conditions trigger reliably; clients return to a results screen.
 
 - [ ] Client: Results screen and rejoin UX
   - Tasks:
-    - [ ] Simple results modal/page with final scores and “Return to Lobby”.
+    - [x] Simple results modal/page with final scores and “Return to Lobby”.
     - [ ] Persist `playerId` in localStorage and auto-rejoin mapping; if not found, prompt to rejoin as spectator.
   - Acceptance:
     - On game end, users see winner and can return to lobby; refresh keeps session where possible.
