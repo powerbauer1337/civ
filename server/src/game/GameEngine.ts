@@ -1,5 +1,5 @@
 import { GameAction, GameActionType, GameState, PlayerState, Unit, City, UnitType, TerrainType, VisibilityLevel, ProductionType } from '../../../shared/src/types';
-import { Technology, TechnologyEffects, PlayerTechnology, TECHNOLOGY_DATABASE, validateTechnologyPrerequisites, calculateResearchCost } from '@civ-game/shared';
+import { Technology, TechnologyEffects, PlayerTechnology, TECHNOLOGY_DATABASE, validateTechnologyPrerequisites, calculateResearchCost, TechnologyTradeOffer, TradeOfferStatus } from '@civ-game/shared';
 import { HexMap } from './HexMap';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@civ-game/shared/utils';
@@ -61,6 +61,19 @@ export class GameEngine {
 
         case GameActionType.END_TURN:
           return GameEngine.processEndTurn(gameState, action);
+
+        // Technology Trading Actions
+        case GameActionType.TECH_TRADE_OFFER:
+          return GameEngine.processTechTradeOffer(gameState, action);
+
+        case GameActionType.TECH_TRADE_ACCEPT:
+          return GameEngine.processTechTradeAccept(gameState, action);
+
+        case GameActionType.TECH_TRADE_REJECT:
+          return GameEngine.processTechTradeReject(gameState, action);
+
+        case GameActionType.TECH_TRADE_CANCEL:
+          return GameEngine.processTechTradeCancel(gameState, action);
 
         default:
           return { success: false, error: `Unknown action type: ${action.type}`, gameState };
@@ -1087,6 +1100,253 @@ export class GameEngine {
       }
     }
     return 40; // Default production cost
+  }
+
+  /**
+   * Process technology trade offer
+   */
+  private static processTechTradeOffer(gameState: GameState, action: GameAction): ActionResult {
+    const { fromPlayerId, toPlayerId, offeredTech, requestedTech, offeredResources, requestedResources, message } = action.payload;
+
+    if (!fromPlayerId || !toPlayerId || !offeredTech || !requestedTech) {
+      return { success: false, error: 'Missing required parameters for tech trade offer', gameState };
+    }
+
+    // Verify the action is being performed by the correct player
+    if (fromPlayerId !== gameState.currentPlayer) {
+      return { success: false, error: 'Tech trade offer not from current player', gameState };
+    }
+
+    // Find both players
+    const fromPlayer = gameState.players.find(p => p.id === fromPlayerId || p.userId === fromPlayerId);
+    const toPlayer = gameState.players.find(p => p.id === toPlayerId || p.userId === toPlayerId);
+
+    if (!fromPlayer || !toPlayer) {
+      return { success: false, error: 'One or both players not found', gameState };
+    }
+
+    // Normalize tech arrays
+    const offeredTechArray = Array.isArray(offeredTech) ? offeredTech : [offeredTech];
+    const requestedTechArray = Array.isArray(requestedTech) ? requestedTech : [requestedTech];
+
+    // Verify the offering player has the technologies they're offering
+    for (const techId of offeredTechArray) {
+      const playerTech = fromPlayer.technologies.find(t => t.techId === techId);
+      if (!playerTech || !playerTech.isResearched) {
+        return { success: false, error: `Player ${fromPlayerId} does not have technology ${techId}`, gameState };
+      }
+    }
+
+    // Verify the target player has the technologies being requested
+    for (const techId of requestedTechArray) {
+      const playerTech = toPlayer.technologies.find(t => t.techId === techId);
+      if (!playerTech || !playerTech.isResearched) {
+        return { success: false, error: `Player ${toPlayerId} does not have technology ${techId}`, gameState };
+      }
+    }
+
+    // Initialize tradeOffers array if it doesn't exist
+    if (!gameState.tradeOffers) {
+      gameState.tradeOffers = [];
+    }
+
+    // Create the trade offer
+    const tradeOffer: TechnologyTradeOffer = {
+      id: uuidv4(),
+      fromPlayerId,
+      toPlayerId,
+      offeredTech: offeredTechArray,
+      requestedTech: requestedTechArray,
+      offeredResources: offeredResources || {},
+      requestedResources: requestedResources || {},
+      status: TradeOfferStatus.PENDING,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // Expires in 24 hours
+      createdAt: new Date(),
+      message: message || ''
+    };
+
+    gameState.tradeOffers.push(tradeOffer);
+
+    logger.info(`Technology trade offer created: ${fromPlayerId} → ${toPlayerId}`);
+    return { 
+      success: true, 
+      message: `Technology trade offer sent to ${toPlayer.name}`,
+      gameState 
+    };
+  }
+
+  /**
+   * Process technology trade acceptance
+   */
+  private static processTechTradeAccept(gameState: GameState, action: GameAction): ActionResult {
+    const { tradeOfferId } = action.payload;
+
+    if (!tradeOfferId) {
+      return { success: false, error: 'Missing trade offer ID', gameState };
+    }
+
+    if (!gameState.tradeOffers) {
+      return { success: false, error: 'No trade offers exist', gameState };
+    }
+
+    // Find the trade offer
+    const tradeOffer = gameState.tradeOffers.find(offer => offer.id === tradeOfferId);
+    if (!tradeOffer) {
+      return { success: false, error: 'Trade offer not found', gameState };
+    }
+
+    // Verify the action is being performed by the target player
+    if (tradeOffer.toPlayerId !== gameState.currentPlayer) {
+      return { success: false, error: 'Only the target player can accept this trade', gameState };
+    }
+
+    // Check if offer has expired or is not pending
+    if (tradeOffer.status !== TradeOfferStatus.PENDING) {
+      return { success: false, error: 'Trade offer is no longer pending', gameState };
+    }
+
+    if (tradeOffer.expiresAt < new Date()) {
+      tradeOffer.status = TradeOfferStatus.EXPIRED;
+      return { success: false, error: 'Trade offer has expired', gameState };
+    }
+
+    // Find both players
+    const fromPlayer = gameState.players.find(p => p.id === tradeOffer.fromPlayerId || p.userId === tradeOffer.fromPlayerId);
+    const toPlayer = gameState.players.find(p => p.id === tradeOffer.toPlayerId || p.userId === tradeOffer.toPlayerId);
+
+    if (!fromPlayer || !toPlayer) {
+      return { success: false, error: 'One or both players not found', gameState };
+    }
+
+    // Execute the trade - give technologies to each player
+    for (const techId of tradeOffer.offeredTech) {
+      const existingTech = toPlayer.technologies.find(t => t.techId === techId);
+      if (!existingTech) {
+        toPlayer.technologies.push({
+          techId,
+          isResearched: true,
+          progress: 0,
+          startedTurn: gameState.turn
+        });
+      } else {
+        existingTech.isResearched = true;
+      }
+    }
+
+    for (const techId of tradeOffer.requestedTech) {
+      const existingTech = fromPlayer.technologies.find(t => t.techId === techId);
+      if (!existingTech) {
+        fromPlayer.technologies.push({
+          techId,
+          isResearched: true,
+          progress: 0,
+          startedTurn: gameState.turn
+        });
+      } else {
+        existingTech.isResearched = true;
+      }
+    }
+
+    // Exchange resources if specified
+    if (tradeOffer.offeredResources) {
+      Object.entries(tradeOffer.offeredResources).forEach(([resource, amount]) => {
+        if (amount && fromPlayer.resources[resource as keyof typeof fromPlayer.resources] >= amount) {
+          (fromPlayer.resources[resource as keyof typeof fromPlayer.resources] as number) -= amount;
+          (toPlayer.resources[resource as keyof typeof toPlayer.resources] as number) += amount;
+        }
+      });
+    }
+
+    if (tradeOffer.requestedResources) {
+      Object.entries(tradeOffer.requestedResources).forEach(([resource, amount]) => {
+        if (amount && toPlayer.resources[resource as keyof typeof toPlayer.resources] >= amount) {
+          (toPlayer.resources[resource as keyof typeof toPlayer.resources] as number) -= amount;
+          (fromPlayer.resources[resource as keyof typeof fromPlayer.resources] as number) += amount;
+        }
+      });
+    }
+
+    // Update trade offer status
+    tradeOffer.status = TradeOfferStatus.ACCEPTED;
+
+    logger.info(`Technology trade accepted: ${tradeOffer.fromPlayerId} ↔ ${tradeOffer.toPlayerId}`);
+    return { 
+      success: true, 
+      message: `Technology trade completed successfully`,
+      gameState 
+    };
+  }
+
+  /**
+   * Process technology trade rejection
+   */
+  private static processTechTradeReject(gameState: GameState, action: GameAction): ActionResult {
+    const { tradeOfferId } = action.payload;
+
+    if (!tradeOfferId) {
+      return { success: false, error: 'Missing trade offer ID', gameState };
+    }
+
+    if (!gameState.tradeOffers) {
+      return { success: false, error: 'No trade offers exist', gameState };
+    }
+
+    // Find the trade offer
+    const tradeOffer = gameState.tradeOffers.find(offer => offer.id === tradeOfferId);
+    if (!tradeOffer) {
+      return { success: false, error: 'Trade offer not found', gameState };
+    }
+
+    // Verify the action is being performed by the target player
+    if (tradeOffer.toPlayerId !== gameState.currentPlayer) {
+      return { success: false, error: 'Only the target player can reject this trade', gameState };
+    }
+
+    // Update trade offer status
+    tradeOffer.status = TradeOfferStatus.REJECTED;
+
+    logger.info(`Technology trade rejected: ${tradeOffer.fromPlayerId} → ${tradeOffer.toPlayerId}`);
+    return { 
+      success: true, 
+      message: 'Technology trade offer rejected',
+      gameState 
+    };
+  }
+
+  /**
+   * Process technology trade cancellation
+   */
+  private static processTechTradeCancel(gameState: GameState, action: GameAction): ActionResult {
+    const { tradeOfferId } = action.payload;
+
+    if (!tradeOfferId) {
+      return { success: false, error: 'Missing trade offer ID', gameState };
+    }
+
+    if (!gameState.tradeOffers) {
+      return { success: false, error: 'No trade offers exist', gameState };
+    }
+
+    // Find the trade offer
+    const tradeOffer = gameState.tradeOffers.find(offer => offer.id === tradeOfferId);
+    if (!tradeOffer) {
+      return { success: false, error: 'Trade offer not found', gameState };
+    }
+
+    // Verify the action is being performed by the offering player
+    if (tradeOffer.fromPlayerId !== gameState.currentPlayer) {
+      return { success: false, error: 'Only the offering player can cancel this trade', gameState };
+    }
+
+    // Update trade offer status
+    tradeOffer.status = TradeOfferStatus.CANCELLED;
+
+    logger.info(`Technology trade cancelled: ${tradeOffer.fromPlayerId} → ${tradeOffer.toPlayerId}`);
+    return { 
+      success: true, 
+      message: 'Technology trade offer cancelled',
+      gameState 
+    };
   }
 }
 

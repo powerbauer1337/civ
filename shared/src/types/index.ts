@@ -123,6 +123,7 @@ export interface GameState {
   players: PlayerState[];
   cities: { [id: string]: City };  // Add cities map for frontend
   units: { [id: string]: Unit };   // Add units map for frontend
+  tradeOffers?: TechnologyTradeOffer[]; // Technology trading system
   lastUpdate: Date;
 }
 
@@ -304,7 +305,7 @@ export interface Building {
 
 // Technology Types - Enhanced for Phase 2.2.1
 // Import comprehensive technology types from dedicated module
-import { PlayerTechnology } from './TechnologyTypes';
+import { PlayerTechnology, TechnologyTradeOffer } from './TechnologyTypes';
 export * from './TechnologyTypes';
 
 // Player State
