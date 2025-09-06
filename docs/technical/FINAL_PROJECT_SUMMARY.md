@@ -233,10 +233,10 @@ npm run dev                 # Local development (ports 4002, 5173)
 
 ### Documentation Resources
 - 📖 [Main README](README.md) - Project overview and quick start
-- 🔧 [Developer Guide](docs/setup/DEVELOPER_GUIDE.md) - Complete development setup
-- 📚 [API Reference](docs/api/API_REFERENCE.md) - Complete API documentation
-- 🚀 [Deployment Guide](docs/deployment/DEPLOYMENT_GUIDE.md) - Production deployment
-- 🎮 [User Guide](docs/user/USER_GUIDE.md) - Player instructions
+- 🔧 [Developer Guide](../setup/DEVELOPER_GUIDE.md) - Complete development setup
+- 📚 [API Reference](../api/API_REFERENCE.md) - Complete API documentation
+- 🚀 [Deployment Guide](../deployment/DEPLOYMENT_GUIDE.md) - Production deployment
+- 🎮 [User Guide](../user/USER_GUIDE.md) - Player instructions
 
 ### Maintenance Tasks
 - **Dependency Updates**: Regular npm package updates

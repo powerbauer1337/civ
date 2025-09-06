@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-test-lint-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install workspace dependencies
+        run: |
+          npm run install:server
+          npm run install:shared
+          npm run install:client
+
+      - name: Typecheck
+        run: |
+          npx tsc -p client/tsconfig.json --noEmit
+          npx tsc -p server/tsconfig.json --noEmit
+          npx tsc -p shared/tsconfig.json --noEmit
+
+      - name: Lint (server/shared)
+        run: npm run lint
+
+      - name: Test (server + shared)
+        run: npm run test
+
+      - name: Test (client)
+        working-directory: client
+        run: npm run test:ci
+
+      - name: Validate documentation
+        run: npm run docs:validate
+

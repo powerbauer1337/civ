@@ -301,8 +301,7 @@ const client = new CivilizationGameClient({
 ## 📖 Additional Resources
 
 ### Development Tools
-- [Postman Collection](./postman_collection.json) - Import ready API collection
-- [Insomnia Workspace](./insomnia_workspace.json) - Alternative API client setup
+- [OpenAPI Spec](./CIVILIZATION_GAME_API.yaml) - Import into Postman/Insomnia
 - [OpenAPI Generator](https://openapi-generator.tech/) - Generate client SDKs
 
 ### Community
@@ -335,7 +334,7 @@ const client = new CivilizationGameClient({
 
 ## 📄 License
 
-This API documentation is licensed under MIT License. See [LICENSE](../LICENSE) for details.
+This API documentation is licensed under the MIT License.
 
 ---
 
