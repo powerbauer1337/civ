@@ -231,7 +231,6 @@ const SimpleGamePage: React.FC = () => {
     const testActions = {
       'move_unit': {
         type: 'move_unit',
-        gameId,
         playerId,
         payload: {
           unitId: selectedUnit?.id || 'unit_' + Math.random().toString(36).substr(2, 9),
@@ -243,7 +242,6 @@ const SimpleGamePage: React.FC = () => {
       },
       'build_city': {
         type: 'found_city',
-        gameId,
         playerId,
         payload: {
           settlerId: selectedUnit?.id,
@@ -255,7 +253,6 @@ const SimpleGamePage: React.FC = () => {
       },
       'research_tech': {
         type: 'research_technology',
-        gameId,
         playerId,
         payload: {
           techId: selectedTech
@@ -265,7 +262,6 @@ const SimpleGamePage: React.FC = () => {
       },
       'end_turn': {
         type: 'end_turn',
-        gameId,
         playerId,
         payload: {},
         timestamp: Date.now(),
@@ -290,7 +286,6 @@ const SimpleGamePage: React.FC = () => {
       // Try to move selected unit to this tile
       const moveAction = {
         type: 'move_unit',
-        gameId,
         playerId,
         payload: {
           unitId: selectedUnit.id,
@@ -364,7 +359,7 @@ const SimpleGamePage: React.FC = () => {
     );
   }
 
-  return (
+  return (<>
     <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)' }}>
       {/* Game Header */}
       <AppBar position="static" sx={{ background: 'rgba(0, 0, 0, 0.4)' }}>
@@ -668,7 +663,7 @@ const SimpleGamePage: React.FC = () => {
         </Button>
       </DialogActions>
     </Dialog>
-    /* Global toast */
+    {/* Global toast */}
     <Snackbar
       open={toastOpen}
       autoHideDuration={3000}
@@ -679,7 +674,7 @@ const SimpleGamePage: React.FC = () => {
         {toastMsg}
       </Alert>
     </Snackbar>
-  );
+  </>);
 };
 
 export default SimpleGamePage;

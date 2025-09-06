@@ -68,14 +68,25 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated && user) {
+    // Allow guest socket connection when not authenticated
+    const shouldConnect = Boolean(isAuthenticated && user) || true;
+    const guest = !isAuthenticated || !user;
+    if (shouldConnect) {
       // Create socket connection
       const newSocket = io(apiConfig.socketURL, {
-        auth: {
-          userId: user.id,
-          username: user.username
-        }
+        auth: guest
+          ? {
+              userId: localStorage.getItem('guestUserId') || `guest_${Math.random().toString(36).slice(2, 9)}`,
+              username: localStorage.getItem('playerName') || 'Guest'
+            }
+          : {
+              userId: user!.id,
+              username: user!.username
+            }
       });
+
+      // Persist guest id for session continuity
+      try { if (guest) localStorage.setItem('guestUserId', String((newSocket as any).auth?.userId)); } catch {}
 
       // Connection event handlers
       newSocket.on('connect', () => {
@@ -83,6 +94,14 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         setConnected(true);
         dispatch(setConnectionStatus('connected'));
         dispatch(showSuccess({ title: 'Connected', message: 'Connected to game server' }));
+        // Attempt to rehydrate game state if we have a mapping
+        try {
+          const gid = localStorage.getItem('currentGameId');
+          if (gid) {
+            // Ask server for current snapshot (works for both players and spectators)
+            newSocket.emit('request_game_state');
+          }
+        } catch {}
       });
 
       newSocket.on('disconnect', () => {

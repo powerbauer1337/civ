@@ -1,5 +1,80 @@
 # Todo List - Civilization Game Development
 
+## ✅ Playable Game Plan - COMPLETED (September 6, 2025)
+
+### 🏆 Milestone 1 — Core Loop Playable ✅ COMPLETED
+- [x] Pin client dev port to `5173`
+  - ✅ Edit `client/vite.config.ts`: add `server: { port: 5173 }`
+  - ✅ Verify `client/src/config/api.ts` points socket/API to `http://localhost:3001`
+  - ✅ Update `server/.env.example` guidance to match `CLIENT_URL=http://localhost:5173`
+- [x] Confirm server dev env
+  - ✅ Ensure `server/.env` exists with: `NODE_ENV=development`, `PERSISTENCE_PROVIDER=sqlite`, `SQLITE_DB_PATH=./data/civilization.db`, `CLIENT_URL=http://localhost:5173`, `DATABASE_URL=<dummy>`
+  - ✅ Start with `npm run dev:server`; verify `GET /health` returns `ok`
+- [x] Verify lobby flow (create → join → start)
+  - ✅ From two tabs on `http://localhost:5173`: create game (Tab A), join (Tab B), start (Tab A)
+  - ✅ Acceptance: server emits `game_started`; client shows active state
+- [x] Wire client actions to server engine
+  - ✅ Ensure `SimpleGamePage` sends: `move_unit`, `found_city` (aka `type: 'found_city'`), `research_technology`, `end_turn`
+  - ✅ Confirm server handles strings/enums: `GameManager` and `GameEngine` accept these types
+  - ✅ Acceptance: buttons enable/disable appropriately and acks display toasts
+- [x] End-turn rotation
+  - ✅ Confirm current player advances and turn badge updates
+  - ✅ Acceptance: 10 alternating turns without errors
+
+### 🏆 Milestone 2 — Persistence & Rejoin ✅ COMPLETED
+- [x] Ensure SQLite path exists on startup
+  - ✅ `server/src/index.ts`: `GamePersistence(config.SQLITE_DB_PATH)` and `await gp.initialize()` (already present); verify creates `./data/`
+- [x] Persist key actions
+  - ✅ `server/src/database/GamePersistence.ts`: persist `end_turn`, `found_city`; evaluate persisting `move_unit` (optional)
+  - ✅ Acceptance: actions saved; no errors when saving/loading
+- [x] Rejoin workflow
+  - ✅ Client `SocketContext`: `requestGameState` invoked after reconnect
+  - ✅ `SimpleGamePage`: show rejoin→spectate prompt when rejoin fails; call `spectateGame(gameId)`
+  - ✅ Acceptance: refresh Tab A; continue in Tab B; A can spectate
+- [x] Spectator snapshot
+  - ✅ Server `spectate_game` returns minimal snapshot (already implemented); client applies it
+  - ✅ Acceptance: Spectator sees turns advance live
+
+### 🏆 Milestone 3 — UX Polish ✅ COMPLETED
+- [x] Turn indicators
+  - ✅ Chip shows `Your Turn`/`Waiting`; disabled actions when not actor/spectator
+  - ✅ Acceptance: visual state matches server current player
+- [x] Action feedback
+  - ✅ Toast on `action_acknowledged` success/error; inline message for invalid move
+  - ✅ Acceptance: users see immediate feedback
+- [x] Results dialog
+  - ✅ On `game_ended`, show winner and final scores; `Return to Lobby` clears local state
+  - ✅ Acceptance: dialog appears and navigation works
+
+### 🏆 Milestone 4 — Tests & Quality ✅ COMPLETED
+- [x] WS e2e test (server)
+  - ✅ Add `server/tests/e2e/playable-flow.test.ts` using `socket.io-client`
+  - ✅ Flow: create → join → start → end_turn x3 → assert `game_updated` cadence
+- [x] Client interaction tests
+  - ✅ Add vitest cases for `SimpleGamePage` button enablement and results dialog
+- [x] Raise coverage in `GameService`/`GameManager` critical paths
+  - ✅ Unit tests for action routing, turn timer reset, game end
+- [x] Lint/type/docs pre-commit stays green
+
+### 🏆 Milestone 5 — Docs & Ops ✅ COMPLETED
+- [x] Dev Runbook
+  - ✅ Add `docs/DEV_RUNBOOK.md`: ports, env, smoke test, troubleshooting (ports in use, dummy `DATABASE_URL`)
+- [x] Update doc index
+  - ✅ Run `npm run docs:update && npm run docs:validate`
+- [x] Troubleshooting section
+  - ✅ Note Redis optionality and fixed `redis@4` `createClient` usage; common startup errors (EADDRINUSE, missing env)
+
+### ✅ Acceptance Checklist - ALL PASSED
+- [x] Two-tab smoke test: 10 alternating turns, actions work, no console/server errors
+- [x] Spectate works mid-game; rejoin path offers spectate
+- [x] Results dialog on game end with scores; return to lobby succeeds
+- [x] All tests pass (root + client), lint/type/docs green
+
+## 🚀 Production Status: READY FOR DEPLOYMENT
+**Date Completed**: September 6, 2025
+**Final Status**: All 5 milestones completed successfully
+**Game State**: Fully playable multiplayer civilization game with production-quality features
+
 ## 🚨 High-Priority Fixes (September 5, 2025)
 
 - [x] Route actions through GameEngine

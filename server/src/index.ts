@@ -103,22 +103,29 @@ async function startServer() {
     logger.warn('Failed to initialize database, continuing without persistence:', error);
   }
 
-  // Initialize game manager
-  const gameManager = new GameManager(io);
-
   // Initialize persistence and save/load handlers (provider-gated)
+  let gp: GamePersistence | null = null;
   let sl: SaveLoadHandlers | null = null;
+  
   if (config.PERSISTENCE_PROVIDER === 'sqlite') {
-    const gp = new GamePersistence(config.SQLITE_DB_PATH);
+    gp = new GamePersistence(config.SQLITE_DB_PATH);
     try {
       await gp.initialize();
       logger.info('GamePersistence (SQLite) initialized');
-      sl = new SaveLoadHandlers(gp, gameManager);
     } catch (err) {
       logger.warn('GamePersistence initialization failed; Save/Load features disabled:', err);
+      gp = null;
     }
   } else {
     logger.info('Persistence provider set to Postgres/Redis. Save/Load socket features currently disabled.');
+  }
+
+  // Initialize game manager with persistence support
+  const gameManager = new GameManager(io, gp || undefined);
+  
+  // Initialize save/load handlers if persistence is available
+  if (gp) {
+    sl = new SaveLoadHandlers(gp, gameManager);
   }
 
   // Initialize controllers
@@ -300,7 +307,16 @@ async function startServer() {
 }
 
 // Start the server
-startServer().catch(error => {
-  logger.error('Failed to start server:', error);
+startServer().catch((error: any) => {
+  try {
+    const details = {
+      message: error?.message || String(error),
+      stack: error?.stack || null,
+      name: error?.name || null
+    };
+    logger.error('Failed to start server:', details);
+  } catch {
+    logger.error('Failed to start server: <unserializable error>');
+  }
   process.exit(1);
 });

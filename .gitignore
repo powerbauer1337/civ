@@ -94,6 +94,16 @@ temp/
 logs
 *.log
 
+# Development logs
+*-dev.log
+*.dev.log
+
+# WSL/Windows artifacts
+*.Zone.Identifier
+
+# Documentation backup files
+*.md.backup.*
+
 # Runtime data
 pids
 *.pid

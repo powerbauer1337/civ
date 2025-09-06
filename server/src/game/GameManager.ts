@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import { config } from '../config/config';
 import { GameEngine } from './GameEngine';
+import { GamePersistence } from '../database/GamePersistence';
 
 export interface RoomPlayer {
   id: string;
@@ -40,14 +41,16 @@ export class GameManager {
   private spectatorToGame: Map<string, string>; // socketId -> gameId (spectators)
   private cleanupInterval: NodeJS.Timeout;
   private rooms: Map<string, GameRoom>;
+  private gamePersistence?: GamePersistence;
 
-  constructor(io: Server) {
+  constructor(io: Server, gamePersistence?: GamePersistence) {
     this.io = io;
     this.games = new Map();
     this.rooms = new Map();
     this.playerToGame = new Map();
     this.socketToPlayer = new Map();
     this.spectatorToGame = new Map();
+    this.gamePersistence = gamePersistence;
 
     // Start cleanup interval
     this.cleanupInterval = setInterval(() => {
@@ -288,7 +291,7 @@ export class GameManager {
     }
   }
 
-  private handleGameAction(socket: Socket, data: GameAction): void {
+  private async handleGameAction(socket: Socket, data: GameAction): Promise<void> {
     try {
       const playerId = this.socketToPlayer.get(socket.id);
       if (!playerId) {
@@ -326,10 +329,34 @@ export class GameManager {
       }
 
       // Execute action using new GameEngine
+      const startTime = Date.now();
       const success = gameRoom.gameState.executeAction(data);
+      const processingTime = Date.now() - startTime;
 
       if (success) {
         gameRoom.lastActivity = new Date();
+
+        // Persist critical game actions
+        if (this.gamePersistence) {
+          const actionType = String((data as any).type || '').toLowerCase();
+          const isCriticalAction = actionType === 'end_turn' || actionType === 'found_city' || actionType === 'research_technology';
+
+          if (isCriticalAction || actionType === 'move_unit') { // Include move_unit for full replay
+            try {
+              await this.gamePersistence.recordGameAction(
+                gameId,
+                data,
+                gameRoom.gameState.currentTurn || 0,
+                processingTime,
+                { success: true, gameState: gameRoom.gameState.serialize() }
+              );
+              logger.debug(`Action persisted: ${actionType} for player ${playerId}`);
+            } catch (persistError) {
+              logger.error('Failed to persist action:', persistError);
+              // Continue execution - persistence failure shouldn't break gameplay
+            }
+          }
+        }
 
         // Reset/start turn timer based on action type (support enum or string)
         const isEndTurn = String((data as any).type || '').toLowerCase() === 'end_turn';

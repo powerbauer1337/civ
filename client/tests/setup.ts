@@ -1,15 +1,6 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
-// Mock environment variables
-Object.defineProperty(window, 'process', {
-  value: {
-    env: {
-      NODE_ENV: 'test'
-    }
-  }
-});
-
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -31,6 +22,10 @@ global.IntersectionObserver = vi.fn().mockImplementation(() => ({
   unobserve: vi.fn(),
   disconnect: vi.fn()
 }));
+
+// Mock scrollIntoView to prevent JSDOM errors
+// @ts-ignore
+Element.prototype.scrollIntoView = vi.fn();
 
 // Mock ResizeObserver
 global.ResizeObserver = vi.fn().mockImplementation(() => ({

@@ -1,12 +1,12 @@
 import { Client } from 'pg';
-import Redis from 'redis';
+import { createClient } from 'redis';
 import { config } from '../config/config';
 import { logger } from '@civ-game/shared/utils';
 import { GameState } from '../shared-types';
 
 export class DatabaseManager {
   private pgClient: Client;
-  private redisClient: ReturnType<typeof Redis.createClient>;
+  private redisClient: ReturnType<typeof createClient>;
   private isInitialized: boolean = false;
 
   constructor() {
@@ -16,7 +16,7 @@ export class DatabaseManager {
     });
 
     // Initialize Redis client
-    this.redisClient = Redis.createClient({
+    this.redisClient = createClient({
       url: config.REDIS_URL
     });
   }
