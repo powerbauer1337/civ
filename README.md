@@ -120,6 +120,12 @@ npm run dev
 
 ## 🏛️ Technical Highlights
 
+## 🎮 Lobby & Spectate
+- Create: choose a name and game config, then Create.
+- Join: pick any waiting game and Join.
+- Start: only the creator can Start once there are 2+ players.
+- Spectate: pick any active game and Spectate (read-only). You can also open `/game/{gameId}?spectate=1`.
+
 ### **Performance**
 - **Map Generation**: <100ms for 20x20 hex map
 - **Action Processing**: <10ms per action with full validation

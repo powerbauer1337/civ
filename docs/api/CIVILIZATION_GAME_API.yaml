@@ -1,0 +1,936 @@
+openapi: 3.0.0
+info:
+  title: Civilization Game API
+  description: |
+    Comprehensive API for the Civilization multiplayer strategy game.
+    
+    ## Features
+    - JWT-based authentication with refresh tokens
+    - Real-time multiplayer gameplay via WebSocket
+    - Game state management and persistence
+    - Save/load functionality
+    - Player statistics and leaderboards
+    - Spectator mode support
+    - Rate limiting and security headers
+    
+    ## Base URLs
+    - REST API: `http://localhost:3001/api`
+    - WebSocket: `http://localhost:3001` (Socket.IO)
+    - Health Check: `http://localhost:3001/health`
+    
+    ## Authentication
+    All protected endpoints require a JWT bearer token in the Authorization header.
+    
+    ## Rate Limiting
+    - Authentication endpoints: 5 requests per 5 minutes
+    - General API endpoints: 100 requests per 15 minutes
+    - Strict endpoints: 2 requests per 10 minutes
+    
+  version: 1.0.0
+  contact:
+    name: Civilization Game API
+    url: https://github.com/your-org/civilization-game
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3001
+    description: Development server
+  - url: https://api.civilization-game.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Authentication
+    description: User registration, login, and token management
+  - name: Games
+    description: Game creation, listing, and management
+  - name: WebSocket
+    description: Real-time game communication and events
+  - name: System
+    description: Health checks and system information
+
+paths:
+  # Authentication Endpoints
+  /api/auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register new user
+      description: Create a new user account with username, email, and password
+      operationId: registerUser
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              username: player123
+              email: player@example.com
+              password: SecurePass123!
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                success: true
+                message: User registered successfully
+                user:
+                  id: "550e8400-e29b-41d4-a716-446655440000"
+                  username: player123
+                  email: player@example.com
+                  createdAt: "2024-01-15T10:30:00Z"
+                  gamesPlayed: 0
+                  gamesWon: 0
+                token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          description: Username or email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: Username or email already exists
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+
+  /api/auth/login:
+    post:
+      tags: [Authentication]
+      summary: User login
+      description: Authenticate user and return access token
+      operationId: loginUser
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              username: player123
+              password: SecurePass123!
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: Invalid credentials
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+
+  /api/auth/logout:
+    post:
+      tags: [Authentication]
+      summary: User logout
+      description: Logout user and invalidate tokens
+      operationId: logoutUser
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+              example:
+                success: true
+                message: Logout successful
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/auth/profile:
+    get:
+      tags: [Authentication]
+      summary: Get user profile
+      description: Retrieve authenticated user's profile information
+      operationId: getUserProfile
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    put:
+      tags: [Authentication]
+      summary: Update user profile
+      description: Update user email or password
+      operationId: updateUserProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '409':
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/verify:
+    get:
+      tags: [Authentication]
+      summary: Verify JWT token
+      description: Validate current access token
+      operationId: verifyToken
+      responses:
+        '200':
+          description: Token is valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  valid:
+                    type: boolean
+                  user:
+                    $ref: '#/components/schemas/UserBasic'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # Game Management Endpoints
+  /api/games:
+    get:
+      tags: [Games]
+      summary: List games
+      description: Get paginated list of games with optional filtering
+      operationId: listGames
+      security: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Games per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+        - name: filter
+          in: query
+          description: Filter by game status
+          schema:
+            type: string
+            enum: [all, active, waiting, ended]
+            default: all
+        - name: hideTestGames
+          in: query
+          description: Hide test games from results
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Games retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameListResponse'
+
+  /api/games/stats:
+    get:
+      tags: [Games]
+      summary: Get game statistics
+      description: Retrieve server-wide game statistics
+      operationId: getGameStats
+      security: []
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameStatsResponse'
+
+  /api/games/{gameId}:
+    get:
+      tags: [Games]
+      summary: Get game details
+      description: Retrieve detailed information about a specific game
+      operationId: getGameDetails
+      security: []
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: Game identifier
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Game details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameDetailsResponse'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/games/{gameId}/state:
+    get:
+      tags: [Games]
+      summary: Get game state
+      description: Retrieve complete serialized game state
+      operationId: getGameState
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: Game identifier
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Game state retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameStateResponse'
+        '404':
+          description: Game not found
+
+  /api/games/config/validate:
+    post:
+      tags: [Games]
+      summary: Validate game configuration
+      description: Validate game configuration parameters
+      operationId: validateGameConfig
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameConfig'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResponse'
+
+  /api/games/cleanup-test-games:
+    delete:
+      tags: [Games]
+      summary: Cleanup test games
+      description: Remove test games from the server
+      operationId: cleanupTestGames
+      responses:
+        '200':
+          description: Test games cleaned up successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CleanupResponse'
+
+  /api/games/cleanup-old-games:
+    delete:
+      tags: [Games]
+      summary: Cleanup old games
+      description: Remove games older than specified hours
+      operationId: cleanupOldGames
+      parameters:
+        - name: olderThanHours
+          in: query
+          description: Hours threshold for cleanup
+          schema:
+            type: integer
+            minimum: 1
+            default: 24
+      responses:
+        '200':
+          description: Old games cleaned up successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CleanupResponse'
+
+  # System Endpoints
+  /health:
+    get:
+      tags: [System]
+      summary: Health check
+      description: Get server health status and statistics
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api:
+    get:
+      tags: [System]
+      summary: API documentation endpoint
+      description: Get API endpoint documentation
+      operationId: getApiDocs
+      security: []
+      responses:
+        '200':
+          description: API documentation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiDocsResponse'
+
+  /api/security/info:
+    get:
+      tags: [System]
+      summary: Security information (Development only)
+      description: Get security configuration details (development environment only)
+      operationId: getSecurityInfo
+      responses:
+        '200':
+          description: Security information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jwtKeyInfo:
+                    type: object
+                  config:
+                    type: object
+        '404':
+          description: Endpoint not available in production
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Authentication Schemas
+    RegisterRequest:
+      type: object
+      required: [username, email, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 20
+          pattern: '^[a-zA-Z0-9_-]+$'
+          description: Unique username (letters, numbers, underscore, hyphen only)
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          description: Valid email address
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]'
+          description: Password with uppercase, lowercase, number, and special character
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          description: Username or email
+        password:
+          type: string
+          description: User password
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        currentPassword:
+          type: string
+          maxLength: 128
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 128
+          pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]'
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserProfile'
+        token:
+          type: string
+          description: JWT access token
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        createdAt:
+          type: string
+          format: date-time
+        lastLogin:
+          type: string
+          format: date-time
+        gamesPlayed:
+          type: integer
+          minimum: 0
+        gamesWon:
+          type: integer
+          minimum: 0
+        winRate:
+          type: string
+          description: Win rate percentage as string
+
+    UserProfileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserProfile'
+
+    UserBasic:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+
+    # Game Schemas
+    GameConfig:
+      type: object
+      required: [mapSize, maxPlayers, victoryConditions, startingResources]
+      properties:
+        mapSize:
+          type: object
+          required: [width, height]
+          properties:
+            width:
+              type: integer
+              minimum: 10
+              maximum: 100
+            height:
+              type: integer
+              minimum: 10
+              maximum: 100
+        maxPlayers:
+          type: integer
+          minimum: 2
+          maximum: 8
+        turnTimeLimit:
+          type: integer
+          minimum: 0
+          maximum: 3600
+          description: Turn time limit in seconds (0 = no limit)
+        victoryConditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/VictoryType'
+          minItems: 1
+        startingResources:
+          $ref: '#/components/schemas/Resources'
+
+    VictoryType:
+      type: string
+      enum: [domination, science, culture, diplomatic, score]
+
+    Resources:
+      type: object
+      properties:
+        gold:
+          type: integer
+          minimum: 0
+        science:
+          type: integer
+          minimum: 0
+        culture:
+          type: integer
+          minimum: 0
+        production:
+          type: integer
+          minimum: 0
+        food:
+          type: integer
+          minimum: 0
+
+    GameListResponse:
+      type: object
+      properties:
+        games:
+          type: array
+          items:
+            $ref: '#/components/schemas/GameSummary'
+        totalGames:
+          type: integer
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+        hasMore:
+          type: boolean
+
+    GameSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        playerCount:
+          type: integer
+        spectatorCount:
+          type: integer
+        maxPlayers:
+          type: integer
+        phase:
+          type: string
+          enum: [lobby, active, ended]
+        status:
+          type: string
+          enum: [waiting, active, ended]
+        createdAt:
+          type: string
+          format: date-time
+        joinable:
+          type: boolean
+        currentTurn:
+          type: integer
+        isTestGame:
+          type: boolean
+
+    GameDetailsResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        phase:
+          type: string
+        currentTurn:
+          type: integer
+        playerCount:
+          type: integer
+        maxPlayers:
+          type: integer
+        mapSize:
+          type: object
+          properties:
+            width:
+              type: integer
+            height:
+              type: integer
+        victoryConditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/VictoryType'
+        turnTimeLimit:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        lastUpdate:
+          type: string
+          format: date-time
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerSummary'
+
+    PlayerSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+        civilization:
+          type: string
+        isActive:
+          type: boolean
+        score:
+          type: integer
+
+    GameStateResponse:
+      type: object
+      properties:
+        gameState:
+          type: object
+          description: Complete serialized game state
+
+    GameStatsResponse:
+      type: object
+      properties:
+        totalGames:
+          type: integer
+        totalPlayers:
+          type: integer
+        averagePlayersPerGame:
+          type: number
+        gamesByPhase:
+          type: object
+          additionalProperties:
+            type: integer
+        uptime:
+          type: number
+        memoryUsage:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+
+    ValidationResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        errors:
+          type: array
+          items:
+            type: string
+        warnings:
+          type: array
+          items:
+            type: string
+
+    CleanupResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        removedGames:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+        gameCountBefore:
+          type: integer
+        gameCountAfter:
+          type: integer
+        hoursThreshold:
+          type: integer
+          description: Only present for old games cleanup
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        timestamp:
+          type: string
+          format: date-time
+        uptime:
+          type: number
+        environment:
+          type: string
+        database:
+          type: string
+          enum: [connected, disconnected]
+        security:
+          type: object
+          properties:
+            jwtKeysActive:
+              type: boolean
+            currentKeyActive:
+              type: boolean
+            securityHeadersEnabled:
+              type: boolean
+        gameStats:
+          type: object
+          properties:
+            activeGames:
+              type: integer
+            activePlayers:
+              type: integer
+
+    ApiDocsResponse:
+      type: object
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        endpoints:
+          type: object
+
+    # Error Schemas
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          type: string
+        code:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+
+    ValidationError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+              code:
+                type: string
+
+  responses:
+    UnauthorizedError:
+      description: Authentication required or token invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: Access token required
+            code: MISSING_TOKEN
+
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+          example:
+            success: false
+            error: Validation failed
+            details:
+              - field: email
+                message: Invalid email format
+                code: invalid_string
+
+    RateLimitError:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          description: Seconds until retry is allowed
+          schema:
+            type: integer
+        X-RateLimit-Limit:
+          description: Request limit per window
+          schema:
+            type: integer
+        X-RateLimit-Remaining:
+          description: Requests remaining in current window
+          schema:
+            type: integer
+        X-RateLimit-Reset:
+          description: Time when current window resets
+          schema:
+            type: string
+            format: date-time
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              retryAfter:
+                type: integer
+          example:
+            error: Too many authentication attempts
+            message: Please wait before trying again
+            retryAfter: 300

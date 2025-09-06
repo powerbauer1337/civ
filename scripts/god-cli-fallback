@@ -1,0 +1,358 @@
+#!/bin/bash
+
+# god-cli-fallback - Fallback and error handling for god-cli system
+# Implements intelligent fallback when primary agents are unavailable
+
+set -euo pipefail
+
+readonly SCRIPT_NAME="${0##*/}"
+readonly CONFIG_DIR="${HOME}/.god-cli"
+readonly LOG_FILE="${CONFIG_DIR}/logs/fallback.log"
+
+# Ensure directories exist
+mkdir -p "${CONFIG_DIR}/logs"
+
+# Logging functions
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+}
+
+log_error() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $*" | tee -a "$LOG_FILE" >&2
+}
+
+log_warning() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNING: $*" | tee -a "$LOG_FILE" >&2
+}
+
+log_debug() {
+    if [[ "${DEBUG:-}" = "1" ]]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] DEBUG: $*" | tee -a "$LOG_FILE" >&2
+    fi
+}
+
+# Agent availability matrix
+readonly AGENT_FALLBACKS=(
+    "gemini:codex:claude"
+    "codex:claude"
+    "claude"
+)
+
+# Check agent availability with detailed diagnostics
+check_agent_with_diagnostics() {
+    local agent="$1"
+    
+    case "$agent" in
+        codex)
+            if [[ -x "./scripts/safe-codex-exec" ]]; then
+                log_debug "Codex available via safe wrapper"
+                return 0
+            elif command -v codex >/dev/null; then
+                log_debug "Codex available but using unsafe direct access"
+                return 0
+            else
+                log_debug "Codex not available: command not found"
+                return 1
+            fi
+            ;;
+        gemini)
+            if command -v gemini >/dev/null; then
+                log_debug "Gemini available"
+                return 0
+            else
+                log_debug "Gemini not available: command not found"
+                return 1
+            fi
+            ;;
+        claude)
+            log_debug "Claude always available in Claude Code environment"
+            return 0
+            ;;
+        *)
+            log_debug "Unknown agent: $agent"
+            return 1
+            ;;
+    esac
+}
+
+# Find best available agent for a task
+find_fallback_agent() {
+    local preferred_agent="$1"
+    local task_description="$2"
+    local scope="${3:-}"
+    
+    log "Finding fallback for $preferred_agent agent" >&2
+    
+    # First try the preferred agent
+    if check_agent_with_diagnostics "$preferred_agent" >&2; then
+        echo "$preferred_agent"
+        return 0
+    fi
+    
+    # Define fallback chains based on task characteristics
+    local fallback_chain=()
+    
+    case "$preferred_agent" in
+        gemini)
+            # Gemini fallback: try codex for analysis, claude for precision
+            if [[ -n "$scope" ]] || [[ ${#task_description} -gt 1000 ]]; then
+                fallback_chain=("codex" "claude")
+                log_debug "Large scope/complex task: trying codex → claude fallback chain"
+            else
+                fallback_chain=("claude" "codex")
+                log_debug "Medium complexity: trying claude → codex fallback chain"
+            fi
+            ;;
+        codex)
+            # Codex fallback: claude for most tasks
+            fallback_chain=("claude")
+            log_debug "Codex unavailable: falling back to claude"
+            ;;
+        claude)
+            # Claude fallback: try codex then gemini
+            fallback_chain=("codex" "gemini")
+            log_debug "Claude unavailable: trying codex → gemini fallback chain"
+            ;;
+    esac
+    
+    # Try each agent in the fallback chain
+    for fallback_agent in "${fallback_chain[@]}"; do
+        if check_agent_with_diagnostics "$fallback_agent" >&2; then
+            log_warning "Using fallback agent: $fallback_agent (original: $preferred_agent)" >&2
+            echo "$fallback_agent"
+            return 0
+        fi
+    done
+    
+    # No agents available
+    log_error "No agents available for fallback" >&2
+    return 1
+}
+
+# Provide installation guidance for missing agents
+provide_installation_guidance() {
+    local missing_agent="$1"
+    
+    cat << EOF
+
+🔧 Installation Guide for Missing Agent: $missing_agent
+
+EOF
+    
+    case "$missing_agent" in
+        gemini)
+            cat << 'EOF'
+To install Gemini CLI:
+  1. Install via pip: pip install google-generativeai
+  2. Or use the official installer: curl -sSL https://gemini-cli.com/install | bash
+  3. Set up API key: export GEMINI_API_KEY="your-api-key"
+  4. Test: gemini --version
+
+Alternative: Use Codex for analysis tasks or Claude for precision work
+EOF
+            ;;
+        codex)
+            cat << 'EOF'
+To install Codex CLI:
+  1. Install OpenAI CLI: pip install openai
+  2. Or install dedicated codex CLI: npm install -g @openai/codex-cli  
+  3. Set up API key: export OPENAI_API_KEY="your-api-key"
+  4. Test: codex --version
+
+Alternative: Use Claude for precision tasks or Gemini for large analysis
+EOF
+            ;;
+        *)
+            echo "No specific installation guide available for: $missing_agent"
+            ;;
+    esac
+    
+    echo ""
+}
+
+# Execute with fallback handling
+execute_with_fallback() {
+    local preferred_agent="$1"
+    local task_description="$2"
+    local scope="${3:-}"
+    shift 3
+    local additional_args=("$@")
+    
+    log "Attempting execution with fallback handling"
+    
+    # Find the best available agent
+    local selected_agent
+    if ! selected_agent=$(find_fallback_agent "$preferred_agent" "$task_description" "$scope"); then
+        echo "❌ No agents available. Please install at least one agent."
+        provide_installation_guidance "$preferred_agent"
+        return 127
+    fi
+    
+    # If we had to fall back, inform the user
+    if [[ "$selected_agent" != "$preferred_agent" ]]; then
+        echo "🔄 Fallback: Using $selected_agent instead of $preferred_agent"
+        
+        # Provide task adaptation advice
+        case "$preferred_agent:$selected_agent" in
+            "gemini:codex")
+                echo "ℹ️  Adaptation: Breaking down large analysis into smaller chunks for Codex"
+                ;;
+            "gemini:claude")
+                echo "ℹ️  Adaptation: Using Claude for precise analysis instead of broad scanning"
+                ;;
+            "codex:claude")
+                echo "ℹ️  Adaptation: Using Claude for detailed reasoning instead of rapid debugging"
+                ;;
+        esac
+        echo ""
+    fi
+    
+    # Execute with the selected agent
+    ./scripts/god-cli route "$selected_agent" "$task_description" --scope="$scope" "${additional_args[@]}"
+}
+
+# Health check for the entire system
+system_health_check() {
+    echo "🏥 God-CLI System Health Check"
+    echo "==============================="
+    echo ""
+    
+    local overall_health="healthy"
+    
+    # Check core scripts
+    echo "Core Scripts:"
+    local core_scripts=("god-cli" "safe-codex-exec" "sanitize-prompt" "estimate-gemini-cost")
+    for script in "${core_scripts[@]}"; do
+        if [[ -x "./scripts/$script" ]]; then
+            echo "  ✅ $script: Available"
+        else
+            echo "  ❌ $script: Missing or not executable"
+            overall_health="degraded"
+        fi
+    done
+    echo ""
+    
+    # Check agent availability
+    echo "Agent Availability:"
+    local agents=("codex" "gemini" "claude")
+    local available_count=0
+    
+    for agent in "${agents[@]}"; do
+        if check_agent_with_diagnostics "$agent" >/dev/null 2>&1; then
+            echo "  ✅ $agent: Available"
+            ((available_count++))
+        else
+            echo "  ❌ $agent: Not available"
+        fi
+    done
+    echo ""
+    
+    # Overall system assessment
+    echo "System Assessment:"
+    if [[ $available_count -eq 0 ]]; then
+        echo "  🚨 CRITICAL: No agents available"
+        overall_health="critical"
+    elif [[ $available_count -eq 1 ]]; then
+        echo "  ⚠️  WARNING: Only one agent available (limited functionality)"
+        overall_health="degraded"
+    elif [[ $available_count -eq 2 ]]; then
+        echo "  ✅ GOOD: Multiple agents available with fallback capability"
+    else
+        echo "  🎉 EXCELLENT: All agents available"
+    fi
+    
+    echo "  Overall Health: $overall_health"
+    echo ""
+    
+    # Recommendations
+    echo "Recommendations:"
+    if [[ $overall_health == "critical" ]]; then
+        echo "  🔧 Install at least one agent to enable basic functionality"
+        echo "  📚 See installation guides above"
+    elif [[ $overall_health == "degraded" ]]; then
+        echo "  🔧 Consider installing additional agents for better fallback coverage"
+        echo "  📊 Monitor performance with limited agent availability"
+    else
+        echo "  🎯 System is operating optimally"
+        echo "  📈 Consider enabling advanced features in Phase 3"
+    fi
+    
+    return 0
+}
+
+# Usage information
+usage() {
+    cat << EOF
+$SCRIPT_NAME - Fallback and Error Handling for God-CLI
+
+Usage:
+  $SCRIPT_NAME execute <preferred_agent> <task> [options]
+  $SCRIPT_NAME health
+  $SCRIPT_NAME install-guide <agent>
+
+Commands:
+  execute     Execute task with intelligent fallback
+  health      Run comprehensive system health check  
+  install     Show installation guide for specific agent
+
+Examples:
+  $SCRIPT_NAME execute gemini "analyze codebase" --scope=server/
+  $SCRIPT_NAME health
+  $SCRIPT_NAME install-guide gemini
+
+This tool provides:
+- Intelligent agent fallback when preferred agent unavailable
+- System health monitoring and diagnostics  
+- Installation guidance for missing components
+- Task adaptation recommendations for fallback scenarios
+
+Logs: $LOG_FILE
+EOF
+}
+
+# Main command parser
+main() {
+    if [[ $# -eq 0 ]]; then
+        usage
+        exit 0
+    fi
+    
+    local command="$1"
+    shift
+    
+    case "$command" in
+        execute)
+            if [[ $# -lt 2 ]]; then
+                echo "ERROR: execute requires agent and task arguments" >&2
+                usage
+                exit 1
+            fi
+            execute_with_fallback "$@"
+            ;;
+        health)
+            system_health_check
+            ;;
+        install-guide)
+            if [[ $# -lt 1 ]]; then
+                echo "ERROR: install-guide requires agent name" >&2
+                usage
+                exit 1
+            fi
+            provide_installation_guidance "$1"
+            ;;
+        --help|-h|help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "ERROR: Unknown command: $command" >&2
+            usage
+            exit 1
+            ;;
+    esac
+}
+
+# Execute main function if script is run directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

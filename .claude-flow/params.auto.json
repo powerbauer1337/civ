@@ -1,0 +1,20 @@
+{
+  "planFile": "todo.md",
+  "language": "typescript",
+  "gitContext": { "analyzeCommits": 20 },
+  "actions": [
+    "decide-next-task",
+    "implement",
+    "tests",
+    "typecheck",
+    "lint",
+    "build",
+    "docs",
+    "commit",
+    "update-todo"
+  ],
+  "commitStyle": "conventional",
+  "branch": "auto/dev-{{date:YYYYMMDD}}",
+  "hive": true,
+  "concurrency": 6
+}

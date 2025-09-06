@@ -1,0 +1,36 @@
+{
+  "name": "civ-doc-tracker",
+  "version": "1.0.0",
+  "description": "Automated documentation tracking system for PROJECT_INDEX.md",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "scan": "tsx src/index.ts scan --verbose",
+    "update": "tsx src/index.ts update",
+    "validate": "tsx src/index.ts validate",
+    "report": "tsx src/index.ts report",
+    "setup-hooks": "tsx src/index.ts setup-hooks",
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^11.1.0",
+    "fs-extra": "^11.2.0",
+    "glob": "^10.3.10",
+    "gray-matter": "^4.0.3",
+    "js-yaml": "^4.1.0",
+    "markdown-toc": "^1.2.0"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/jest": "^29.5.8",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.9.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "tsx": "^4.6.0",
+    "typescript": "^5.9.2"
+  }
+}

@@ -1,0 +1,372 @@
+#!/bin/bash
+
+# estimate-gemini-cost - Token and cost estimation for Gemini operations
+# Prevents expensive operations by estimating costs before execution
+# Usage: estimate-gemini-cost [--scope=SCOPE] [--files=FILES] [--prompt="PROMPT"]
+
+set -euo pipefail
+
+readonly SCRIPT_NAME="${0##*/}"
+readonly LOG_FILE="${HOME}/.god-cli/logs/estimate-gemini-cost.log"
+
+# Ensure log directory exists
+mkdir -p "$(dirname "$LOG_FILE")"
+
+# Cost configuration (based on Gemini 2.5 Pro pricing)
+readonly TOKENS_PER_DOLLAR_INPUT=250000     # Approximate tokens per $1 for input
+readonly TOKENS_PER_DOLLAR_OUTPUT=100000    # Approximate tokens per $1 for output
+readonly COST_WARNING_THRESHOLD=1.00        # Warn if cost > $1
+readonly COST_CONFIRMATION_THRESHOLD=5.00   # Require confirmation if cost > $5
+readonly TOKEN_WARNING_THRESHOLD=10000      # Warn if tokens > 10K
+readonly TOKEN_CONFIRMATION_THRESHOLD=50000 # Require confirmation if tokens > 50K
+
+# Token estimation constants
+readonly CHARS_PER_TOKEN=4                  # Rough approximation: 4 characters per token
+readonly LINES_PER_TOKEN=0.2               # Rough approximation: 5 lines per token
+
+# File type weights (some file types are more token-dense)
+declare -A FILE_TYPE_WEIGHTS=(
+    [".md"]=1.2      # Markdown is verbose
+    [".txt"]=1.0     # Plain text baseline
+    [".js"]=1.3      # JavaScript with syntax
+    [".ts"]=1.4      # TypeScript with types
+    [".py"]=1.3      # Python
+    [".java"]=1.5    # Java is verbose
+    [".cpp"]=1.4     # C++ with headers
+    [".html"]=1.6    # HTML with tags
+    [".css"]=1.1     # CSS is compact
+    [".json"]=1.2    # JSON with structure
+    [".xml"]=1.8     # XML is very verbose
+    [".yaml"]=1.1    # YAML is compact
+    [".yml"]=1.1     # YAML is compact
+    [".log"]=0.8     # Logs can be repetitive
+)
+
+# Logging functions
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+}
+
+log_debug() {
+    if [[ "${DEBUG:-}" = "1" ]]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] DEBUG: $*" | tee -a "$LOG_FILE" >&2
+    fi
+}
+
+log_warning() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNING: $*" | tee -a "$LOG_FILE" >&2
+}
+
+log_error() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $*" | tee -a "$LOG_FILE" >&2
+}
+
+# Get file extension weight
+get_file_weight() {
+    local filepath="$1"
+    local extension="${filepath##*.}"
+    local weight="${FILE_TYPE_WEIGHTS[.$extension]:-1.0}"
+    
+    echo "$weight"
+}
+
+# Estimate tokens from file content
+estimate_file_tokens() {
+    local filepath="$1"
+    
+    if [[ ! -f "$filepath" ]]; then
+        echo "0"
+        return
+    fi
+    
+    local filesize
+    filesize=$(stat -c%s "$filepath" 2>/dev/null || stat -f%z "$filepath" 2>/dev/null || echo "0")
+    
+    if [[ $filesize -eq 0 ]]; then
+        echo "0"
+        return
+    fi
+    
+    # Get character count
+    local char_count
+    char_count=$(wc -c < "$filepath" 2>/dev/null || echo "0")
+    
+    # Get line count for additional estimation
+    local line_count
+    line_count=$(wc -l < "$filepath" 2>/dev/null || echo "0")
+    
+    # Calculate token estimates using multiple methods
+    local tokens_by_chars=$((char_count / CHARS_PER_TOKEN))
+    local tokens_by_lines=$(echo "$line_count / $LINES_PER_TOKEN" | bc -l | cut -d. -f1)
+    
+    # Use the higher estimate for safety
+    local base_tokens=$tokens_by_chars
+    if [[ $tokens_by_lines -gt $tokens_by_chars ]]; then
+        base_tokens=$tokens_by_lines
+    fi
+    
+    # Apply file type weight
+    local weight
+    weight=$(get_file_weight "$filepath")
+    
+    local weighted_tokens
+    weighted_tokens=$(echo "$base_tokens * $weight" | bc -l | cut -d. -f1)
+    
+    log_debug "File: $filepath (${char_count} chars, ${line_count} lines, weight: ${weight}) = ${weighted_tokens} tokens"
+    
+    echo "$weighted_tokens"
+}
+
+# Estimate tokens from text content
+estimate_text_tokens() {
+    local text="$1"
+    
+    local char_count=${#text}
+    local line_count
+    line_count=$(echo "$text" | wc -l)
+    
+    # Calculate token estimates
+    local tokens_by_chars=$((char_count / CHARS_PER_TOKEN))
+    local tokens_by_lines=$(echo "$line_count / $LINES_PER_TOKEN" | bc -l | cut -d. -f1)
+    
+    # Use the higher estimate for safety
+    local tokens=$tokens_by_chars
+    if [[ $tokens_by_lines -gt $tokens_by_chars ]]; then
+        tokens=$tokens_by_lines
+    fi
+    
+    echo "$tokens"
+}
+
+# Find files in scope
+find_files_in_scope() {
+    local scope="$1"
+    
+    if [[ -f "$scope" ]]; then
+        echo "$scope"
+        return
+    fi
+    
+    if [[ -d "$scope" ]]; then
+        # Find all text files, excluding common binary/temp files
+        find "$scope" -type f \
+            ! -path "*/node_modules/*" \
+            ! -path "*/.git/*" \
+            ! -path "*/dist/*" \
+            ! -path "*/build/*" \
+            ! -path "*/.cache/*" \
+            ! -path "*/logs/*" \
+            ! -name "*.png" ! -name "*.jpg" ! -name "*.jpeg" ! -name "*.gif" \
+            ! -name "*.pdf" ! -name "*.zip" ! -name "*.tar.gz" \
+            ! -name "*.exe" ! -name "*.dll" ! -name "*.so" \
+            ! -name "package-lock.json" ! -name "yarn.lock" \
+            2>/dev/null || true
+    else
+        # Treat as glob pattern
+        find . -path "$scope" -type f 2>/dev/null || true
+    fi
+}
+
+# Main estimation function
+estimate_cost() {
+    local scope="${1:-}"
+    local additional_files="${2:-}"
+    local prompt_text="${3:-}"
+    
+    log_debug "Starting cost estimation (scope: $scope, files: $additional_files, prompt length: ${#prompt_text})"
+    
+    local total_tokens=0
+    local file_count=0
+    local analyzed_files=()
+    
+    # Estimate tokens from scope
+    if [[ -n "$scope" ]]; then
+        log_debug "Analyzing scope: $scope"
+        while IFS= read -r -d '' file; do
+            if [[ -f "$file" ]]; then
+                local file_tokens
+                file_tokens=$(estimate_file_tokens "$file")
+                total_tokens=$((total_tokens + file_tokens))
+                file_count=$((file_count + 1))
+                analyzed_files+=("$file:$file_tokens")
+            fi
+        done < <(find_files_in_scope "$scope" -print0)
+    fi
+    
+    # Estimate tokens from additional files
+    if [[ -n "$additional_files" ]]; then
+        log_debug "Analyzing additional files: $additional_files"
+        IFS=',' read -ra FILES <<< "$additional_files"
+        for file in "${FILES[@]}"; do
+            file=$(echo "$file" | xargs)  # Trim whitespace
+            if [[ -f "$file" ]]; then
+                local file_tokens
+                file_tokens=$(estimate_file_tokens "$file")
+                total_tokens=$((total_tokens + file_tokens))
+                file_count=$((file_count + 1))
+                analyzed_files+=("$file:$file_tokens")
+            fi
+        done
+    fi
+    
+    # Estimate tokens from prompt text
+    local prompt_tokens=0
+    if [[ -n "$prompt_text" ]]; then
+        prompt_tokens=$(estimate_text_tokens "$prompt_text")
+        total_tokens=$((total_tokens + prompt_tokens))
+        log_debug "Prompt tokens: $prompt_tokens"
+    fi
+    
+    # Estimate output tokens (assume 10% of input)
+    local estimated_output_tokens=$((total_tokens / 10))
+    if [[ $estimated_output_tokens -lt 100 ]]; then
+        estimated_output_tokens=100  # Minimum output assumption
+    fi
+    
+    # Calculate costs
+    local input_cost
+    input_cost=$(echo "scale=4; $total_tokens / $TOKENS_PER_DOLLAR_INPUT" | bc -l)
+    local output_cost
+    output_cost=$(echo "scale=4; $estimated_output_tokens / $TOKENS_PER_DOLLAR_OUTPUT" | bc -l)
+    local total_cost
+    total_cost=$(echo "scale=4; $input_cost + $output_cost" | bc -l)
+    
+    # Generate report
+    cat << EOF
+=== Gemini Cost Estimation Report ===
+
+Files Analyzed: $file_count files
+Input Tokens: $total_tokens tokens
+Estimated Output Tokens: $estimated_output_tokens tokens
+Total Tokens: $((total_tokens + estimated_output_tokens)) tokens
+
+Cost Breakdown:
+  Input Cost:  \$${input_cost}
+  Output Cost: \$${output_cost}
+  Total Cost:  \$${total_cost}
+
+Token Distribution:
+EOF
+    
+    if [[ ${#analyzed_files[@]} -gt 0 ]]; then
+        echo "  Files:"
+        for file_info in "${analyzed_files[@]}"; do
+            echo "    ${file_info}"
+        done
+    fi
+    
+    if [[ $prompt_tokens -gt 0 ]]; then
+        echo "  Prompt: $prompt_tokens tokens"
+    fi
+    
+    # Risk assessment
+    echo ""
+    echo "Risk Assessment:"
+    
+    if (( $(echo "$total_cost > $COST_CONFIRMATION_THRESHOLD" | bc -l) )); then
+        echo "  🚨 HIGH COST: This operation will cost more than \$$COST_CONFIRMATION_THRESHOLD"
+        echo "     Consider breaking down the request or using Codex for simpler tasks"
+        return 2  # High cost warning
+    elif (( $(echo "$total_cost > $COST_WARNING_THRESHOLD" | bc -l) )); then
+        echo "  ⚠️  MODERATE COST: This operation will cost more than \$$COST_WARNING_THRESHOLD"
+        return 1  # Moderate cost warning
+    elif [[ $total_tokens -gt $TOKEN_CONFIRMATION_THRESHOLD ]]; then
+        echo "  🚨 HIGH TOKEN COUNT: This operation uses $total_tokens tokens (>${TOKEN_CONFIRMATION_THRESHOLD})"
+        return 2  # High token warning
+    elif [[ $total_tokens -gt $TOKEN_WARNING_THRESHOLD ]]; then
+        echo "  ⚠️  MODERATE TOKEN COUNT: This operation uses $total_tokens tokens (>${TOKEN_WARNING_THRESHOLD})"
+        return 1  # Moderate token warning
+    else
+        echo "  ✅ LOW COST: This operation should be cost-effective"
+        return 0  # No concerns
+    fi
+}
+
+# Usage information
+usage() {
+    cat << EOF
+Usage: $SCRIPT_NAME [options]
+
+Estimates token count and cost for Gemini operations before execution.
+
+Options:
+  --scope=PATH        Directory or file path to analyze
+  --files=FILE1,FILE2 Additional files to include (comma-separated)
+  --prompt="TEXT"     Prompt text to include in estimation
+  --help             Show this help message
+
+Environment:
+  DEBUG=1            Enable debug logging
+
+Examples:
+  $SCRIPT_NAME --scope=server/ --prompt="analyze the codebase"
+  $SCRIPT_NAME --files="src/main.js,src/utils.js" 
+  $SCRIPT_NAME --scope=. --prompt="find all TODOs"
+
+Exit Codes:
+  0 - Low cost operation (< \$$COST_WARNING_THRESHOLD, < $TOKEN_WARNING_THRESHOLD tokens)
+  1 - Moderate cost warning
+  2 - High cost, requires confirmation
+
+Thresholds:
+  Token Warning: $TOKEN_WARNING_THRESHOLD tokens
+  Token Confirmation: $TOKEN_CONFIRMATION_THRESHOLD tokens
+  Cost Warning: \$$COST_WARNING_THRESHOLD
+  Cost Confirmation: \$$COST_CONFIRMATION_THRESHOLD
+
+Logs: $LOG_FILE
+EOF
+}
+
+# Parse command line arguments
+main() {
+    local scope=""
+    local files=""
+    local prompt=""
+    
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --scope=*)
+                scope="${1#--scope=}"
+                shift
+                ;;
+            --files=*)
+                files="${1#--files=}"
+                shift
+                ;;
+            --prompt=*)
+                prompt="${1#--prompt=}"
+                shift
+                ;;
+            --help|-h)
+                usage
+                exit 0
+                ;;
+            *)
+                echo "ERROR: Unknown option: $1" >&2
+                usage
+                exit 1
+                ;;
+        esac
+    done
+    
+    if [[ -z "$scope" && -z "$files" && -z "$prompt" ]]; then
+        echo "ERROR: At least one of --scope, --files, or --prompt must be provided" >&2
+        usage
+        exit 1
+    fi
+    
+    # Check for required tools
+    if ! command -v bc >/dev/null; then
+        log_error "bc calculator is required but not installed"
+        exit 1
+    fi
+    
+    log "Starting Gemini cost estimation"
+    estimate_cost "$scope" "$files" "$prompt"
+}
+
+# Execute main function if script is run directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

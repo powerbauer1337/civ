@@ -1,0 +1,203 @@
+#!/bin/bash
+
+# safe-codex-exec - Robust wrapper for codex CLI with broken pipe handling
+# Usage: safe-codex-exec "prompt text" [additional args...]
+
+set -euo pipefail
+
+# Configuration
+readonly SCRIPT_NAME="${0##*/}"
+readonly LOG_FILE="${HOME}/.god-cli/logs/safe-codex-exec.log"
+readonly MAX_RETRIES=3
+readonly RETRY_DELAY=2
+readonly TIMEOUT_SECONDS=300
+
+# Ensure log directory exists
+mkdir -p "$(dirname "$LOG_FILE")"
+
+# Logging functions
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+}
+
+log_error() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $*" | tee -a "$LOG_FILE" >&2
+}
+
+log_debug() {
+    if [[ "${DEBUG:-}" = "1" ]]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] DEBUG: $*" | tee -a "$LOG_FILE" >&2
+    fi
+}
+
+# Signal handlers for graceful shutdown
+cleanup() {
+    log_debug "Cleanup initiated"
+    if [[ -n "${codex_pid:-}" ]]; then
+        log_debug "Terminating codex process $codex_pid"
+        kill -TERM "$codex_pid" 2>/dev/null || true
+        wait "$codex_pid" 2>/dev/null || true
+    fi
+    exit 130
+}
+
+trap cleanup INT TERM
+
+# Input sanitization function
+sanitize_prompt() {
+    local prompt="$1"
+    # Escape shell metacharacters to prevent injection
+    # but preserve spaces and common punctuation
+    printf '%s' "$prompt" | sed 's/\([`$(){};<>|&*?\[\]]\)/\\\1/g'
+}
+
+# Output buffering to handle broken pipes
+safe_output() {
+    local temp_file
+    temp_file=$(mktemp)
+    local exit_code=0
+    
+    # Capture both stdout and stderr
+    "$@" > "$temp_file" 2>&1 || exit_code=$?
+    
+    # Handle broken pipe (exit code 141) and other pipe errors
+    if [[ $exit_code -eq 141 ]] || [[ $exit_code -eq 32 ]]; then
+        log_debug "Broken pipe detected (exit code: $exit_code), continuing with partial output"
+        exit_code=0
+    fi
+    
+    # Output results, handling potential pipe issues
+    if command -v head >/dev/null; then
+        # Use head to safely output first part if piped
+        head -c 1000000 "$temp_file" 2>/dev/null || cat "$temp_file" 2>/dev/null || true
+    else
+        cat "$temp_file" 2>/dev/null || true
+    fi
+    
+    rm -f "$temp_file"
+    return $exit_code
+}
+
+# Main execution function with retry logic
+execute_codex_with_retry() {
+    local prompt="$1"
+    shift
+    local additional_args=("$@")
+    
+    local sanitized_prompt
+    sanitized_prompt=$(sanitize_prompt "$prompt")
+    
+    local attempt=1
+    while [[ $attempt -le $MAX_RETRIES ]]; do
+        log_debug "Attempt $attempt/$MAX_RETRIES: Executing codex with prompt length ${#prompt}"
+        
+        # Create a temporary script to handle complex command execution
+        local temp_script
+        temp_script=$(mktemp)
+        cat > "$temp_script" << EOF
+#!/bin/bash
+exec timeout ${TIMEOUT_SECONDS}s codex exec "$sanitized_prompt" "${additional_args[@]}" 2>&1
+EOF
+        chmod +x "$temp_script"
+        
+        # Execute with output buffering and error handling
+        local exit_code=0
+        if safe_output bash "$temp_script"; then
+            rm -f "$temp_script"
+            log_debug "Codex execution successful on attempt $attempt"
+            return 0
+        else
+            exit_code=$?
+            rm -f "$temp_script"
+            
+            # Check if this was a retriable error
+            case $exit_code in
+                32|141)  # Broken pipe errors
+                    log "Broken pipe error on attempt $attempt, retrying..."
+                    ;;
+                124)     # Timeout
+                    log_error "Timeout on attempt $attempt after ${TIMEOUT_SECONDS}s"
+                    if [[ $attempt -eq $MAX_RETRIES ]]; then
+                        return $exit_code
+                    fi
+                    ;;
+                *)       # Other errors
+                    log_error "Codex execution failed with exit code $exit_code on attempt $attempt"
+                    if [[ $attempt -eq $MAX_RETRIES ]]; then
+                        return $exit_code
+                    fi
+                    ;;
+            esac
+        fi
+        
+        # Wait before retry (exponential backoff)
+        local delay=$((RETRY_DELAY * attempt))
+        log_debug "Waiting ${delay}s before retry..."
+        sleep $delay
+        
+        ((attempt++))
+    done
+    
+    log_error "All retry attempts failed"
+    return 1
+}
+
+# Usage function
+usage() {
+    cat << EOF
+Usage: $SCRIPT_NAME "prompt text" [additional codex args...]
+
+Safe wrapper for codex CLI that handles:
+- Broken pipe errors (os error 32)
+- Signal handling (SIGINT, SIGTERM)
+- Output buffering and truncation
+- Automatic retry with exponential backoff
+- Input sanitization for security
+
+Options:
+  DEBUG=1           Enable debug logging
+  
+Examples:
+  $SCRIPT_NAME "analyze the codebase structure"
+  $SCRIPT_NAME "debug the failing tests" --timeout=60
+  DEBUG=1 $SCRIPT_NAME "complex analysis task"
+
+Logs: $LOG_FILE
+EOF
+}
+
+# Main execution
+main() {
+    if [[ $# -eq 0 ]] || [[ "$1" = "-h" ]] || [[ "$1" = "--help" ]]; then
+        usage
+        exit 0
+    fi
+    
+    local prompt="$1"
+    shift
+    local additional_args=("$@")
+    
+    # Validate prompt is not empty
+    if [[ -z "$prompt" ]]; then
+        log_error "Empty prompt provided"
+        exit 1
+    fi
+    
+    # Check if codex command is available
+    if ! command -v codex >/dev/null; then
+        log_error "codex command not found in PATH"
+        exit 127
+    fi
+    
+    log "Starting safe codex execution with prompt length ${#prompt}"
+    
+    # Execute with retry logic
+    execute_codex_with_retry "$prompt" "${additional_args[@]}"
+    local exit_code=$?
+    
+    log_debug "Safe codex execution completed with exit code $exit_code"
+    return $exit_code
+}
+
+# Execute main function
+main "$@"

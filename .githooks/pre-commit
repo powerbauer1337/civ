@@ -12,5 +12,24 @@ npx -y tsc -p client/tsconfig.json --noEmit
 npx -y tsc -p server/tsconfig.json --noEmit
 npx -y tsc -p shared/tsconfig.json --noEmit
 
+# Documentation Tracker Validation
+echo "[pre-commit] Validating documentation..."
+if [ -d "scripts/doc-tracker" ]; then
+  cd scripts/doc-tracker
+  if [ -f "package.json" ]; then
+    npm run validate 2>/dev/null || {
+      echo "⚠️ Documentation validation warnings found"
+      if [ "$DOC_TRACKER_STRICT" = "true" ]; then
+        echo "❌ Commit rejected due to documentation validation errors"
+        echo "Run 'npm run docs:fix' to automatically fix issues"
+        exit 1
+      else
+        echo "⚠️ Proceeding with warnings (set DOC_TRACKER_STRICT=true to block)"
+      fi
+    }
+  fi
+  cd ../..
+fi
+
 echo "[pre-commit] OK"
 

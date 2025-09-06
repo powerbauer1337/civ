@@ -28,7 +28,13 @@
     "lint:shared": "cd shared && npm run lint",
     "lint:server": "cd server && npm run lint",
     "start:simple": "cd server && node -r ts-node/register src/simple-server.ts",
-    "test:game": "cd server && npx ts-node src/test-game-server.ts"
+    "test:game": "cd server && npx ts-node src/test-game-server.ts",
+    "docs:scan": "cd scripts/doc-tracker && npm run scan",
+    "docs:update": "cd scripts/doc-tracker && npm run update",
+    "docs:validate": "cd scripts/doc-tracker && npm run validate",
+    "docs:report": "cd scripts/doc-tracker && npm run report",
+    "docs:setup-hooks": "cd scripts/doc-tracker && npm run setup-hooks",
+    "docs:fix": "cd scripts/doc-tracker && npm run update && npm run validate"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

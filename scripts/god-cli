@@ -1,0 +1,719 @@
+#!/bin/bash
+
+# god-cli - Unified Command Interface for Multi-Agent Orchestration
+# Provides consistent interface across Codex, Gemini, and Claude agents
+# Usage: god-cli route <agent> <prompt> [options]
+
+set -euo pipefail
+
+readonly SCRIPT_NAME="${0##*/}"
+readonly VERSION="2.0.0-alpha"
+readonly CONFIG_DIR="${HOME}/.god-cli"
+readonly LOG_FILE="${CONFIG_DIR}/logs/god-cli.log"
+readonly CONTEXT_DIR="${CONFIG_DIR}/contexts"
+readonly CACHE_DIR="${CONFIG_DIR}/cache"
+
+# Ensure directories exist
+mkdir -p "$CONFIG_DIR"/{logs,contexts,cache}
+
+# Default configuration
+readonly DEFAULT_TIMEOUT=300
+readonly DEFAULT_COST_LIMIT=5.00
+readonly DEFAULT_CONTEXT_TTL=86400  # 24 hours
+
+# Logging functions
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+}
+
+log_debug() {
+    if [[ "${DEBUG:-}" = "1" ]]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] DEBUG: $*" | tee -a "$LOG_FILE" >&2
+    fi
+}
+
+log_error() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $*" | tee -a "$LOG_FILE" >&2
+}
+
+log_warning() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNING: $*" | tee -a "$LOG_FILE" >&2
+}
+
+# Configuration management
+load_config() {
+    local config_file="${CONFIG_DIR}/config.json"
+    
+    if [[ -f "$config_file" ]]; then
+        log_debug "Loading configuration from $config_file"
+    else
+        # Create default configuration
+        cat > "$config_file" << 'EOF'
+{
+  "default_agent": "codex",
+  "timeout": 300,
+  "cost_limit": 5.00,
+  "context_ttl": 86400,
+  "auto_sanitize": true,
+  "auto_context": true,
+  "parallel_enabled": false,
+  "agents": {
+    "codex": {
+      "command": "./scripts/safe-codex-exec",
+      "cost_per_token": 0.000004,
+      "max_tokens": 100000,
+      "timeout": 180
+    },
+    "gemini": {
+      "command": "gemini",
+      "args": ["-p"],
+      "cost_per_token": 0.000004,
+      "max_tokens": 1000000,
+      "timeout": 600
+    },
+    "claude": {
+      "command": "claude",
+      "cost_per_token": 0.000015,
+      "max_tokens": 200000,
+      "timeout": 300
+    }
+  }
+}
+EOF
+        log_debug "Created default configuration"
+    fi
+}
+
+# Agent capability detection
+check_agent_availability() {
+    local agent="$1"
+    
+    case "$agent" in
+        codex)
+            if [[ -x "./scripts/safe-codex-exec" ]]; then
+                return 0
+            elif command -v codex >/dev/null; then
+                log_warning "Using direct codex (unsafe). Consider using ./scripts/safe-codex-exec"
+                return 0
+            fi
+            ;;
+        gemini)
+            if command -v gemini >/dev/null; then
+                return 0
+            else
+                return 1
+            fi
+            ;;
+        claude)
+            # Always available when running in Claude Code
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# Cost estimation and approval
+check_cost_approval() {
+    local agent="$1"
+    local prompt="$2"
+    local scope="${3:-}"
+    local cost_limit="${4:-$DEFAULT_COST_LIMIT}"
+    
+    log_debug "Checking cost approval for $agent agent"
+    
+    case "$agent" in
+        gemini)
+            # Use our cost estimation tool for Gemini
+            local estimate_args=("--prompt=$prompt")
+            [[ -n "$scope" ]] && estimate_args+=("--scope=$scope")
+            
+            if ./scripts/estimate-gemini-cost "${estimate_args[@]}"; then
+                local exit_code=$?
+                case $exit_code in
+                    0) return 0 ;;  # Low cost, proceed
+                    1) 
+                        echo "⚠️  Moderate cost operation. Continue? (y/N)"
+                        read -r response
+                        [[ "$response" =~ ^[Yy] ]] && return 0 || return 1
+                        ;;
+                    2)
+                        echo "🚨 High cost operation (>$${cost_limit}). Are you sure? (y/N)"
+                        read -r response
+                        [[ "$response" =~ ^[Yy] ]] && return 0 || return 1
+                        ;;
+                    *)
+                        log_error "Cost estimation failed"
+                        return 1
+                        ;;
+                esac
+            else
+                log_error "Failed to estimate costs for Gemini operation"
+                return 1
+            fi
+            ;;
+        codex|claude)
+            # Lower cost agents, basic length check
+            if [[ ${#prompt} -gt 10000 ]]; then
+                echo "⚠️  Large prompt detected (${#prompt} chars). Continue? (y/N)"
+                read -r response
+                [[ "$response" =~ ^[Yy] ]] && return 0 || return 1
+            fi
+            return 0
+            ;;
+    esac
+}
+
+# Input sanitization wrapper
+sanitize_input() {
+    local input="$1"
+    local mode="${2:-basic}"
+    
+    if [[ -x "./scripts/sanitize-prompt" ]]; then
+        ./scripts/sanitize-prompt "$input" --mode="$mode"
+    else
+        # Fallback basic sanitization
+        printf '%s' "$input" | sed 's/\([`$(){};<>|&*?\[\]]\)/\\\1/g'
+    fi
+}
+
+# Context management functions
+context_init() {
+    local session_name="$1"
+    local context_file="${CONTEXT_DIR}/${session_name}.json"
+    
+    if [[ -f "$context_file" ]]; then
+        log_warning "Context session '$session_name' already exists"
+        return 1
+    fi
+    
+    cat > "$context_file" << EOF
+{
+  "session_id": "$session_name",
+  "created": "$(date -Iseconds)",
+  "last_updated": "$(date -Iseconds)",
+  "scope": [],
+  "findings": {},
+  "metadata": {
+    "total_cost": 0.0,
+    "agents_used": [],
+    "files_modified": [],
+    "operation_count": 0
+  }
+}
+EOF
+    
+    echo "✅ Initialized context session: $session_name"
+    echo "Context file: $context_file"
+}
+
+context_add() {
+    local session_name="$1"
+    local key="$2"
+    local value="$3"
+    local context_file="${CONTEXT_DIR}/${session_name}.json"
+    
+    if [[ ! -f "$context_file" ]]; then
+        log_error "Context session '$session_name' not found"
+        return 1
+    fi
+    
+    # Update context using jq (if available) or basic append
+    if command -v jq >/dev/null; then
+        local temp_file
+        temp_file=$(mktemp)
+        jq --arg key "$key" --arg value "$value" --arg timestamp "$(date -Iseconds)" \
+           '.findings[$key] = {
+              "timestamp": $timestamp,
+              "content": $value
+            } |
+            .last_updated = $timestamp |
+            .metadata.operation_count += 1' \
+           "$context_file" > "$temp_file" && mv "$temp_file" "$context_file"
+        
+        echo "✅ Added to context: $key"
+    else
+        log_warning "jq not available, using basic context storage"
+        echo "[$key @ $(date -Iseconds)]: $value" >> "${context_file}.notes"
+    fi
+}
+
+context_get() {
+    local session_name="$1"
+    local key="${2:-}"
+    local context_file="${CONTEXT_DIR}/${session_name}.json"
+    
+    if [[ ! -f "$context_file" ]]; then
+        log_error "Context session '$session_name' not found"
+        return 1
+    fi
+    
+    if [[ -n "$key" ]]; then
+        if command -v jq >/dev/null; then
+            jq -r --arg key "$key" '.findings[$key].content // empty' "$context_file"
+        else
+            grep "^\[$key" "${context_file}.notes" 2>/dev/null | tail -1 | cut -d: -f2- || true
+        fi
+    else
+        # Show full context
+        if command -v jq >/dev/null; then
+            jq . "$context_file"
+        else
+            cat "$context_file"
+        fi
+    fi
+}
+
+context_list() {
+    echo "Available context sessions:"
+    for context_file in "$CONTEXT_DIR"/*.json; do
+        if [[ -f "$context_file" ]]; then
+            local session_name
+            session_name=$(basename "$context_file" .json)
+            local created
+            if command -v jq >/dev/null; then
+                created=$(jq -r '.created // "unknown"' "$context_file")
+            else
+                created="$(stat -c %y "$context_file" 2>/dev/null || echo "unknown")"
+            fi
+            echo "  $session_name (created: $created)"
+        fi
+    done
+}
+
+context_cleanup() {
+    local ttl="${1:-$DEFAULT_CONTEXT_TTL}"
+    local cutoff_time=$(($(date +%s) - ttl))
+    
+    echo "Cleaning up contexts older than $((ttl / 3600)) hours..."
+    
+    for context_file in "$CONTEXT_DIR"/*.json; do
+        if [[ -f "$context_file" ]]; then
+            local file_time
+            file_time=$(stat -c %Y "$context_file" 2>/dev/null || echo "0")
+            if [[ $file_time -lt $cutoff_time ]]; then
+                local session_name
+                session_name=$(basename "$context_file" .json)
+                echo "  Removing expired context: $session_name"
+                rm -f "$context_file" "${context_file}.notes"
+            fi
+        fi
+    done
+}
+
+# Agent execution functions
+execute_codex() {
+    local prompt="$1"
+    local timeout="${2:-180}"
+    shift 2
+    local additional_args=("$@")
+    
+    log_debug "Executing Codex agent with timeout: ${timeout}s"
+    
+    if [[ -x "./scripts/safe-codex-exec" ]]; then
+        timeout "${timeout}s" ./scripts/safe-codex-exec "$prompt" "${additional_args[@]}"
+    elif command -v codex >/dev/null; then
+        log_warning "Using unsafe direct codex execution"
+        timeout "${timeout}s" codex exec "$prompt" "${additional_args[@]}"
+    else
+        log_error "Codex not available"
+        return 127
+    fi
+}
+
+execute_gemini() {
+    local prompt="$1"
+    local timeout="${2:-600}"
+    shift 2
+    local additional_args=("$@")
+    
+    log_debug "Executing Gemini agent with timeout: ${timeout}s"
+    
+    if command -v gemini >/dev/null; then
+        timeout "${timeout}s" gemini -p "$prompt" "${additional_args[@]}"
+    else
+        log_error "Gemini not available"
+        return 127
+    fi
+}
+
+execute_claude() {
+    local prompt="$1"
+    shift
+    local additional_args=("$@")
+    
+    log_debug "Executing Claude agent (direct)"
+    
+    # Claude execution happens within Claude Code context
+    # This is a placeholder for the actual implementation
+    echo "🤖 Claude execution: $prompt"
+    echo "ℹ️  Claude agent execution would be handled by the Claude Code environment"
+}
+
+# Main routing function
+route_request() {
+    local agent="$1"
+    local prompt="$2"
+    local scope="${3:-}"
+    local timeout="${4:-$DEFAULT_TIMEOUT}"
+    local cost_limit="${5:-$DEFAULT_COST_LIMIT}"
+    local context_session="${6:-}"
+    local sanitize="${7:-true}"
+    shift 7
+    local additional_args=("$@")
+    
+    log "Routing request to $agent agent"
+    
+    # Check agent availability
+    if ! check_agent_availability "$agent"; then
+        log_error "Agent '$agent' is not available"
+        return 127
+    fi
+    
+    # Input sanitization
+    local sanitized_prompt="$prompt"
+    if [[ "$sanitize" = "true" ]]; then
+        sanitized_prompt=$(sanitize_input "$prompt" "basic")
+        if [[ "$sanitized_prompt" != "$prompt" ]]; then
+            log_debug "Input was sanitized"
+        fi
+    fi
+    
+    # Cost approval
+    if ! check_cost_approval "$agent" "$sanitized_prompt" "$scope" "$cost_limit"; then
+        log "Operation cancelled by user (cost/complexity)"
+        return 1
+    fi
+    
+    # Context storage (before execution)
+    if [[ -n "$context_session" ]]; then
+        context_add "$context_session" "${agent}_request" "Prompt: $sanitized_prompt | Scope: $scope"
+    fi
+    
+    # Execute the agent
+    local start_time
+    start_time=$(date +%s)
+    local exit_code=0
+    
+    case "$agent" in
+        codex)
+            execute_codex "$sanitized_prompt" "$timeout" "${additional_args[@]}" || exit_code=$?
+            ;;
+        gemini)
+            execute_gemini "$sanitized_prompt" "$timeout" "${additional_args[@]}" || exit_code=$?
+            ;;
+        claude)
+            execute_claude "$sanitized_prompt" "${additional_args[@]}" || exit_code=$?
+            ;;
+    esac
+    
+    local end_time
+    end_time=$(date +%s)
+    local duration=$((end_time - start_time))
+    
+    # Context storage (after execution)
+    if [[ -n "$context_session" ]]; then
+        context_add "$context_session" "${agent}_result" "Exit code: $exit_code | Duration: ${duration}s"
+    fi
+    
+    log "Agent execution completed: $agent (exit code: $exit_code, duration: ${duration}s)"
+    return $exit_code
+}
+
+# Smart agent selection
+select_agent() {
+    local prompt="$1"
+    local scope="${2:-}"
+    
+    local prompt_length=${#prompt}
+    local file_count=0
+    
+    # Count files in scope if provided
+    if [[ -n "$scope" && -d "$scope" ]]; then
+        file_count=$(find "$scope" -type f | wc -l)
+    elif [[ -n "$scope" && -f "$scope" ]]; then
+        file_count=1
+    fi
+    
+    log_debug "Smart agent selection: prompt_length=$prompt_length, file_count=$file_count, scope=$scope"
+    
+    # Decision matrix
+    if [[ $file_count -gt 10 || $prompt_length -gt 5000 ]]; then
+        echo "gemini"  # Large scope or complex analysis
+    elif [[ $file_count -eq 0 && $prompt_length -lt 1000 ]]; then
+        echo "codex"   # Simple reasoning/debugging
+    else
+        echo "claude"  # Precision tasks, medium complexity
+    fi
+}
+
+# Usage information
+usage() {
+    cat << EOF
+$SCRIPT_NAME v$VERSION - Unified Multi-Agent Command Interface
+
+Usage:
+  $SCRIPT_NAME route <agent> <prompt> [options]
+  $SCRIPT_NAME context <command> [args...]
+  $SCRIPT_NAME config [options]
+  $SCRIPT_NAME status
+
+Commands:
+  route <agent> <prompt>  Route request to specific agent (codex|gemini|claude)
+  auto <prompt>          Auto-select best agent for the task
+  context init <name>    Initialize context session
+  context add <session> <key> <value>  Add to context
+  context get <session> [key]  Get context data
+  context list          List available contexts
+  context cleanup [ttl] Clean up old contexts
+  config               Show configuration
+  status              Show system status
+
+Agents:
+  codex   - Fast reasoning, debugging, planning (GPT-5)
+  gemini  - Large context analysis, architecture scans (Gemini 2.5 Pro)
+  claude  - Precise editing, critical refactors (Claude Sonnet 4)
+
+Options:
+  --scope=PATH         Directory/file scope for analysis
+  --timeout=SECONDS    Execution timeout (default: $DEFAULT_TIMEOUT)
+  --cost-limit=AMOUNT  Maximum cost threshold (default: \$$DEFAULT_COST_LIMIT)
+  --context=SESSION    Context session name
+  --no-sanitize       Skip input sanitization
+  --debug             Enable debug logging
+  --help              Show this help
+
+Examples:
+  $SCRIPT_NAME route codex "debug the failing tests"
+  $SCRIPT_NAME route gemini "analyze the codebase architecture" --scope=server/
+  $SCRIPT_NAME auto "fix the authentication bug" --context=auth-fix
+  $SCRIPT_NAME context init "project-analysis"
+  $SCRIPT_NAME status
+
+Environment:
+  DEBUG=1             Enable debug logging
+  GOD_CLI_CONFIG=path Override config file path
+
+Logs: $LOG_FILE
+Config: $CONFIG_DIR/config.json
+EOF
+}
+
+# Status command
+show_status() {
+    echo "God-CLI System Status:"
+    echo
+    echo "Agents:"
+    for agent in codex gemini claude; do
+        if check_agent_availability "$agent"; then
+            echo "  ✅ $agent: Available"
+        else
+            echo "  ❌ $agent: Not available"
+        fi
+    done
+    
+    echo
+    echo "Configuration:"
+    echo "  Config dir: $CONFIG_DIR"
+    echo "  Log file: $LOG_FILE"
+    echo "  Context dir: $CONTEXT_DIR"
+    
+    if [[ -f "${CONFIG_DIR}/config.json" ]]; then
+        echo "  Config loaded: ✅"
+    else
+        echo "  Config loaded: ❌"
+    fi
+    
+    echo
+    echo "Context Sessions:"
+    context_list
+    
+    echo
+    echo "Logs (last 5 entries):"
+    if [[ -f "$LOG_FILE" ]]; then
+        tail -5 "$LOG_FILE"
+    else
+        echo "  No logs found"
+    fi
+}
+
+# Main command parser
+main() {
+    load_config
+    
+    if [[ $# -eq 0 ]]; then
+        usage
+        exit 0
+    fi
+    
+    local command="$1"
+    shift
+    
+    case "$command" in
+        route)
+            if [[ $# -lt 2 ]]; then
+                echo "ERROR: route requires agent and prompt arguments" >&2
+                usage
+                exit 1
+            fi
+            
+            local agent="$1"
+            local prompt="$2"
+            shift 2
+            
+            # Parse options
+            local scope=""
+            local timeout="$DEFAULT_TIMEOUT"
+            local cost_limit="$DEFAULT_COST_LIMIT"
+            local context_session=""
+            local sanitize="true"
+            local additional_args=()
+            
+            while [[ $# -gt 0 ]]; do
+                case "$1" in
+                    --scope=*)
+                        scope="${1#--scope=}"
+                        shift
+                        ;;
+                    --timeout=*)
+                        timeout="${1#--timeout=}"
+                        shift
+                        ;;
+                    --cost-limit=*)
+                        cost_limit="${1#--cost-limit=}"
+                        shift
+                        ;;
+                    --context=*)
+                        context_session="${1#--context=}"
+                        shift
+                        ;;
+                    --no-sanitize)
+                        sanitize="false"
+                        shift
+                        ;;
+                    --debug)
+                        export DEBUG=1
+                        shift
+                        ;;
+                    *)
+                        additional_args+=("$1")
+                        shift
+                        ;;
+                esac
+            done
+            
+            route_request "$agent" "$prompt" "$scope" "$timeout" "$cost_limit" "$context_session" "$sanitize" "${additional_args[@]}"
+            ;;
+            
+        auto)
+            if [[ $# -lt 1 ]]; then
+                echo "ERROR: auto requires prompt argument" >&2
+                usage
+                exit 1
+            fi
+            
+            local prompt="$1"
+            shift
+            
+            # Parse options for scope detection
+            local scope=""
+            while [[ $# -gt 0 ]]; do
+                case "$1" in
+                    --scope=*)
+                        scope="${1#--scope=}"
+                        shift
+                        ;;
+                    *)
+                        shift
+                        ;;
+                esac
+            done
+            
+            local selected_agent
+            selected_agent=$(select_agent "$prompt" "$scope")
+            echo "🤖 Auto-selected agent: $selected_agent"
+            
+            # Re-run with selected agent
+            exec "$0" route "$selected_agent" "$prompt" "$@"
+            ;;
+            
+        context)
+            if [[ $# -eq 0 ]]; then
+                context_list
+                exit 0
+            fi
+            
+            local ctx_command="$1"
+            shift
+            
+            case "$ctx_command" in
+                init)
+                    if [[ $# -lt 1 ]]; then
+                        echo "ERROR: context init requires session name" >&2
+                        exit 1
+                    fi
+                    context_init "$1"
+                    ;;
+                add)
+                    if [[ $# -lt 3 ]]; then
+                        echo "ERROR: context add requires session, key, and value" >&2
+                        exit 1
+                    fi
+                    context_add "$1" "$2" "$3"
+                    ;;
+                get)
+                    if [[ $# -lt 1 ]]; then
+                        echo "ERROR: context get requires session name" >&2
+                        exit 1
+                    fi
+                    context_get "$1" "${2:-}"
+                    ;;
+                list)
+                    context_list
+                    ;;
+                cleanup)
+                    context_cleanup "${1:-$DEFAULT_CONTEXT_TTL}"
+                    ;;
+                *)
+                    echo "ERROR: Unknown context command: $ctx_command" >&2
+                    exit 1
+                    ;;
+            esac
+            ;;
+            
+        status)
+            show_status
+            ;;
+            
+        config)
+            if [[ -f "${CONFIG_DIR}/config.json" ]]; then
+                cat "${CONFIG_DIR}/config.json"
+            else
+                echo "ERROR: Configuration file not found" >&2
+                exit 1
+            fi
+            ;;
+            
+        --help|-h|help)
+            usage
+            exit 0
+            ;;
+            
+        --version|-v|version)
+            echo "$SCRIPT_NAME version $VERSION"
+            exit 0
+            ;;
+            
+        *)
+            echo "ERROR: Unknown command: $command" >&2
+            usage
+            exit 1
+            ;;
+    esac
+}
+
+# Execute main function if script is run directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

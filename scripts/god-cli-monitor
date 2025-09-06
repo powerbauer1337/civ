@@ -1,0 +1,504 @@
+#!/bin/bash
+
+# god-cli-monitor - Performance Monitoring and Benchmarking
+# Tracks system performance, measures optimization effectiveness, and provides insights
+# Usage: god-cli-monitor <command> [args...]
+
+set -euo pipefail
+
+readonly SCRIPT_NAME="${0##*/}"
+readonly VERSION="3.0.0-alpha"
+readonly CONFIG_DIR="${HOME}/.god-cli"
+readonly LOG_FILE="${CONFIG_DIR}/logs/monitor.log"
+readonly METRICS_DIR="${CONFIG_DIR}/metrics"
+readonly BENCHMARKS_DIR="${CONFIG_DIR}/benchmarks"
+
+# Ensure directories exist
+mkdir -p "$CONFIG_DIR"/{logs,metrics,benchmarks}
+
+# Logging functions
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+}
+
+log_debug() {
+    if [[ "${DEBUG:-}" = "1" ]]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] DEBUG: $*" | tee -a "$LOG_FILE" >&2
+    fi
+}
+
+log_error() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $*" | tee -a "$LOG_FILE" >&2
+}
+
+# Performance measurement functions
+measure_operation() {
+    local operation_name="$1"
+    local start_time end_time duration
+    
+    start_time=$(date +%s.%N)
+    shift
+    
+    # Execute the command
+    local exit_code=0
+    "$@" || exit_code=$?
+    
+    end_time=$(date +%s.%N)
+    duration=$(echo "$end_time - $start_time" | bc -l)
+    
+    # Record metrics
+    record_metric "$operation_name" "duration" "$duration"
+    record_metric "$operation_name" "exit_code" "$exit_code"
+    
+    log_debug "Operation '$operation_name' completed in ${duration}s with exit code $exit_code"
+    
+    return $exit_code
+}
+
+# Record performance metric
+record_metric() {
+    local operation="$1"
+    local metric_name="$2"  
+    local metric_value="$3"
+    local timestamp="${4:-$(date -Iseconds)}"
+    
+    local metrics_file="${METRICS_DIR}/${operation}-$(date +%Y-%m).json"
+    
+    # Create metrics file if it doesn't exist
+    if [[ ! -f "$metrics_file" ]]; then
+        echo '{"operation":"'$operation'","metrics":[]}' > "$metrics_file"
+    fi
+    
+    # Add metric entry
+    if command -v jq >/dev/null; then
+        local temp_file
+        temp_file=$(mktemp)
+        
+        jq --arg timestamp "$timestamp" \
+           --arg metric_name "$metric_name" \
+           --argjson metric_value "$metric_value" \
+           '.metrics += [{
+             "timestamp": $timestamp,
+             "metric": $metric_name,
+             "value": $metric_value
+           }]' \
+           "$metrics_file" > "$temp_file" && mv "$temp_file" "$metrics_file"
+    else
+        # Fallback: simple append
+        echo "[$timestamp] $metric_name: $metric_value" >> "${metrics_file}.log"
+    fi
+}
+
+# Benchmark god-cli operations
+benchmark_operation() {
+    local operation_type="$1"
+    local test_scope="$2"
+    local iterations="${3:-3}"
+    
+    echo "🔬 Benchmarking: $operation_type"
+    echo "Scope: $test_scope"
+    echo "Iterations: $iterations"
+    echo ""
+    
+    local total_time=0
+    local min_time=999999
+    local max_time=0
+    local success_count=0
+    
+    for ((i=1; i<=iterations; i++)); do
+        echo "Iteration $i/$iterations..."
+        
+        local start_time end_time duration exit_code=0
+        start_time=$(date +%s.%N)
+        
+        case "$operation_type" in
+            "auto-selection")
+                ./scripts/god-cli auto "analyze for performance issues" --scope="$test_scope" >/dev/null 2>&1 || exit_code=$?
+                ;;
+            "context-init")
+                ./scripts/god-cli context init "benchmark-test-$i" >/dev/null 2>&1 || exit_code=$?
+                ./scripts/god-cli context add "benchmark-test-$i" "test" "benchmark data" >/dev/null 2>&1 || exit_code=$?
+                ;;
+            "cache-operation")
+                ./scripts/god-cli-cache cache "$test_scope" "benchmark-$i" "test data $(date)" 60 >/dev/null 2>&1 || exit_code=$?
+                ./scripts/god-cli-cache get "$test_scope" "benchmark-$i" /tmp/benchmark-out-$i >/dev/null 2>&1 || exit_code=$?
+                ;;
+            "workflow-simple")
+                ./scripts/god-cli-workflow init "benchmark-workflow-$i" >/dev/null 2>&1 || exit_code=$?
+                ./scripts/god-cli-workflow add-task "benchmark-workflow-$i" "task1" "claude" "test task" >/dev/null 2>&1 || exit_code=$?
+                ;;
+        esac
+        
+        end_time=$(date +%s.%N)
+        duration=$(echo "$end_time - $start_time" | bc -l)
+        
+        if [[ $exit_code -eq 0 ]]; then
+            ((success_count++))
+            total_time=$(echo "$total_time + $duration" | bc -l)
+            
+            # Update min/max
+            if (( $(echo "$duration < $min_time" | bc -l) )); then
+                min_time="$duration"
+            fi
+            if (( $(echo "$duration > $max_time" | bc -l) )); then
+                max_time="$duration"
+            fi
+            
+            echo "  ✅ Completed in ${duration}s"
+        else
+            echo "  ❌ Failed with exit code $exit_code"
+        fi
+        
+        # Record individual measurement
+        record_metric "benchmark_${operation_type}" "iteration_${i}_duration" "$duration"
+        record_metric "benchmark_${operation_type}" "iteration_${i}_success" "$([[ $exit_code -eq 0 ]] && echo "1" || echo "0")"
+    done
+    
+    # Calculate statistics
+    if [[ $success_count -gt 0 ]]; then
+        local avg_time
+        avg_time=$(echo "scale=3; $total_time / $success_count" | bc -l)
+        
+        echo ""
+        echo "📊 Benchmark Results:"
+        echo "  Success Rate: $success_count/$iterations ($(echo "scale=1; $success_count * 100 / $iterations" | bc -l)%)"
+        echo "  Average Time: ${avg_time}s"
+        echo "  Min Time: ${min_time}s"
+        echo "  Max Time: ${max_time}s"
+        
+        # Record summary metrics
+        record_metric "benchmark_${operation_type}_summary" "avg_duration" "$avg_time"
+        record_metric "benchmark_${operation_type}_summary" "min_duration" "$min_time"
+        record_metric "benchmark_${operation_type}_summary" "max_duration" "$max_time"
+        record_metric "benchmark_${operation_type}_summary" "success_rate" "$(echo "scale=3; $success_count / $iterations" | bc -l)"
+    else
+        echo ""
+        echo "❌ All benchmark iterations failed"
+    fi
+    
+    # Cleanup
+    for ((i=1; i<=iterations; i++)); do
+        rm -f "/tmp/benchmark-out-$i"
+        ./scripts/god-cli context cleanup 1 2>/dev/null || true
+        rm -f "${HOME}/.god-cli/workflows/benchmark-workflow-$i.json" 2>/dev/null || true
+    done
+}
+
+# System performance analysis
+analyze_performance() {
+    local time_period="${1:-7}"  # Days
+    
+    echo "📈 God-CLI Performance Analysis (Last $time_period days)"
+    echo "================================================"
+    
+    # Analyze cache effectiveness
+    echo ""
+    echo "🗄️ Cache Performance:"
+    local cache_dir="${CONFIG_DIR}/cache"
+    if [[ -d "$cache_dir" ]]; then
+        local cache_hits cache_misses hit_rate
+        cache_hits=$(grep -c "Cache hit:" "$CONFIG_DIR/logs/cache.log" 2>/dev/null || echo "0")
+        cache_misses=$(grep -c "Cache miss:" "$CONFIG_DIR/logs/cache.log" 2>/dev/null || echo "0")
+        
+        local total_requests=$((cache_hits + cache_misses))
+        if [[ $total_requests -gt 0 ]]; then
+            hit_rate=$(echo "scale=1; $cache_hits * 100 / $total_requests" | bc -l)
+            echo "  Cache Hit Rate: $hit_rate% ($cache_hits hits, $cache_misses misses)"
+        else
+            echo "  No cache activity recorded"
+        fi
+        
+        ./scripts/god-cli-cache stats 2>/dev/null || echo "  Cache stats unavailable"
+    else
+        echo "  Cache system not initialized"
+    fi
+    
+    # Analyze workflow efficiency
+    echo ""
+    echo "⚡ Workflow Performance:"
+    if [[ -f "$CONFIG_DIR/logs/workflow.log" ]]; then
+        local total_workflows completed_workflows
+        total_workflows=$(grep -c "Starting workflow execution" "$CONFIG_DIR/logs/workflow.log" 2>/dev/null || echo "0")
+        completed_workflows=$(grep -c "Workflow completed" "$CONFIG_DIR/logs/workflow.log" 2>/dev/null || echo "0")
+        
+        echo "  Total Workflows: $total_workflows executed, $completed_workflows completed"
+        
+        if [[ $completed_workflows -gt 0 ]]; then
+            # Extract completion times
+            local avg_duration
+            avg_duration=$(grep "Workflow completed in" "$CONFIG_DIR/logs/workflow.log" | \
+                          sed 's/.*completed in \([0-9]*\)s/\1/' | \
+                          awk '{sum+=$1; count++} END {if(count>0) print sum/count; else print 0}')
+            
+            echo "  Average Workflow Duration: ${avg_duration}s"
+        fi
+    else
+        echo "  No workflow activity recorded"
+    fi
+    
+    # Analyze agent usage patterns
+    echo ""
+    echo "🤖 Agent Usage Patterns:"
+    if [[ -f "$CONFIG_DIR/logs/god-cli.log" ]]; then
+        local codex_usage gemini_usage claude_usage
+        codex_usage=$(grep -c "Routing request to codex" "$CONFIG_DIR/logs/god-cli.log" 2>/dev/null || echo "0")
+        gemini_usage=$(grep -c "Routing request to gemini" "$CONFIG_DIR/logs/god-cli.log" 2>/dev/null || echo "0")
+        claude_usage=$(grep -c "Routing request to claude" "$CONFIG_DIR/logs/god-cli.log" 2>/dev/null || echo "0")
+        
+        local total_usage=$((codex_usage + gemini_usage + claude_usage))
+        
+        if [[ $total_usage -gt 0 ]]; then
+            local codex_pct gemini_pct claude_pct
+            codex_pct=$(echo "scale=1; $codex_usage * 100 / $total_usage" | bc -l)
+            gemini_pct=$(echo "scale=1; $gemini_usage * 100 / $total_usage" | bc -l) 
+            claude_pct=$(echo "scale=1; $claude_usage * 100 / $total_usage" | bc -l)
+            echo "  Codex: $codex_usage requests ($codex_pct%)"
+            echo "  Gemini: $gemini_usage requests ($gemini_pct%)"
+            echo "  Claude: $claude_usage requests ($claude_pct%)"
+        else
+            echo "  No agent routing activity recorded"
+        fi
+    else
+        echo "  No routing activity recorded"
+    fi
+    
+    # System health indicators
+    echo ""
+    echo "🏥 System Health:"
+    local error_count warning_count
+    error_count=$(find "$CONFIG_DIR/logs" -name "*.log" -exec grep -c "ERROR:" {} + 2>/dev/null | paste -sd+ | bc || echo "0")
+    warning_count=$(find "$CONFIG_DIR/logs" -name "*.log" -exec grep -c "WARNING:" {} + 2>/dev/null | paste -sd+ | bc || echo "0")
+    
+    echo "  Errors (last $time_period days): $error_count"
+    echo "  Warnings (last $time_period days): $warning_count"
+    
+    if [[ $error_count -eq 0 && $warning_count -eq 0 ]]; then
+        echo "  ✅ System operating normally"
+    elif [[ $error_count -eq 0 && $warning_count -lt 10 ]]; then
+        echo "  ⚠️  Minor issues detected, system stable"
+    else
+        echo "  🚨 Issues detected, review logs recommended"
+    fi
+}
+
+# Generate performance report
+generate_report() {
+    local output_file="${1:-${BENCHMARKS_DIR}/performance-report-$(date +%Y-%m-%d).md}"
+    
+    echo "📋 Generating performance report: $output_file"
+    
+    {
+        echo "# God-CLI Performance Report"
+        echo "Generated: $(date)"
+        echo ""
+        
+        echo "## Executive Summary"
+        echo ""
+        
+        # Overall system status
+        local total_operations=0
+        local failed_operations=0
+        
+        for log_file in "$CONFIG_DIR/logs"/*.log; do
+            if [[ -f "$log_file" ]]; then
+                local operations errors
+                operations=$(grep -c "completed in" "$log_file" 2>/dev/null || echo "0")
+                errors=$(grep -c "ERROR:" "$log_file" 2>/dev/null || echo "0")
+                
+                total_operations=$((total_operations + operations))
+                failed_operations=$((failed_operations + errors))
+            fi
+        done
+        
+        if [[ $total_operations -gt 0 ]]; then
+            local success_rate
+            success_rate=$(echo "scale=1; ($total_operations - $failed_operations) * 100 / $total_operations" | bc -l)
+            echo "- **Operations**: $total_operations total, ${success_rate}% success rate"
+        fi
+        
+        # Cache performance
+        if [[ -f "$CONFIG_DIR/logs/cache.log" ]]; then
+            local cache_hits cache_misses
+            cache_hits=$(grep -c "Cache hit:" "$CONFIG_DIR/logs/cache.log" 2>/dev/null || echo "0")
+            cache_misses=$(grep -c "Cache miss:" "$CONFIG_DIR/logs/cache.log" 2>/dev/null || echo "0")
+            
+            if [[ $((cache_hits + cache_misses)) -gt 0 ]]; then
+                local hit_rate
+                hit_rate=$(echo "scale=1; $cache_hits * 100 / ($cache_hits + $cache_misses)" | bc -l)
+                echo "- **Cache Hit Rate**: ${hit_rate}% (${cache_hits} hits, ${cache_misses} misses)"
+            fi
+        fi
+        
+        echo ""
+        
+        # Detailed analysis
+        echo "## Detailed Analysis"
+        echo ""
+        analyze_performance 30
+        
+        echo ""
+        echo "## Recommendations"
+        echo ""
+        
+        # Provide recommendations based on metrics
+        if [[ -f "$CONFIG_DIR/logs/cache.log" ]]; then
+            local cache_misses
+            cache_misses=$(grep -c "Cache miss:" "$CONFIG_DIR/logs/cache.log" 2>/dev/null || echo "0")
+            
+            if [[ $cache_misses -gt 100 ]]; then
+                echo "- Consider increasing cache TTL for better hit rates"
+            fi
+        fi
+        
+        if [[ $failed_operations -gt $((total_operations / 10)) ]]; then
+            echo "- High error rate detected, review system logs"
+        fi
+        
+        echo "- Regular cache cleanup recommended (run: \`god-cli-cache cleanup\`)"
+        echo "- Monitor agent usage patterns for optimization opportunities"
+        
+        echo ""
+        echo "## System Configuration"
+        echo ""
+        echo "- Cache Directory: \`${CONFIG_DIR}/cache\`"
+        echo "- Logs Directory: \`$CONFIG_DIR/logs\`"
+        echo "- Metrics Directory: \`$METRICS_DIR\`"
+        
+    } > "$output_file"
+    
+    echo "✅ Report generated: $output_file"
+}
+
+# Performance comparison
+compare_performance() {
+    local baseline_date="$1"
+    local comparison_date="${2:-$(date +%Y-%m-%d)}"
+    
+    echo "⚖️  Performance Comparison: $baseline_date vs $comparison_date"
+    echo "==========================================="
+    
+    # This would compare metrics between different time periods
+    # For now, show a placeholder implementation
+    
+    echo "📊 Comparison Analysis:"
+    echo "  (Feature in development - requires historical metrics)"
+    echo ""
+    echo "To enable performance comparisons:"
+    echo "1. Run regular benchmarks: god-cli-monitor benchmark <operation>"
+    echo "2. Generate baseline reports: god-cli-monitor report"
+    echo "3. Compare metrics over time periods"
+}
+
+# Usage information
+usage() {
+    cat << EOF
+$SCRIPT_NAME v$VERSION - Performance Monitoring and Benchmarking
+
+Usage:
+  $SCRIPT_NAME measure <operation-name> <command> [args...]
+  $SCRIPT_NAME benchmark <operation-type> <test-scope> [iterations]
+  $SCRIPT_NAME analyze [time-period-days]
+  $SCRIPT_NAME report [output-file]
+  $SCRIPT_NAME compare <baseline-date> [comparison-date]
+
+Commands:
+  measure      Measure and record execution time of any command
+  benchmark    Run comprehensive benchmarks of god-cli operations
+  analyze      Analyze system performance over time period
+  report       Generate detailed performance report
+  compare      Compare performance between time periods
+
+Operation Types for Benchmarking:
+  auto-selection    Test intelligent agent selection
+  context-init      Test context management operations
+  cache-operation   Test caching system performance
+  workflow-simple   Test basic workflow creation
+
+Examples:
+  # Measure custom operation
+  $SCRIPT_NAME measure file-analysis ./scripts/god-cli auto "analyze code" --scope=server/
+
+  # Benchmark caching system
+  $SCRIPT_NAME benchmark cache-operation server/src/ 5
+
+  # Analyze last 7 days performance
+  $SCRIPT_NAME analyze 7
+
+  # Generate monthly report
+  $SCRIPT_NAME report reports/performance-$(date +%Y-%m).md
+
+Performance Metrics Tracked:
+  - Operation duration and success rates
+  - Cache hit/miss ratios and efficiency
+  - Workflow execution times and parallel speedup
+  - Agent usage patterns and routing decisions
+  - System resource utilization
+  - Error rates and failure patterns
+
+Benefits:
+  - Identify performance bottlenecks and optimization opportunities
+  - Track system reliability and error trends
+  - Measure effectiveness of caching and parallel execution
+  - Validate performance improvements over time
+  - Generate data-driven optimization recommendations
+
+Logs: $LOG_FILE
+Metrics: $METRICS_DIR
+Benchmarks: $BENCHMARKS_DIR
+EOF
+}
+
+# Main command parser
+main() {
+    if [[ $# -eq 0 ]]; then
+        usage
+        exit 0
+    fi
+    
+    local command="$1"
+    shift
+    
+    case "$command" in
+        measure)
+            if [[ $# -lt 2 ]]; then
+                echo "ERROR: measure requires operation-name and command" >&2
+                exit 1
+            fi
+            measure_operation "$@"
+            ;;
+        benchmark)
+            if [[ $# -lt 2 ]]; then
+                echo "ERROR: benchmark requires operation-type and test-scope" >&2
+                exit 1
+            fi
+            benchmark_operation "$1" "$2" "${3:-3}"
+            ;;
+        analyze)
+            analyze_performance "${1:-7}"
+            ;;
+        report)
+            generate_report "${1:-}"
+            ;;
+        compare)
+            if [[ $# -lt 1 ]]; then
+                echo "ERROR: compare requires baseline-date" >&2
+                exit 1
+            fi
+            compare_performance "$1" "${2:-}"
+            ;;
+        --help|-h|help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "ERROR: Unknown command: $command" >&2
+            usage
+            exit 1
+            ;;
+    esac
+}
+
+# Execute main function if script is run directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

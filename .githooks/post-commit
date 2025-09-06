@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Auto-update documentation index after commit
+echo "[post-commit] Checking for documentation updates..."
+if [ -d "scripts/doc-tracker" ]; then
+  cd scripts/doc-tracker
+  if [ -f "package.json" ]; then
+    echo "[post-commit] Updating documentation index..."
+    npm run update --silent 2>/dev/null || echo "Warning: Could not update documentation index"
+  fi
+  cd ../..
+fi
+
+echo "[post-commit] Complete"

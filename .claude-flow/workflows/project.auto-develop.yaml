@@ -1,0 +1,35 @@
+name: project.auto-develop
+description: Auto-develop TS project from todo.md + recent git commits
+steps:
+  - readPlan:
+      tool: file.read
+      params: { path: "todo.md" }
+  - analyzeCommits:
+      tool: git.log
+      params: { limit: 20 }
+  - decideNextTask:
+      tool: planner.decide-task
+  - implement:
+      tool: project.implement
+      params: { language: typescript }
+  - tests:
+      tool: project.tests
+  - typecheck:
+      tool: project.typecheck
+      params: { cmd: "tsc --noEmit" }
+  - lint:
+      tool: project.lint
+      params: { cmd: "npm run lint || eslint ." }
+  - build:
+      tool: project.build
+      params: { cmd: "npm run build" }
+  - docs:
+      tool: project.docs
+  - commit:
+      tool: git.commit
+      params:
+        style: conventional
+        message: "auto: implement task(s) from todo.md"
+        branch: "auto/dev-{{date:YYYYMMDD}}"
+  - updateTodo:
+      tool: file.update-todo
